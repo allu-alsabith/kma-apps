@@ -64,17 +64,27 @@ class OfflineSyncManager {
     if (typeof window !== 'undefined') {
       window.addEventListener('online', this.handleOnline);
       window.addEventListener('offline', this.handleOffline);
+      window.addEventListener('focus', () => {
+        if (this.isOnline && !this.isSyncing && this.getQueue().length > 0) {
+          this.flushQueue();
+        }
+      });
+      window.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && this.isOnline && !this.isSyncing && this.getQueue().length > 0) {
+          this.flushQueue();
+        }
+      });
 
-      // Periodic queue check every 20 seconds to auto-flush when online
+      // Fast periodic background check every 4 seconds to guarantee automatic cloud synchronization
       this.flushTimer = setInterval(() => {
         if (this.isOnline && !this.isSyncing && this.getQueue().length > 0) {
           this.flushQueue();
         }
-      }, 20000);
+      }, 4000);
 
       // Run initial check if queue has pending items
       if (this.isOnline && this.getQueue().length > 0) {
-        setTimeout(() => this.flushQueue(), 1500);
+        setTimeout(() => this.flushQueue(), 500);
       }
     }
   }

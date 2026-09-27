@@ -64,7 +64,6 @@ interface AppsManagerProps {
   helpRequests?: HelpRequest[];
   onUpdateHelpRequestStatus?: (id: string, status: HelpRequest['status']) => void;
   onDeleteHelpRequest?: (id: string) => void;
-  onRestoreSampleEmployees?: (companyId?: string) => void;
 }
 
 export const AppsManager: React.FC<AppsManagerProps> = ({
@@ -86,7 +85,6 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
   helpRequests = [],
   onUpdateHelpRequestStatus,
   onDeleteHelpRequest,
-  onRestoreSampleEmployees,
 }) => {
   // Master Apps Manager selected company for preview and app provisioning
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(() => {
@@ -819,16 +817,10 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                       </button>
                     </div>
 
-                    {/* Seed Workforce if Empty */}
-                    {staffCount === 0 && onRestoreSampleEmployees && (
-                      <button
-                        onClick={() => onRestoreSampleEmployees(company.id)}
-                        className="w-full py-1 px-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-all"
-                        title={`Generate realistic sample employees for ${company.supermarketName}`}
-                      >
-                        <Sparkles className="w-3 h-3 text-emerald-400" />
-                        <span>Seed Sample Staff</span>
-                      </button>
+                    {staffCount === 0 && (
+                      <div className="text-[10px] text-slate-400 text-center py-0.5">
+                        Roster empty &bull; Add staff in Store Admin
+                      </div>
                     )}
                   </div>
 

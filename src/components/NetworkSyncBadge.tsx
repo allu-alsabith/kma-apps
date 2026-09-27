@@ -66,7 +66,7 @@ export const NetworkSyncBadge: React.FC<NetworkSyncBadgeProps> = ({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400"></span>
             </span>
-            <span>{compact ? 'Online' : 'Cloud Synced'}</span>
+            <span>{compact ? 'Auto-Synced' : 'Automatic Live Sync'}</span>
           </>
         )}
       </button>
@@ -98,24 +98,26 @@ export const NetworkSyncBadge: React.FC<NetworkSyncBadgeProps> = ({
 
           <p className="text-[11px] text-slate-300 leading-relaxed">
             {!isOnline
-              ? 'Your device is currently offline. All attendance face punches, PIN clocks, and leave requests work normally and are saved locally. They will automatically sync to Firebase Cloud as soon as internet reconnects.'
+              ? 'Your device is operating in autonomous offline mode. All face punches, PIN clockings, and leaves are saved locally and will auto-upload to the cloud as soon as connection is re-established.'
               : pendingCount > 0
-              ? `${pendingCount} local operation(s) are queued and uploading to the cloud database.`
-              : 'All store rosters, staff profiles, attendance logs, and leaves are fully synchronized with the Firebase cloud database.'}
+              ? `Auto-sync in progress: ${pendingCount} operation(s) syncing to the cloud database automatically.`
+              : 'Continuous automatic sync active. All store rosters, face punches, attendance logs, and leave requests synchronize across all kiosks, phones, and admin portals automatically.'}
           </p>
 
           <div className="mt-3 pt-2 border-t border-white/10 flex items-center justify-between text-[10px] text-slate-400">
-            <span>
-              {lastSyncTime ? `Last sync: ${lastSyncTime}` : 'Continuous live sync'}
+            <span className="flex items-center gap-1 text-emerald-400 font-medium">
+              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+              100% Automatic Data Sync
             </span>
             {isOnline && (
               <button
                 disabled={isSyncing}
                 onClick={handleManualSync}
-                className="px-2 py-0.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-semibold border border-emerald-500/40 cursor-pointer flex items-center gap-1 transition-all disabled:opacity-50"
+                className="px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-slate-300 text-[10px] cursor-pointer flex items-center gap-1 transition-all disabled:opacity-50"
+                title="Force connection test"
               >
-                <RefreshCw className={`w-2.5 h-2.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                <span>{isSyncing ? 'Syncing...' : 'Sync Now'}</span>
+                <RefreshCw className={`w-2.5 h-2.5 ${isSyncing ? 'animate-spin text-emerald-400' : ''}`} />
+                <span>{isSyncing ? 'Syncing...' : 'Check Cloud'}</span>
               </button>
             )}
           </div>

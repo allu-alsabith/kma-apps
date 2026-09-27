@@ -78,7 +78,7 @@ interface AdminPortalProps {
   onDeleteEmployee: (employeeId: string) => void;
   onClearAllEmployees: () => void;
   onClearAttendanceLogs?: () => void;
-  onRestoreSampleEmployees: () => void;
+  onRestoreSampleEmployees?: () => void;
   onApproveLeave: (leaveId: string, status: 'APPROVED' | 'REJECTED') => void;
   onDeleteLeave?: (leaveId: string) => void;
   onClearAllLeaves?: () => void;
@@ -994,33 +994,24 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <span>{activeCompany?.supermarketName || 'Supermarket'} Roster Empty</span>
+                    <span>{activeCompany?.supermarketName || 'Supermarket'} Workforce Setup</span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono">
-                      READY
+                      READY FOR STAFF
                     </span>
                   </h4>
                   <p className="text-xs text-slate-300 mt-0.5 max-w-xl">
-                    Enroll your staff with real face photos & PIN, or seed realistic sample employees for {activeCompany?.supermarketName || 'this store'} in 1 click.
+                    Your roster is ready for setup. Click &ldquo;+ Enroll First Staff Member&rdquo; to add your cashiers, store leads, bakers, and inventory crew with their role, wage, PIN, and face photo.
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <button
-                  id="overview-seed-sample-btn"
-                  onClick={onRestoreSampleEmployees}
-                  className="px-3.5 py-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/40 font-bold text-xs active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
-                  title={`Generate sample supermarket employees for ${activeCompany?.supermarketName}`}
-                >
-                  <Sparkles className="w-4 h-4 text-purple-400" />
-                  <span>Seed Sample Staff</span>
-                </button>
-                <button
                   id="overview-enroll-first-btn"
                   onClick={handleOpenAddEmp}
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/25 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/25 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer"
                 >
-                  <ScanFace className="w-4 h-4" />
-                  <span>+ Enroll First Employee</span>
+                  <UserPlus className="w-4 h-4" />
+                  <span>+ Enroll First Staff Member</span>
                 </button>
               </div>
             </div>
@@ -1311,32 +1302,42 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             {filteredEmployees.length === 0 ? (
               <div className="py-16 text-center px-4">
                 <Users className="w-12 h-12 text-emerald-500/50 mx-auto mb-3" />
-                <h3 className="text-base font-bold text-white">{activeCompany?.supermarketName || 'Supermarket'} Workforce Ready</h3>
+                <h3 className="text-base font-bold text-white">{activeCompany?.supermarketName || 'Supermarket'} Staff Directory</h3>
                 <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
                   {employees.length === 0
-                    ? `Your staff directory is clean and ready for your real ${activeCompany?.supermarketName || 'supermarket'} business. Click "+ Enroll New Staff" to register your cashiers, stockers, grocery crew, warehouse staff, and supervisors with their real face biometric and 4-digit PIN.`
+                    ? `No staff members enrolled yet. You are in full control — click "+ Enroll Staff Member" to add your supermarket staff with their real details, biometric face, and 4-digit PIN.`
                     : 'No staff match the current search filter.'}
                 </p>
                 <div className="flex items-center justify-center gap-2.5 mt-4 flex-wrap">
-                  {employees.length === 0 && (
-                    <button
-                      id="directory-seed-sample-btn"
-                      onClick={onRestoreSampleEmployees}
-                      className="px-4 py-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/40 font-bold text-xs active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
-                      title={`Generate sample supermarket staff for ${activeCompany?.supermarketName}`}
-                    >
-                      <Sparkles className="w-4 h-4 text-purple-400" />
-                      <span>Seed Sample Staff</span>
-                    </button>
-                  )}
                   <button
+                    id="admin-enroll-first-staff-btn"
                     onClick={handleOpenAddEmp}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/25 hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/25 hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
                   >
                     <UserPlus className="w-4 h-4" />
-                    <span>+ Enroll Real Staff</span>
+                    <span>+ Enroll Staff Member</span>
                   </button>
                 </div>
+
+                {employees.length === 0 && (
+                  <div className="mt-8 max-w-xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+                    <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold text-xs flex items-center justify-center">1</div>
+                      <h4 className="text-white font-bold text-xs">Verify Shifts</h4>
+                      <p className="text-[11px] text-slate-400 leading-tight">Default shifts are ready or customizable in Shifts tab.</p>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <div className="w-6 h-6 rounded-lg bg-sky-500/20 text-sky-300 font-bold text-xs flex items-center justify-center">2</div>
+                      <h4 className="text-white font-bold text-xs">Add Staff Member</h4>
+                      <p className="text-[11px] text-slate-400 leading-tight">Enter name, role, department, wage rate, 4-digit PIN, & face photo.</p>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+                      <div className="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-300 font-bold text-xs flex items-center justify-center">3</div>
+                      <h4 className="text-white font-bold text-xs">Live Auto-Sync</h4>
+                      <p className="text-[11px] text-slate-400 leading-tight">Automatically syncs to Kiosk and Mobile Staff App in real-time.</p>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">

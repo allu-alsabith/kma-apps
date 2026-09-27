@@ -8,9 +8,21 @@ import {
   INITIAL_LEAVES,
   DEFAULT_COMPANIES,
   createDefaultShiftsForCompany,
-  createSampleEmployeesForCompany,
-  createSampleAttendanceForCompany,
 } from './data';
+
+// Helper to filter out any legacy or generated mock staff records so user controls all staff data
+export const isSampleStaff = (emp: { name?: string; employeeName?: string; id?: string; employeeId?: string }): boolean => {
+  if (!emp) return false;
+  const name = (emp.name || emp.employeeName || '').trim();
+  const id = (emp.id || emp.employeeId || '').trim();
+  const sampleNames = [
+    'Sarah Jenkins', 'Carlos Ramirez', 'Fatima Al-Zahra', 'Priya Patel', 
+    'Marcus Vance', 'David Chen', 'Sarah Connor', 'Ahmed Al-Mansoor', 'Priya Sharma', 'David Kim'
+  ];
+  if (name && sampleNames.includes(name)) return true;
+  if (id && (id.startsWith('KMA-10') || id.startsWith('CITY-10') || id.startsWith('FRESH-10'))) return true;
+  return false;
+};
 import { KioskFace } from './components/KioskFace';
 import { EmployeeApp } from './components/EmployeeApp';
 import { AdminPortal } from './components/AdminPortal';
@@ -18,6 +30,7 @@ import { AppsManager } from './components/AppsManager';
 import { InstallModal, AppInstallTarget } from './components/InstallModal';
 import { NetworkSyncBadge } from './components/NetworkSyncBadge';
 import { offlineSyncService } from './services/offlineSync';
+import { autoSyncService } from './services/autoSync';
 import { soundService } from './services/sound';
 import { get12HTimeString } from './utils/formatters';
 import {
@@ -112,37 +125,23 @@ export default function App() {
     setIsInstallModalOpen(true);
   };
 
-  // Shared Core Hypermarket Database State for Real-World Business Use
-  // Starts completely clean with 0 staff, 0 logs, 0 leaves until the store owner enrolls them
+  // Shared Core Hypermarket Database State - 100% clean initial state so user adds all staff information
   const [employees, setEmployees] = useState<Employee[]>(() => {
     if (typeof window !== 'undefined') {
-      const isCleaned = localStorage.getItem('attendo_real_workforce_clean_v1');
-      if (!isCleaned) {
-        // Clear all previous demo seed data
-        localStorage.removeItem('attendo_user_enrolled_staff');
-        localStorage.removeItem('attendo_hyper_employees');
-        localStorage.removeItem('attendo_user_logs');
-        localStorage.removeItem('attendo_hyper_logs');
-        localStorage.removeItem('attendo_user_leaves');
-        localStorage.removeItem('attendo_hyper_leaves');
-        localStorage.removeItem('attendo_staff_session_id');
-        localStorage.setItem('attendo_real_workforce_clean_v1', 'true');
-        return [];
-      }
       const saved = localStorage.getItem('attendo_real_workforce_staff');
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            // Filter out any lingering mock demo entries
-            return parsed.filter((e) => e.name !== 'Sarah Connor' && e.name !== 'Ahmed Al-Mansoor');
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const filtered = parsed.filter((e) => !isSampleStaff(e));
+            return filtered;
           }
         } catch {
-          return [];
+          // fallback to INITIAL_EMPLOYEES
         }
       }
     }
-    return [];
+    return INITIAL_EMPLOYEES;
   });
 
   const [shifts, setShifts] = useState<Shift[]>(() => {
@@ -159,7 +158,7 @@ export default function App() {
         }
       }
     }
-    return SHIFTS;
+    return ALL_INITIAL_SHIFTS;
   });
 
   const [notifications, setNotifications] = useState<StaffNotification[]>(() => {
@@ -185,15 +184,16 @@ export default function App() {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            return parsed.filter((l) => l.employeeName !== 'Sarah Connor' && l.employeeName !== 'Ahmed Al-Mansoor');
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const filtered = parsed.filter((l) => !isSampleStaff({ employeeName: l.employeeName, employeeId: l.employeeId }));
+            return filtered;
           }
         } catch {
-          return [];
+          // fallback to INITIAL_ATTENDANCE_LOGS
         }
       }
     }
-    return [];
+    return INITIAL_ATTENDANCE_LOGS;
   });
 
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(() => {
@@ -202,15 +202,16 @@ export default function App() {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            return parsed.filter((lr) => lr.employeeName !== 'Priya Sharma' && lr.employeeName !== 'David Kim');
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const filtered = parsed.filter((lr) => !isSampleStaff({ employeeName: lr.employeeName, employeeId: lr.employeeId }));
+            return filtered;
           }
         } catch {
-          return [];
+          // fallback to INITIAL_LEAVES
         }
       }
     }
-    return [];
+    return INITIAL_LEAVES;
   });
 
   // Multi-Company State (Supports distinct supermarket companies with custom names, codes and passwords)
@@ -299,19 +300,134 @@ export default function App() {
     return createDefaultShiftsForCompany(activeCompany.id);
   }, [shifts, activeCompany]);
 
-  // Automatically guarantee that the active company has persistent shifts created
+  // Ensure default shift templates exist for companies so user can assign shifts when creating staff
   useEffect(() => {
-    if (activeCompany) {
-      const hasShifts = shifts.some((s) => s.companyId === activeCompany.id);
-      if (!hasShifts) {
-        const generatedShifts = createDefaultShiftsForCompany(activeCompany.id);
-        setShifts((prev) => [...prev, ...generatedShifts]);
-        generatedShifts.forEach((s) => {
-          offlineSyncService.enqueue('SYNC_SHIFT', s);
-        });
+    if (!companies || companies.length === 0) return;
+    let hasNewShifts = false;
+    let newShiftsList = [...shifts];
+
+    companies.forEach((comp) => {
+      const compShifts = newShiftsList.filter((s) => s.companyId === comp.id);
+      if (compShifts.length === 0) {
+        const generatedShifts = createDefaultShiftsForCompany(comp.id);
+        newShiftsList = [...newShiftsList, ...generatedShifts];
+        hasNewShifts = true;
+        generatedShifts.forEach((s) => offlineSyncService.enqueue('SYNC_SHIFT', s));
       }
-    }
-  }, [activeCompany?.id, shifts]);
+    });
+
+    if (hasNewShifts) setShifts(newShiftsList);
+  }, [companies, shifts.length]);
+
+  // Real-time Automatic Cross-Tab & Cross-Device Sync Subscription
+  useEffect(() => {
+    const unsubAutoSync = autoSyncService.subscribe((msg) => {
+      switch (msg.type) {
+        case 'PUNCH_CREATED': {
+          const punch = msg.payload as AttendanceRecord;
+          setAttendanceLogs((prev) => [punch, ...prev.filter((p) => p.id !== punch.id)]);
+          setEmployees((prev) =>
+            prev.map((e) =>
+              e.id === punch.employeeId
+                ? {
+                    ...e,
+                    status: punch.type === 'IN' || punch.type === 'BREAK_END' ? 'PRESENT' : 'ABSENT',
+                    lastPunch: punch.time,
+                  }
+                : e
+            )
+          );
+          break;
+        }
+        case 'EMPLOYEE_ADDED': {
+          const emp = msg.payload as Employee;
+          setEmployees((prev) => [...prev.filter((e) => e.id !== emp.id), emp]);
+          break;
+        }
+        case 'EMPLOYEE_UPDATED': {
+          const emp = msg.payload as Employee;
+          setEmployees((prev) => prev.map((e) => (e.id === emp.id ? emp : e)));
+          break;
+        }
+        case 'EMPLOYEE_DELETED': {
+          const empId = msg.payload as string;
+          setEmployees((prev) => prev.filter((e) => e.id !== empId));
+          setAttendanceLogs((prev) => prev.filter((l) => l.employeeId !== empId));
+          setLeaveRequests((prev) => prev.filter((lr) => lr.employeeId !== empId));
+          break;
+        }
+        case 'LEAVE_REQUESTED': {
+          const req = msg.payload as LeaveRequest;
+          setLeaveRequests((prev) => [req, ...prev.filter((l) => l.id !== req.id)]);
+          break;
+        }
+        case 'LEAVE_STATUS_CHANGED': {
+          const { id, status } = msg.payload;
+          setLeaveRequests((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
+          break;
+        }
+        case 'LEAVE_DELETED': {
+          const leaveId = msg.payload as string;
+          setLeaveRequests((prev) => prev.filter((l) => l.id !== leaveId));
+          break;
+        }
+        case 'COMPANY_ADDED': {
+          const company = msg.payload as Company;
+          setCompanies((prev) => [...prev.filter((c) => c.id !== company.id), company]);
+          break;
+        }
+        case 'COMPANY_UPDATED': {
+          const company = msg.payload as Company;
+          setCompanies((prev) => prev.map((c) => (c.id === company.id ? company : c)));
+          break;
+        }
+        case 'COMPANY_DELETED': {
+          const companyId = msg.payload as string;
+          setCompanies((prev) => prev.filter((c) => c.id !== companyId));
+          break;
+        }
+        case 'SHIFT_UPDATED': {
+          const shift = msg.payload as Shift;
+          setShifts((prev) => prev.map((s) => (s.id === shift.id ? shift : s)));
+          break;
+        }
+        case 'NOTIFICATION_ADDED': {
+          const notif = msg.payload as StaffNotification;
+          setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
+          break;
+        }
+        case 'NOTIFICATION_READ': {
+          const notifId = msg.payload as string;
+          setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, read: true } : n)));
+          break;
+        }
+        case 'NOTIFICATION_DELETED': {
+          const notifId = msg.payload as string;
+          setNotifications((prev) => prev.filter((n) => n.id !== notifId));
+          break;
+        }
+        case 'ACTIVE_COMPANY_CHANGED': {
+          const compId = msg.payload as string;
+          setActiveCompanyId(compId);
+          break;
+        }
+        case 'HELP_REQUEST_ADDED': {
+          const req = msg.payload as HelpRequest;
+          setHelpRequests((prev) => [req, ...prev.filter((r) => r.id !== req.id)]);
+          break;
+        }
+        case 'HELP_REQUEST_STATUS': {
+          const { id, status } = msg.payload;
+          setHelpRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+          break;
+        }
+        default:
+          break;
+      }
+    });
+
+    return () => unsubAutoSync();
+  }, []);
 
   // Firebase Real-time Synchronization Listeners
   useEffect(() => {
@@ -333,36 +449,28 @@ export default function App() {
 
     // Listen to remote changes in real-time
     const unsubEmployees = subscribeToEmployees((remoteEmployees) => {
-      if (remoteEmployees.length > 0) {
-        // Clean out legacy mock staff if any
-        const cleaned = remoteEmployees.filter(
-          (e) => e.name !== 'Sarah Connor' && e.name !== 'Ahmed Al-Mansoor'
-        );
-        if (cleaned.length > 0) {
-          setEmployees(cleaned);
-        }
+      if (remoteEmployees) {
+        // Clean out sample/mock staff so user only sees what they enrolled
+        const cleaned = remoteEmployees.filter((e) => !isSampleStaff(e));
+        setEmployees(cleaned);
       }
     });
 
     const unsubAttendance = subscribeToAttendanceRecords((remoteLogs) => {
-      if (remoteLogs.length > 0) {
+      if (remoteLogs) {
         const cleaned = remoteLogs.filter(
-          (l) => l.employeeName !== 'Sarah Connor' && l.employeeName !== 'Ahmed Al-Mansoor'
+          (l) => !isSampleStaff({ employeeName: l.employeeName, employeeId: l.employeeId })
         );
-        if (cleaned.length > 0) {
-          setAttendanceLogs(cleaned);
-        }
+        setAttendanceLogs(cleaned);
       }
     });
 
     const unsubLeaves = subscribeToLeaveRequests((remoteLeaves) => {
-      if (remoteLeaves.length > 0) {
+      if (remoteLeaves) {
         const cleaned = remoteLeaves.filter(
-          (lr) => lr.employeeName !== 'Priya Sharma' && lr.employeeName !== 'David Kim'
+          (lr) => !isSampleStaff({ employeeName: lr.employeeName, employeeId: lr.employeeId })
         );
-        if (cleaned.length > 0) {
-          setLeaveRequests(cleaned);
-        }
+        setLeaveRequests(cleaned);
       }
     });
 
@@ -451,6 +559,52 @@ export default function App() {
     localStorage.setItem('attendo_help_requests', JSON.stringify(helpRequests));
   }, [helpRequests]);
 
+  // One-time cleanup: ensure any previously cached mock staff or mock attendance logs are completely removed
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const rawStaff = localStorage.getItem('attendo_real_workforce_staff');
+        if (rawStaff) {
+          const parsed = JSON.parse(rawStaff);
+          if (Array.isArray(parsed)) {
+            const realOnly = parsed.filter((e) => !isSampleStaff(e));
+            if (realOnly.length !== parsed.length) {
+              setEmployees(realOnly);
+              localStorage.setItem('attendo_real_workforce_staff', JSON.stringify(realOnly));
+              localStorage.setItem('attendo_user_enrolled_staff', JSON.stringify(realOnly));
+            }
+          }
+        }
+        const rawLogs = localStorage.getItem('attendo_real_workforce_logs');
+        if (rawLogs) {
+          const parsed = JSON.parse(rawLogs);
+          if (Array.isArray(parsed)) {
+            const realLogs = parsed.filter((l) => !isSampleStaff({ employeeName: l.employeeName, employeeId: l.employeeId }));
+            if (realLogs.length !== parsed.length) {
+              setAttendanceLogs(realLogs);
+              localStorage.setItem('attendo_real_workforce_logs', JSON.stringify(realLogs));
+              localStorage.setItem('attendo_user_logs', JSON.stringify(realLogs));
+            }
+          }
+        }
+        const rawLeaves = localStorage.getItem('attendo_real_workforce_leaves');
+        if (rawLeaves) {
+          const parsed = JSON.parse(rawLeaves);
+          if (Array.isArray(parsed)) {
+            const realLeaves = parsed.filter((lr) => !isSampleStaff({ employeeName: lr.employeeName, employeeId: lr.employeeId }));
+            if (realLeaves.length !== parsed.length) {
+              setLeaveRequests(realLeaves);
+              localStorage.setItem('attendo_real_workforce_leaves', JSON.stringify(realLeaves));
+              localStorage.setItem('attendo_user_leaves', JSON.stringify(realLeaves));
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
+
   // Account Help & Support Request Handlers
   const handleCreateHelpRequest = async (
     requestData: Omit<HelpRequest, 'id' | 'createdAt' | 'status'>
@@ -491,10 +645,16 @@ export default function App() {
       id: newId,
       createdAt: new Date().toISOString(),
     };
+
+    // Auto-generate standard shift templates for the new company so shifts can be assigned to staff
+    const autoShifts = createDefaultShiftsForCompany(newId);
+
     setCompanies((prev) => {
       const filtered = prev.filter((c) => c.id !== newId && c.code.toUpperCase() !== newCompany.code.toUpperCase());
       return [...filtered, newCompany];
     });
+    setShifts((prev) => [...prev.filter((s) => s.companyId !== newId), ...autoShifts]);
+
     setActiveCompanyId(newId);
 
     // Persist company selection and pre-authenticate admin session so user can immediately manage their created company
@@ -507,20 +667,21 @@ export default function App() {
       localStorage.setItem('attendo_kiosk_company_id', newId);
     }
 
-    // Initialize default shifts for the new supermarket company
-    const newCompanyShifts = createDefaultShiftsForCompany(newId);
-    setShifts((prev) => {
-      const existingWithoutThis = prev.filter((s) => s.companyId !== newId);
-      return [...existingWithoutThis, ...newCompanyShifts];
-    });
-
     offlineSyncService.enqueue('SYNC_COMPANY', newCompany);
+    autoShifts.forEach((s) => offlineSyncService.enqueue('SYNC_SHIFT', s));
+
+    // Broadcast newly created company and shift schedules to all open tabs/windows
+    autoSyncService.broadcast('COMPANY_ADDED', newCompany);
+    autoShifts.forEach((s) => autoSyncService.broadcast('SHIFT_UPDATED', s));
+    autoSyncService.broadcast('ACTIVE_COMPANY_CHANGED', newId);
+
     return newCompany;
   };
 
   const handleUpdateCompany = async (updated: Company) => {
     setCompanies((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
     offlineSyncService.enqueue('SYNC_COMPANY', updated);
+    autoSyncService.broadcast('COMPANY_UPDATED', updated);
   };
 
   const handleDeleteCompany = async (companyId: string) => {
@@ -542,13 +703,17 @@ export default function App() {
       setActiveCompanyId(freshDefault.id);
       offlineSyncService.enqueue('SYNC_DELETE_COMPANY', companyId);
       offlineSyncService.enqueue('SYNC_COMPANY', freshDefault);
+      autoSyncService.broadcast('COMPANY_DELETED', companyId);
+      autoSyncService.broadcast('COMPANY_ADDED', freshDefault);
       return;
     }
     setCompanies(remaining);
     if (activeCompanyId === companyId) {
       setActiveCompanyId(remaining[0].id);
+      autoSyncService.broadcast('ACTIVE_COMPANY_CHANGED', remaining[0].id);
     }
     offlineSyncService.enqueue('SYNC_DELETE_COMPANY', companyId);
+    autoSyncService.broadcast('COMPANY_DELETED', companyId);
   };
 
   // Handle new punch coming from ANY device (Kiosk or Mobile or Admin) with Optimistic 0ms UI update
@@ -573,6 +738,9 @@ export default function App() {
 
     // Asynchronously write to Firestore or queue if offline
     offlineSyncService.enqueue('SYNC_PUNCH', newRecord);
+
+    // Cross-tab real-time auto sync
+    autoSyncService.broadcast('PUNCH_CREATED', newRecord);
 
     // Update employee status & last punch
     setEmployees((prev) =>
@@ -620,6 +788,7 @@ export default function App() {
     };
     setEmployees((prev) => [enrichedEmp, ...prev]);
     offlineSyncService.enqueue('SYNC_EMPLOYEE', enrichedEmp);
+    autoSyncService.broadcast('EMPLOYEE_ADDED', enrichedEmp);
   };
 
   // Admin update existing employee
@@ -633,6 +802,7 @@ export default function App() {
       prev.map((emp) => (emp.id === enrichedEmp.id ? enrichedEmp : emp))
     );
     offlineSyncService.enqueue('SYNC_EMPLOYEE', enrichedEmp);
+    autoSyncService.broadcast('EMPLOYEE_UPDATED', enrichedEmp);
 
     // If shift assignment was updated, dispatch in-app notification to staff member
     if (oldEmp && oldEmp.shiftId !== enrichedEmp.shiftId) {
@@ -658,6 +828,7 @@ export default function App() {
       };
       setNotifications((prev) => [notif, ...prev]);
       offlineSyncService.enqueue('SYNC_NOTIFICATION', notif);
+      autoSyncService.broadcast('NOTIFICATION_ADDED', notif);
       soundService.playNotificationTone();
     }
   };
@@ -675,6 +846,7 @@ export default function App() {
     offlineSyncService.enqueue('SYNC_DELETE_EMPLOYEE', empId);
     deleteAttendanceByEmployeeInFirestore(empId);
     deleteLeaveRequestsByEmployeeInFirestore(empId, targetEmp?.name);
+    autoSyncService.broadcast('EMPLOYEE_DELETED', empId);
   };
 
   // Clear attendance logs (e.g. wipe past test punches, scoped to active company if selected)
@@ -703,6 +875,7 @@ export default function App() {
         deleteEmployeeFromFirestore(id);
         deleteAttendanceByEmployeeInFirestore(id);
         deleteLeaveRequestsByEmployeeInFirestore(id);
+        autoSyncService.broadcast('EMPLOYEE_DELETED', id);
       });
       setEmployees((prev) => prev.filter((e) => !targetEmpIds.has(e.id)));
       setAttendanceLogs((prev) => prev.filter((l) => !targetEmpIds.has(l.employeeId)));
@@ -731,6 +904,7 @@ export default function App() {
   const handleDeleteLeave = (leaveId: string) => {
     setLeaveRequests((prev) => prev.filter((l) => l.id !== leaveId));
     offlineSyncService.enqueue('SYNC_DELETE_LEAVE', leaveId);
+    autoSyncService.broadcast('LEAVE_DELETED', leaveId);
   };
 
   // Admin clear all leave requests (scoped to active company)
@@ -771,30 +945,6 @@ export default function App() {
     );
   };
 
-  // Admin restore / seed rich sample employees for ANY active company
-  const handleRestoreSampleEmployees = () => {
-    const targetComp = activeCompany || companies[0] || DEFAULT_COMPANIES[0];
-    const targetCompId = targetComp.id;
-    const sampleEmployees = createSampleEmployeesForCompany(targetComp);
-    const sampleLogs = createSampleAttendanceForCompany(targetComp, sampleEmployees);
-
-    setEmployees((prev) => {
-      const otherEmps = prev.filter((e) => e.companyId !== targetCompId);
-      return [...sampleEmployees, ...otherEmps];
-    });
-    setAttendanceLogs((prev) => {
-      const otherLogs = prev.filter((l) => l.companyId !== targetCompId);
-      return [...sampleLogs, ...otherLogs];
-    });
-
-    sampleEmployees.forEach((emp) => {
-      offlineSyncService.enqueue('SYNC_EMPLOYEE', emp);
-    });
-    sampleLogs.forEach((log) => {
-      offlineSyncService.enqueue('SYNC_PUNCH', log);
-    });
-    soundService.playSuccessChime();
-  };
 
   // Admin approve/reject leave with instant UI feedback, staff notification & Firestore sync
   const handleApproveLeave = (leaveId: string, status: 'APPROVED' | 'REJECTED') => {
@@ -803,6 +953,7 @@ export default function App() {
       prev.map((l) => (l.id === leaveId ? { ...l, status } : l))
     );
     offlineSyncService.enqueue('SYNC_LEAVE_STATUS', { id: leaveId, status });
+    autoSyncService.broadcast('LEAVE_STATUS_CHANGED', { id: leaveId, status });
 
     if (targetLeave) {
       const now = new Date();
@@ -825,6 +976,7 @@ export default function App() {
       };
       setNotifications((prev) => [notif, ...prev]);
       offlineSyncService.enqueue('SYNC_NOTIFICATION', notif);
+      autoSyncService.broadcast('NOTIFICATION_ADDED', notif);
       soundService.playNotificationTone();
     } else {
       if (status === 'APPROVED') {
@@ -840,6 +992,7 @@ export default function App() {
     );
     syncShiftToFirestore(updatedShift);
     offlineSyncService.enqueue('SYNC_SHIFT', updatedShift);
+    autoSyncService.broadcast('SHIFT_UPDATED', updatedShift);
 
     const now = new Date();
     const notif: StaffNotification = {
@@ -859,6 +1012,7 @@ export default function App() {
     };
     setNotifications((prev) => [notif, ...prev]);
     syncStaffNotificationToFirestore(notif);
+    autoSyncService.broadcast('NOTIFICATION_ADDED', notif);
     soundService.playNotificationTone();
   };
 
@@ -868,6 +1022,7 @@ export default function App() {
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
     updateNotificationReadInFirestore(id, true);
+    autoSyncService.broadcast('NOTIFICATION_READ', id);
   };
 
   // Staff mark all notifications as read
@@ -884,6 +1039,7 @@ export default function App() {
       if (!employeeId || n.employeeId === employeeId || n.employeeId === 'ALL') {
         if (!n.read) {
           updateNotificationReadInFirestore(n.id, true);
+          autoSyncService.broadcast('NOTIFICATION_READ', n.id);
         }
       }
     });
@@ -893,6 +1049,7 @@ export default function App() {
   const handleDeleteNotification = (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
     deleteNotificationFromFirestore(id);
+    autoSyncService.broadcast('NOTIFICATION_DELETED', id);
   };
 
   // Staff submit leave
@@ -909,6 +1066,7 @@ export default function App() {
     };
     setLeaveRequests((prev) => [newReq, ...prev]);
     offlineSyncService.enqueue('SYNC_LEAVE', newReq);
+    autoSyncService.broadcast('LEAVE_REQUESTED', newReq);
   };
 
   // Navigate back to Apps Manager HQ
@@ -955,7 +1113,6 @@ export default function App() {
             onDeleteEmployee={handleDeleteEmployee}
             onClearAllEmployees={handleClearAllEmployees}
             onClearAttendanceLogs={handleClearAttendanceLogs}
-            onRestoreSampleEmployees={handleRestoreSampleEmployees}
             onApproveLeave={handleApproveLeave}
             onDeleteLeave={handleDeleteLeave}
             onClearAllLeaves={handleClearAllLeaves}
@@ -1057,7 +1214,6 @@ export default function App() {
             helpRequests={helpRequests}
             onUpdateHelpRequestStatus={handleUpdateHelpRequestStatus}
             onDeleteHelpRequest={handleDeleteHelpRequest}
-            onRestoreSampleEmployees={handleRestoreSampleEmployees}
           />
         )}
       </main>

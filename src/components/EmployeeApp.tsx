@@ -235,6 +235,17 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
   const isClockedIn = latestPunch?.type === 'IN' || latestPunch?.type === 'BREAK_END';
   const isOnBreak = latestPunch?.type === 'BREAK_START';
 
+  // Enrolled employee for the selected company to ease logging in once user adds staff
+  const enrolledStaffForSelectedCompany = React.useMemo(() => {
+    const targetCompId = selectedStaffCompanyId || staffCompany?.id || companies?.[0]?.id;
+    return (employees || []).find((e) => (e.companyId || targetCompId) === targetCompId);
+  }, [employees, selectedStaffCompanyId, staffCompany, companies]);
+
+  const companyStaffCount = React.useMemo(() => {
+    const targetCompId = selectedStaffCompanyId || staffCompany?.id || companies?.[0]?.id;
+    return (employees || []).filter((e) => (e.companyId || targetCompId) === targetCompId).length;
+  }, [employees, selectedStaffCompanyId, staffCompany, companies]);
+
   const handleStaffLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
@@ -537,6 +548,41 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                     className="w-full bg-slate-900 border border-white/15 rounded-2xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-400 font-mono tracking-widest text-center text-sm"
                   />
                 </div>
+ 
+                {companyStaffCount === 0 && (
+                  <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs flex items-start gap-2.5">
+                    <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="block text-white font-semibold">No Staff Enrolled Yet</strong>
+                      <span className="text-[11px] text-slate-300 leading-tight block mt-0.5">
+                        Your store administrator will register your staff account in the Store Admin Console with your Employee ID and 4-digit PIN.
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {enrolledStaffForSelectedCompany && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const targetComp = companies.find((c) => c.id === (enrolledStaffForSelectedCompany.companyId || selectedStaffCompanyId));
+                      if (targetComp) {
+                        setSelectedStaffCompanyId(targetComp.id);
+                        setLoginCompanyName(targetComp.supermarketName);
+                        setLoginCompanyPassword(targetComp.password || '');
+                      }
+                      setLoginEmpId(enrolledStaffForSelectedCompany.id);
+                      setLoginPin(enrolledStaffForSelectedCompany.pin || '1234');
+                      if (loginError) setLoginError(null);
+                      soundService.playSuccessChime();
+                    }}
+                    className="w-full py-1.5 px-2.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 text-[10px] font-semibold flex items-center justify-between cursor-pointer transition-all"
+                    title="Click to select enrolled staff"
+                  >
+                    <span className="truncate">Enrolled: {enrolledStaffForSelectedCompany.name.split(' ')[0]} ({enrolledStaffForSelectedCompany.id})</span>
+                    <span className="font-mono text-emerald-400 font-bold ml-1 shrink-0">PIN: {enrolledStaffForSelectedCompany.pin || '••••'}</span>
+                  </button>
+                )}
 
                 <button
                   id="btn-staff-login-submit"

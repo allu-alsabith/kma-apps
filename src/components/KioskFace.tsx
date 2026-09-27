@@ -26,7 +26,8 @@ import {
   KeyRound,
   Users,
   Hash,
-  Layers
+  Layers,
+  Info
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Employee, AttendanceRecord, PunchType, Company, HelpRequest } from '../types';
@@ -914,6 +915,11 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                 <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
                 <span className="text-emerald-300">Staff Verified</span>
               </>
+            ) : companyEmployees.length === 0 ? (
+              <>
+                <Info className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-amber-300">No staff enrolled yet &bull; Enroll staff in Store Admin</span>
+              </>
             ) : (
               <>
                 <ScanFace className="w-3.5 h-3.5 text-slate-400" />
@@ -1176,6 +1182,18 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                     </button>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Roster Empty Notice */}
+          {companyEmployees.length === 0 && (
+            <div className="w-full p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2">
+                <Info className="w-4 h-4 shrink-0 text-amber-400" />
+                <span className="text-[11px] leading-tight">
+                  No staff enrolled for {companySupermarketName} yet. Add staff in Store Admin Console to enable biometric walk-up face punch.
+                </span>
               </div>
             </div>
           )}
