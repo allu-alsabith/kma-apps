@@ -1,0 +1,20 @@
+{
+  "id": "/?app=admin",
+  "short_name": "Store Admin",
+  "name": "Store Admin — Store HR Console",
+  "description": "Store workforce command center: staff management, shift rosters, live attendance logs, and payroll audits.",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "start_url": "/?app=admin",
+  "background_color": "#05070D",
+  "theme_color": "#05070D",
+  "display": "standalone",
+  "orientation": "any",
+  "scope": "/"
+}

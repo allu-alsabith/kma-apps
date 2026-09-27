@@ -1,0 +1,20 @@
+{
+  "id": "/?app=staff",
+  "short_name": "Staff App",
+  "name": "Staff — Mobile Attendance",
+  "description": "Mobile attendance, biometric camera verification, shift schedules, and leave requests for employees.",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "start_url": "/?app=staff",
+  "background_color": "#05070D",
+  "theme_color": "#05070D",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/"
+}

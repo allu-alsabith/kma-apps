@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Attendo — Workforce Attendance & HR Suite</title>
+    <meta name="description" content="Enterprise multi-company hypermarket ecosystem: Store Admin HR Portal, Attendo Face AI biometric tablet kiosk, Staff Mobile App, and dedicated Apps Manager for company registration and app provisioning." />
+    <meta property="og:title" content="Attendo — Workforce Attendance & HR Suite" />
+    <meta property="og:description" content="Enterprise multi-company hypermarket ecosystem: Store Admin HR Portal, Attendo Face AI biometric tablet kiosk, Staff Mobile App, and dedicated Apps Manager for company registration and app provisioning." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#05070D" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Attendo Staff" />
+    <link rel="apple-touch-icon" href="/icons/icon.svg" />
+    <link id="app-manifest" rel="manifest" href="/manifest.json" />
+    <script>
+      (function() {
+        try {
+          var params = new URLSearchParams(window.location.search);
+          var app = (params.get('app') || params.get('portal') || '').toLowerCase();
+          var manifestEl = document.getElementById('app-manifest');
+          var appleTitleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+          if (app === 'staff' || app === 'employee') {
+            if (manifestEl) manifestEl.href = '/manifest-staff.json';
+            document.title = 'Staff — Mobile Attendance';
+            if (appleTitleMeta) appleTitleMeta.content = 'Staff Attendance';
+          } else if (app === 'kiosk' || app === 'face') {
+            if (manifestEl) manifestEl.href = '/manifest-kiosk.json';
+            document.title = 'Face Terminal — Entrance Door Kiosk';
+            if (appleTitleMeta) appleTitleMeta.content = 'Face Terminal';
+          } else if (app === 'admin') {
+            if (manifestEl) manifestEl.href = '/manifest-admin.json';
+            document.title = 'Store Admin — Store HR Console';
+            if (appleTitleMeta) appleTitleMeta.content = 'Store Admin';
+          } else if (app === 'manager' || app === 'apps' || app === 'appsmanager' || app === 'apps_manager' || app === 'apps-manager') {
+            if (manifestEl) manifestEl.href = '/manifest-manager.json';
+            document.title = 'Apps Manager — Company & Application Hub';
+            if (appleTitleMeta) appleTitleMeta.content = 'Apps Manager';
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        // Skip service worker during development on dev domains to prevent stale module caching
+        var isDev = window.location.hostname.includes('run.app') || window.location.port === '3000';
+        if (isDev) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            regs.forEach(function(r) { r.unregister(); });
+          }).catch(function() {});
+        } else {
+          window.addEventListener('load', function() {
+            navigator.serviceWorker.register('/sw.js').catch(function() {});
+          });
+        }
+      }
+    </script>
+  </body>
+</html>
+

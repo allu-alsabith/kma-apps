@@ -1,0 +1,175 @@
+{
+  "entities": {
+    "Employee": {
+      "title": "Employee",
+      "description": "Hypermarket staff member profile with shift, biometric template, PIN, and role",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique employee ID, e.g. EMP-101" },
+        "name": { "type": "string", "description": "Full legal name of staff member" },
+        "role": { "type": "string", "description": "Designation or job role in store" },
+        "department": { "type": "string", "description": "Hypermarket department" },
+        "phone": { "type": "string", "description": "Contact phone number" },
+        "shiftId": { "type": "string", "description": "Assigned shift schedule ID" },
+        "faceTemplate": { "type": "string", "description": "Biometric face vector or enrollment status" },
+        "avatar": { "type": "string", "description": "Profile photo or face avatar URL" },
+        "pin": { "type": "string", "description": "4-digit security PIN for terminal fallback" },
+        "status": { "type": "string", "enum": ["PRESENT", "ABSENT", "LATE", "ON_LEAVE"] },
+        "lastPunch": { "type": "string", "description": "Time of last punch event" },
+        "hourlyRate": { "type": "number", "description": "Hourly wage rate in store currency" },
+        "totalHoursThisMonth": { "type": "number", "description": "Accrued monthly shift hours" },
+        "joinedDate": { "type": "string", "description": "Date joined company" },
+        "createdAt": { "type": "string", "description": "Record creation ISO timestamp" },
+        "updatedAt": { "type": "string", "description": "Last update ISO timestamp" }
+      },
+      "required": ["id", "name", "role", "department", "pin"]
+    },
+    "AttendanceRecord": {
+      "title": "Attendance Record",
+      "description": "Biometric or PIN punch event logged at kiosk or mobile app",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique punch event ID" },
+        "employeeId": { "type": "string", "description": "Employee ID" },
+        "employeeName": { "type": "string", "description": "Employee full name" },
+        "department": { "type": "string", "description": "Department at punch time" },
+        "type": { "type": "string", "enum": ["IN", "OUT"] },
+        "time": { "type": "string", "description": "Clock time string e.g. 08:30 AM" },
+        "timestamp": { "type": "string", "description": "ISO timestamp of punch" },
+        "method": { "type": "string", "enum": ["FACE", "PIN", "MOBILE_GEO"] },
+        "confidence": { "type": "number", "description": "Biometric matching confidence score 0.0 to 1.0" },
+        "photo": { "type": "string", "description": "Snapshot thumbnail" },
+        "location": { "type": "string", "description": "Terminal or Geofence location" },
+        "device": { "type": "string", "description": "Kiosk or mobile device name" },
+        "shiftId": { "type": "string", "description": "Current active shift ID" },
+        "status": { "type": "string", "enum": ["ON_TIME", "LATE", "OVERTIME", "EARLY_EXIT"] },
+        "createdAt": { "type": "string", "description": "Creation ISO timestamp" }
+      },
+      "required": ["id", "employeeId", "employeeName", "type", "timestamp", "method"]
+    },
+    "LeaveRequest": {
+      "title": "Leave Request",
+      "description": "Time-off application submitted by staff for manager review",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique leave request ID" },
+        "employeeId": { "type": "string", "description": "Employee ID" },
+        "employeeName": { "type": "string", "description": "Employee full name" },
+        "department": { "type": "string", "description": "Department" },
+        "type": { "type": "string", "enum": ["CASUAL", "SICK", "EMERGENCY", "ANNUAL", "VACATION"] },
+        "startDate": { "type": "string", "description": "Start date YYYY-MM-DD" },
+        "endDate": { "type": "string", "description": "End date YYYY-MM-DD" },
+        "reason": { "type": "string", "description": "Reason for time off" },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "requestedAt": { "type": "string", "description": "Application timestamp" },
+        "reviewedAt": { "type": "string", "description": "Approval or rejection timestamp" }
+      },
+      "required": ["id", "employeeId", "employeeName", "type", "startDate", "endDate", "status"]
+    },
+    "StoreSettings": {
+      "title": "Store Settings",
+      "description": "Hypermarket store configuration, shifts, geofence, and kiosk parameters",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Store config ID" },
+        "storeName": { "type": "string", "description": "Store name" },
+        "geofenceRadius": { "type": "number", "description": "Geofence radius in meters" },
+        "managerPin": { "type": "string", "description": "Kiosk lock protection PIN" },
+        "updatedAt": { "type": "string", "description": "Last config update timestamp" }
+      },
+      "required": ["id", "storeName"]
+    },
+    "ConnectionTest": {
+      "title": "Connection Test",
+      "description": "Firestore connectivity check probe",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "description": "Health check status" }
+      }
+    },
+    "StaffNotification": {
+      "title": "Staff Notification",
+      "description": "In-app alerts for leave request status changes and shift schedule updates",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["LEAVE_STATUS", "SHIFT_UPDATE", "SYSTEM"] },
+        "timestamp": { "type": "string" },
+        "read": { "type": "boolean" },
+        "leaveStatus": { "type": "string" }
+      },
+      "required": ["id", "employeeId", "title", "message", "type", "timestamp", "read"]
+    },
+    "Company": {
+      "title": "Company",
+      "description": "Company account with supermarket name, code, password, and manager settings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "supermarketName": { "type": "string" },
+        "code": { "type": "string" },
+        "password": { "type": "string" },
+        "adminPin": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "supermarketName", "code", "password"]
+    },
+    "HelpRequest": {
+      "title": "Help Request",
+      "description": "Account help or login issue reported from Admin, Kiosk, or Staff apps",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "appName": { "type": "string", "description": "Originating app name" },
+        "companyId": { "type": "string" },
+        "companyName": { "type": "string" },
+        "companyCode": { "type": "string" },
+        "userName": { "type": "string" },
+        "contactInfo": { "type": "string" },
+        "issueType": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "RESOLVED"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "appName", "message", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/companies/{companyId}": {
+      "schema": "Company",
+      "description": "Registered supermarket companies and their credentials"
+    },
+    "/helpRequests/{requestId}": {
+      "schema": "HelpRequest",
+      "description": "Account help and login support requests from various apps"
+    },
+    "/test/{testId}": {
+      "schema": "ConnectionTest",
+      "description": "Health check connectivity probe"
+    },
+    "/employees/{employeeId}": {
+      "schema": "Employee",
+      "description": "Enrolled real hypermarket employees"
+    },
+    "/attendanceRecords/{recordId}": {
+      "schema": "AttendanceRecord",
+      "description": "Attendance log of check-in and check-out events"
+    },
+    "/leaveRequests/{leaveId}": {
+      "schema": "LeaveRequest",
+      "description": "Leave requests submitted by employees"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "StaffNotification",
+      "description": "Staff in-app notification alerts"
+    },
+    "/settings/{settingId}": {
+      "schema": "StoreSettings",
+      "description": "Store operational settings and kiosk configuration"
+    }
+  }
+}

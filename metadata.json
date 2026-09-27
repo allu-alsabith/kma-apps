@@ -1,0 +1,10 @@
+{
+  "name": "test Remix 2 Attendo Hypermarket 3-App Suite",
+  "description": "Enterprise hypermarket attendance management ecosystem with 3 connected experiences: Store Admin HR Portal, Attendo Face AI biometric tablet kiosk, and Staff Mobile App with futuristic Liquid Glass UI.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

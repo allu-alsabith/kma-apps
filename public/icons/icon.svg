@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0f1d"/>
+      <stop offset="50%" stop-color="#05070d"/>
+      <stop offset="100%" stop-color="#020408"/>
+    </linearGradient>
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background squircle -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" stroke="rgba(255,255,255,0.15)" stroke-width="4"/>
+
+  <!-- Glowing orb behind face -->
+  <circle cx="256" cy="256" r="140" fill="#10b981" opacity="0.15" filter="url(#glow)"/>
+
+  <!-- Biometric Reticle Corners -->
+  <!-- Top Left -->
+  <path d="M 128 178 L 128 138 Q 128 128 138 128 L 178 128" fill="none" stroke="url(#emeraldGrad)" stroke-width="12" stroke-linecap="round"/>
+  <!-- Top Right -->
+  <path d="M 334 128 L 374 128 Q 384 128 384 138 L 384 178" fill="none" stroke="url(#emeraldGrad)" stroke-width="12" stroke-linecap="round"/>
+  <!-- Bottom Left -->
+  <path d="M 128 334 L 128 374 Q 128 384 138 384 L 178 384" fill="none" stroke="url(#emeraldGrad)" stroke-width="12" stroke-linecap="round"/>
+  <!-- Bottom Right -->
+  <path d="M 334 384 L 374 384 Q 384 384 384 374 L 384 334" fill="none" stroke="url(#emeraldGrad)" stroke-width="12" stroke-linecap="round"/>
+
+  <!-- Stylized Face Silhouette / Biometric Vector -->
+  <circle cx="256" cy="210" r="58" fill="none" stroke="url(#skyGrad)" stroke-width="10"/>
+  <path d="M 176 348 C 184 290 220 274 256 274 C 292 274 328 290 336 348" fill="none" stroke="url(#skyGrad)" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- Scanning Laser Line -->
+  <line x1="140" y1="256" x2="372" y2="256" stroke="#34d399" stroke-width="6" stroke-linecap="round" filter="url(#glow)"/>
+
+  <!-- HUD nodes -->
+  <circle cx="256" cy="256" r="6" fill="#34d399"/>
+  <circle cx="230" cy="210" r="5" fill="#38bdf8"/>
+  <circle cx="282" cy="210" r="5" fill="#38bdf8"/>
+  <circle cx="256" cy="180" r="4" fill="#38bdf8"/>
+  <circle cx="256" cy="235" r="4" fill="#34d399"/>
+
+  <!-- Brand Text -->
+  <text x="256" y="440" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="34" font-weight="900" fill="#ffffff" letter-spacing="4">ATTENDO</text>
+</svg>

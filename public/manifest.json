@@ -1,0 +1,19 @@
+{
+  "short_name": "Staff App",
+  "name": "Staff Attendance Mobile App",
+  "description": "Enterprise mobile attendance and biometric face authentication portal for staff members.",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/?portal=employee",
+  "background_color": "#05070D",
+  "theme_color": "#05070D",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "/?app=kiosk",
+  "short_name": "Face Kiosk",
+  "name": "Face Terminal — Entrance Door Kiosk",
+  "description": "High-speed biometric face recognition entrance terminal for tablets and wall kiosks.",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "start_url": "/?app=kiosk",
+  "background_color": "#05070D",
+  "theme_color": "#05070D",
+  "display": "fullscreen",
+  "orientation": "any",
+  "scope": "/"
+}
