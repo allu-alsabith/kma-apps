@@ -1,6 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AppPortal, Employee, Shift, AttendanceRecord, LeaveRequest, PunchType, StaffNotification, Company, HelpRequest } from './types';
-import { INITIAL_EMPLOYEES, SHIFTS, INITIAL_ATTENDANCE_LOGS, INITIAL_LEAVES, DEFAULT_COMPANIES, createDefaultShiftsForCompany } from './data';
+import {
+  INITIAL_EMPLOYEES,
+  SHIFTS,
+  ALL_INITIAL_SHIFTS,
+  INITIAL_ATTENDANCE_LOGS,
+  INITIAL_LEAVES,
+  DEFAULT_COMPANIES,
+  createDefaultShiftsForCompany,
+  createSampleEmployeesForCompany,
+  createSampleAttendanceForCompany,
+} from './data';
 import { KioskFace } from './components/KioskFace';
 import { EmployeeApp } from './components/EmployeeApp';
 import { AdminPortal } from './components/AdminPortal';
@@ -36,6 +46,9 @@ import {
   updateHelpRequestStatusInFirestore,
   deleteHelpRequestFromFirestore,
   testFirestoreConnection,
+  subscribeToShifts,
+  syncShiftToFirestore,
+  syncAllDataToFirestore,
 } from './services/firebase';
 
 export default function App() {
@@ -236,27 +249,38 @@ export default function App() {
 
   const [activeCompanyId, setActiveCompanyId] = useState<string>(() => {
     if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlComp = urlParams.get('company') || urlParams.get('store') || urlParams.get('code');
+      if (urlComp) {
+        const found = DEFAULT_COMPANIES.find(
+          (c) =>
+            c.code.toLowerCase() === urlComp.toLowerCase() ||
+            c.id === urlComp ||
+            c.supermarketName.toLowerCase() === urlComp.toLowerCase()
+        );
+        if (found) return found.id;
+      }
       const saved = localStorage.getItem('attendo_active_company_id');
       if (saved) return saved;
     }
-    return 'comp-kma';
+    return DEFAULT_COMPANIES[0]?.id || 'comp-kma';
   });
 
   const activeCompany = useMemo(() => {
     return companies.find((c) => c.id === activeCompanyId) || companies[0] || DEFAULT_COMPANIES[0];
   }, [companies, activeCompanyId]);
 
-  // Scoped Data for Active Company in Admin Portal
+  // Scoped Data for Active Company in Admin Portal (Accurately isolated per company)
   const scopedAdminEmployees = useMemo(() => {
     if (!activeCompany) return employees;
-    return employees.filter((e) => (e.companyId || 'comp-kma') === activeCompany.id);
+    return employees.filter((e) => (e.companyId || activeCompany.id) === activeCompany.id);
   }, [employees, activeCompany]);
 
   const scopedAdminAttendanceLogs = useMemo(() => {
     if (!activeCompany) return attendanceLogs;
     const empIds = new Set(scopedAdminEmployees.map((e) => e.id));
     return attendanceLogs.filter(
-      (l) => (l.companyId || 'comp-kma') === activeCompany.id || empIds.has(l.employeeId)
+      (l) => (l.companyId ? l.companyId === activeCompany.id : empIds.has(l.employeeId))
     );
   }, [attendanceLogs, activeCompany, scopedAdminEmployees]);
 
@@ -264,20 +288,48 @@ export default function App() {
     if (!activeCompany) return leaveRequests;
     const empIds = new Set(scopedAdminEmployees.map((e) => e.id));
     return leaveRequests.filter(
-      (lr) => (lr.companyId || 'comp-kma') === activeCompany.id || empIds.has(lr.employeeId)
+      (lr) => (lr.companyId ? lr.companyId === activeCompany.id : empIds.has(lr.employeeId))
     );
   }, [leaveRequests, activeCompany, scopedAdminEmployees]);
 
   const scopedAdminShifts = useMemo(() => {
     if (!activeCompany) return shifts;
-    const companyShifts = shifts.filter((s) => !s.companyId || s.companyId === activeCompany.id);
+    const companyShifts = shifts.filter((s) => s.companyId === activeCompany.id);
     if (companyShifts.length > 0) return companyShifts;
     return createDefaultShiftsForCompany(activeCompany.id);
   }, [shifts, activeCompany]);
 
+  // Automatically guarantee that the active company has persistent shifts created
+  useEffect(() => {
+    if (activeCompany) {
+      const hasShifts = shifts.some((s) => s.companyId === activeCompany.id);
+      if (!hasShifts) {
+        const generatedShifts = createDefaultShiftsForCompany(activeCompany.id);
+        setShifts((prev) => [...prev, ...generatedShifts]);
+        generatedShifts.forEach((s) => {
+          offlineSyncService.enqueue('SYNC_SHIFT', s);
+        });
+      }
+    }
+  }, [activeCompany?.id, shifts]);
+
   // Firebase Real-time Synchronization Listeners
   useEffect(() => {
-    testFirestoreConnection().then((ok) => setIsFirebaseLive(ok));
+    testFirestoreConnection().then(async (ok) => {
+      setIsFirebaseLive(ok);
+      if (ok) {
+        // Ensure every data entity exists in Firebase Firestore
+        await syncAllDataToFirestore({
+          companies,
+          employees,
+          attendanceLogs,
+          shifts,
+          leaveRequests,
+          notifications,
+          helpRequests,
+        });
+      }
+    });
 
     // Listen to remote changes in real-time
     const unsubEmployees = subscribeToEmployees((remoteEmployees) => {
@@ -331,6 +383,12 @@ export default function App() {
       }
     });
 
+    const unsubShifts = subscribeToShifts((remoteShifts) => {
+      if (remoteShifts && remoteShifts.length > 0) {
+        setShifts(remoteShifts);
+      }
+    });
+
     const unsubHelpRequests = subscribeToHelpRequests((remoteRequests) => {
       if (remoteRequests) {
         setHelpRequests(remoteRequests);
@@ -351,6 +409,7 @@ export default function App() {
       unsubLeaves();
       unsubNotifications();
       unsubCompanies();
+      unsubShifts();
       unsubHelpRequests();
       unsubSync();
     };
@@ -498,7 +557,7 @@ export default function App() {
   ) => {
     const now = new Date();
     const emp = employees.find((e) => e.id === punchData.employeeId);
-    const companyId = punchData.companyId || emp?.companyId || activeCompanyId || 'comp-kma';
+    const companyId = punchData.companyId || emp?.companyId || activeCompany?.id || activeCompanyId;
 
     const newRecord: AttendanceRecord = {
       ...punchData,
@@ -539,6 +598,7 @@ export default function App() {
     snapshotUrl?: string
   ) => {
     handleNewPunch({
+      companyId: employee.companyId || activeCompany?.id,
       employeeId: employee.id,
       employeeName: employee.name,
       department: employee.department,
@@ -556,7 +616,7 @@ export default function App() {
   const handleAddEmployee = (newEmp: Employee) => {
     const enrichedEmp: Employee = {
       ...newEmp,
-      companyId: newEmp.companyId || activeCompany?.id || 'comp-kma',
+      companyId: newEmp.companyId || activeCompany?.id || activeCompanyId,
     };
     setEmployees((prev) => [enrichedEmp, ...prev]);
     offlineSyncService.enqueue('SYNC_EMPLOYEE', enrichedEmp);
@@ -567,7 +627,7 @@ export default function App() {
     const oldEmp = employees.find((e) => e.id === updatedEmp.id);
     const enrichedEmp: Employee = {
       ...updatedEmp,
-      companyId: updatedEmp.companyId || oldEmp?.companyId || activeCompany?.id || 'comp-kma',
+      companyId: updatedEmp.companyId || oldEmp?.companyId || activeCompany?.id || activeCompanyId,
     };
     setEmployees((prev) =>
       prev.map((emp) => (emp.id === enrichedEmp.id ? enrichedEmp : emp))
@@ -622,7 +682,7 @@ export default function App() {
     if (activeCompany) {
       const targetEmpIds = new Set(scopedAdminEmployees.map((e) => e.id));
       setAttendanceLogs((prev) =>
-        prev.filter((l) => (l.companyId || 'comp-kma') !== activeCompany.id && !targetEmpIds.has(l.employeeId))
+        prev.filter((l) => l.companyId !== activeCompany.id && !targetEmpIds.has(l.employeeId))
       );
     } else {
       setAttendanceLogs([]);
@@ -679,7 +739,7 @@ export default function App() {
       const targetEmpIds = new Set(scopedAdminEmployees.map((e) => e.id));
       scopedAdminLeaveRequests.forEach((l) => deleteLeaveRequestFromFirestore(l.id));
       setLeaveRequests((prev) =>
-        prev.filter((l) => (l.companyId || 'comp-kma') !== activeCompany.id && !targetEmpIds.has(l.employeeId))
+        prev.filter((l) => l.companyId !== activeCompany.id && !targetEmpIds.has(l.employeeId))
       );
     } else {
       setLeaveRequests([]);
@@ -711,29 +771,29 @@ export default function App() {
     );
   };
 
-  // Admin restore default sample employees for active company
+  // Admin restore / seed rich sample employees for ANY active company
   const handleRestoreSampleEmployees = () => {
-    const targetCompId = activeCompany?.id || 'comp-kma';
-    const taggedSampleEmployees = INITIAL_EMPLOYEES.map((emp) => ({
-      ...emp,
-      companyId: targetCompId,
-    }));
-    const taggedSampleLogs = INITIAL_ATTENDANCE_LOGS.map((log) => ({
-      ...log,
-      companyId: targetCompId,
-    }));
+    const targetComp = activeCompany || companies[0] || DEFAULT_COMPANIES[0];
+    const targetCompId = targetComp.id;
+    const sampleEmployees = createSampleEmployeesForCompany(targetComp);
+    const sampleLogs = createSampleAttendanceForCompany(targetComp, sampleEmployees);
 
     setEmployees((prev) => {
-      const otherEmps = prev.filter((e) => (e.companyId || 'comp-kma') !== targetCompId);
-      return [...taggedSampleEmployees, ...otherEmps];
+      const otherEmps = prev.filter((e) => e.companyId !== targetCompId);
+      return [...sampleEmployees, ...otherEmps];
     });
     setAttendanceLogs((prev) => {
-      const otherLogs = prev.filter((l) => (l.companyId || 'comp-kma') !== targetCompId);
-      return [...taggedSampleLogs, ...otherLogs];
+      const otherLogs = prev.filter((l) => l.companyId !== targetCompId);
+      return [...sampleLogs, ...otherLogs];
     });
 
-    taggedSampleEmployees.forEach((emp) => syncEmployeeToFirestore(emp));
-    taggedSampleLogs.forEach((log) => syncAttendanceRecordToFirestore(log));
+    sampleEmployees.forEach((emp) => {
+      offlineSyncService.enqueue('SYNC_EMPLOYEE', emp);
+    });
+    sampleLogs.forEach((log) => {
+      offlineSyncService.enqueue('SYNC_PUNCH', log);
+    });
+    soundService.playSuccessChime();
   };
 
   // Admin approve/reject leave with instant UI feedback, staff notification & Firestore sync
@@ -778,6 +838,9 @@ export default function App() {
     setShifts((prev) =>
       prev.map((s) => (s.id === updatedShift.id ? updatedShift : s))
     );
+    syncShiftToFirestore(updatedShift);
+    offlineSyncService.enqueue('SYNC_SHIFT', updatedShift);
+
     const now = new Date();
     const notif: StaffNotification = {
       id: `notif-shift-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -836,7 +899,7 @@ export default function App() {
   const handleApplyLeave = (leaveData: Omit<LeaveRequest, 'id' | 'requestedAt' | 'status'>) => {
     const now = new Date();
     const emp = employees.find((e) => e.id === leaveData.employeeId);
-    const companyId = leaveData.companyId || emp?.companyId || activeCompanyId || 'comp-kma';
+    const companyId = leaveData.companyId || emp?.companyId || activeCompany?.id || activeCompanyId;
     const newReq: LeaveRequest = {
       ...leaveData,
       companyId,
@@ -846,6 +909,19 @@ export default function App() {
     };
     setLeaveRequests((prev) => [newReq, ...prev]);
     offlineSyncService.enqueue('SYNC_LEAVE', newReq);
+  };
+
+  // Navigate back to Apps Manager HQ
+  const handleReturnToManager = () => {
+    setStandaloneMode('MANAGER');
+    setCurrentPortal('APPS_MANAGER');
+    if (typeof window !== 'undefined') {
+      try {
+        window.history.pushState({}, '', '?app=manager');
+      } catch {
+        // ignore
+      }
+    }
   };
 
   return (
@@ -887,6 +963,7 @@ export default function App() {
             onUpdateShift={handleUpdateShift}
             onManualPunch={handleNewPunch}
             onSubmitHelpRequest={handleCreateHelpRequest}
+            onBackToAppsManager={handleReturnToManager}
           />
         )}
 
@@ -900,6 +977,7 @@ export default function App() {
             onNewPunch={handleNewPunch}
             isKioskOnlyMode={true}
             onSubmitHelpRequest={handleCreateHelpRequest}
+            onBackToAppsManager={handleReturnToManager}
           />
         )}
 
@@ -921,6 +999,7 @@ export default function App() {
             onOpenInstallModal={() => openInstallHub('STAFF')}
             isStaffOnlyMode={true}
             onSubmitHelpRequest={handleCreateHelpRequest}
+            onBackToAppsManager={handleReturnToManager}
           />
         )}
 
@@ -934,6 +1013,9 @@ export default function App() {
             onDeleteCompany={handleDeleteCompany}
             employees={employees}
             attendanceLogs={attendanceLogs}
+            shifts={shifts}
+            leaveRequests={leaveRequests}
+            notifications={notifications}
             isStandalone={standaloneMode === 'MANAGER'}
             onLaunchPortal={(portal) => {
               if (portal === 'EMPLOYEE_APP') {
@@ -975,6 +1057,7 @@ export default function App() {
             helpRequests={helpRequests}
             onUpdateHelpRequestStatus={handleUpdateHelpRequestStatus}
             onDeleteHelpRequest={handleDeleteHelpRequest}
+            onRestoreSampleEmployees={handleRestoreSampleEmployees}
           />
         )}
       </main>

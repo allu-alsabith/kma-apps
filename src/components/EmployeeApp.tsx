@@ -30,7 +30,8 @@ import {
   Info,
   Building2,
   Lock,
-  LifeBuoy
+  LifeBuoy,
+  Layers
 } from 'lucide-react';
 import { Employee, AttendanceRecord, LeaveRequest, Shift, PunchType, StaffNotification, Company, HelpRequest } from '../types';
 import { formatTime12H, formatSalaryRate, formatCurrencyINR } from '../utils/formatters';
@@ -57,6 +58,7 @@ interface EmployeeAppProps {
   companies?: Company[];
   onSelectCompany?: (companyId: string) => void;
   onSubmitHelpRequest?: (request: Omit<HelpRequest, 'id' | 'createdAt' | 'status'>) => Promise<void> | void;
+  onBackToAppsManager?: () => void;
 }
 
 export const EmployeeApp: React.FC<EmployeeAppProps> = ({
@@ -77,6 +79,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
   companies = [],
   onSelectCompany,
   onSubmitHelpRequest,
+  onBackToAppsManager,
 }) => {
   // Mobile screen detection
   const [isMobileScreen, setIsMobileScreen] = useState<boolean>(() => {
@@ -101,9 +104,20 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
   // Current logged in company and employee session
   const [staffCompanyId, setStaffCompanyId] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('attendo_staff_company_id') || activeCompany?.id || 'comp-kma';
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlComp = urlParams.get('company') || urlParams.get('store') || urlParams.get('code');
+      if (urlComp) {
+        const found = (companies || []).find(
+          (c) =>
+            c.code.toLowerCase() === urlComp.toLowerCase() ||
+            c.id === urlComp ||
+            c.supermarketName.toLowerCase() === urlComp.toLowerCase()
+        );
+        if (found) return found.id;
+      }
+      return localStorage.getItem('attendo_staff_company_id') || activeCompany?.id || companies?.[0]?.id || 'comp-kma';
     }
-    return activeCompany?.id || 'comp-kma';
+    return activeCompany?.id || companies?.[0]?.id || 'comp-kma';
   });
 
   const staffCompany = (companies || []).find((c) => c.id === staffCompanyId) || activeCompany || companies?.[0];
@@ -113,7 +127,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
   const companyEmployees = React.useMemo(() => {
     if (!staffCompany) return employees;
     return (employees || []).filter(
-      (e) => e.companyId === staffCompany.id || (!e.companyId && staffCompany.id === 'comp-kma')
+      (e) => (e.companyId || staffCompany.id) === staffCompany.id
     );
   }, [employees, staffCompany]);
 
@@ -262,8 +276,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
 
     // 3. Verify that the employee is registered under this specific company
     const found = employees.find((emp) => {
-      const matchesCompany =
-        emp.companyId === targetCompany.id || (!emp.companyId && targetCompany.id === 'comp-kma');
+      const matchesCompany = (emp.companyId || targetCompany.id) === targetCompany.id;
       const matchesIdentity =
         emp.id.trim().toUpperCase() === loginEmpId.trim().toUpperCase() ||
         emp.phone.replace(/\D/g, '') === loginEmpId.replace(/\D/g, '');
@@ -544,7 +557,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                   Sign in with your supermarket credentials, Employee ID, and 4-digit security PIN provided by Store Management or HR.
                 </p>
 
-                <div className="pt-1 flex items-center justify-center">
+                <div className="pt-1 flex items-center justify-center gap-2 flex-wrap">
                   <button
                     type="button"
                     id="btn-staff-account-help"
@@ -552,8 +565,20 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                     className="text-amber-400 hover:text-amber-300 font-semibold text-[11px] flex items-center gap-1.5 py-1 px-3 rounded-xl bg-amber-400/10 border border-amber-400/20 hover:bg-amber-400/20 transition-all cursor-pointer"
                   >
                     <LifeBuoy className="w-3.5 h-3.5" />
-                    <span>Need Help? Account Help</span>
+                    <span>Need Help?</span>
                   </button>
+
+                  {onBackToAppsManager && (
+                    <button
+                      type="button"
+                      onClick={onBackToAppsManager}
+                      className="text-purple-300 hover:text-white font-semibold text-[11px] flex items-center gap-1.5 py-1 px-3 rounded-xl bg-purple-500/15 border border-purple-500/30 hover:bg-purple-500/25 transition-all cursor-pointer"
+                      title="Return to Apps Manager"
+                    >
+                      <Layers className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Apps Manager</span>
+                    </button>
+                  )}
                 </div>
               </div>
 

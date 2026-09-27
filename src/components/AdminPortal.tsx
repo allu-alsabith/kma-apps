@@ -48,6 +48,7 @@ import { soundService } from '../services/sound';
 import { FaceEnrollmentScanner } from './FaceEnrollmentScanner';
 import { AccountHelpModal } from './AccountHelpModal';
 import { NetworkSyncBadge } from './NetworkSyncBadge';
+import { signInWithGoogle, signOutUser, subscribeToAuth, type User } from '../services/firebase';
 import { 
   formatTime12H, 
   get12HTimeString, 
@@ -85,6 +86,7 @@ interface AdminPortalProps {
   onUpdateShift?: (shift: Shift) => void;
   onManualPunch: (record: Omit<AttendanceRecord, 'id' | 'timestamp' | 'date' | 'time'>) => void;
   onSubmitHelpRequest?: (request: Omit<HelpRequest, 'id' | 'createdAt' | 'status'>) => Promise<void> | void;
+  onBackToAppsManager?: () => void;
 }
 
 export const AdminPortal: React.FC<AdminPortalProps> = ({
@@ -116,6 +118,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onUpdateShift,
   onManualPunch,
   onSubmitHelpRequest,
+  onBackToAppsManager,
 }) => {
   const [showAccountHelpModal, setShowAccountHelpModal] = useState<boolean>(false);
   const [adminTab, setAdminTab] = useState<'OVERVIEW' | 'DIRECTORY' | 'SHIFTS' | 'LEAVES' | 'PAYROLL'>('OVERVIEW');
@@ -146,6 +149,51 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [loginCompanyPassword, setLoginCompanyPassword] = useState<string>('');
   const [showLoginPassword, setShowLoginPassword] = useState<boolean>(false);
   const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
+  const [googleUser, setGoogleUser] = useState<User | null>(null);
+  const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState<boolean>(false);
+
+  useEffect(() => {
+    const unsub = subscribeToAuth((user) => {
+      setGoogleUser(user);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    setIsSigningInWithGoogle(true);
+    setAdminLoginError(null);
+    try {
+      const user = await signInWithGoogle();
+      if (user) {
+        setIsAdminLoggedIn(true);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('attendo_admin_session_auth', 'true');
+        }
+        soundService.playSuccessChime();
+      }
+    } catch (err: unknown) {
+      const errorObj = err as { code?: string; message?: string };
+      if (errorObj?.code === 'auth/popup-blocked') {
+        setAdminLoginError('Pop-up was blocked by the browser. Please allow pop-ups for this site or use company credentials below.');
+      } else if (errorObj?.code === 'auth/cancelled-popup-request' || errorObj?.code === 'auth/popup-closed-by-user') {
+        setAdminLoginError('Sign-in popup was closed. Please try again.');
+      } else {
+        setAdminLoginError(errorObj?.message || 'Google authentication failed. Please try again or use company credentials.');
+      }
+      soundService.playWarningTone();
+    } finally {
+      setIsSigningInWithGoogle(false);
+    }
+  };
+
+  const handleGoogleSignOut = async () => {
+    try {
+      await signOutUser();
+      setGoogleUser(null);
+    } catch {
+      // ignore
+    }
+  };
 
   // Sync login fields when activeCompany or companies prop updates
   useEffect(() => {
@@ -419,7 +467,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         : Math.round(rateNum / 200);
 
     const newEmp: Employee = {
-      companyId: activeCompany?.id || 'comp-kma',
+      companyId: activeCompany?.id || selectedLoginCompanyId || 'comp-kma',
       id: assignedId,
       name: trimmedName,
       role: trimmedRole,
@@ -554,6 +602,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 Supermarket Store HR & Workforce Administration
               </p>
             </div>
+            {onBackToAppsManager && (
+              <button
+                type="button"
+                onClick={onBackToAppsManager}
+                className="ml-auto px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-white/10"
+                title="Open Enterprise Apps Manager & Store Provisioning"
+              >
+                <Layers className="w-3.5 h-3.5 text-amber-400" />
+                <span>Apps Manager</span>
+              </button>
+            )}
           </div>
 
           {/* Guidance Banner */}
@@ -704,6 +763,34 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               <Lock className="w-4 h-4 text-white" />
               <span>Log In as Store Admin</span>
             </button>
+
+            {/* Google Sign-in with Firebase Auth */}
+            <div className="relative my-2.5">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-white/10" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-slate-950 px-2.5 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                  OR SIGN IN WITH FIREBASE AUTH
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              id="btn-admin-google-signin"
+              onClick={handleGoogleSignIn}
+              disabled={isSigningInWithGoogle}
+              className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60"
+            >
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              <span>{isSigningInWithGoogle ? 'Connecting Google Account...' : 'Continue with Google Account'}</span>
+            </button>
           </form>
 
           {/* Account Help Option */}
@@ -748,13 +835,65 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       <div className="liquid-glass rounded-3xl p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 shadow-2xl">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-mono text-emerald-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
-              <Store className="w-3.5 h-3.5" /> {activeCompany?.supermarketName || 'Store'} Supermarket &bull; Store HQ
-            </span>
+            {/* Active Store Switcher Dropdown */}
+            {companies && companies.length > 0 ? (
+              <div className="flex items-center gap-1.5 bg-black/60 border border-purple-500/30 rounded-xl px-2.5 py-1">
+                <Store className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                <span className="text-[10px] text-slate-400 font-semibold">Store:</span>
+                <select
+                  id="select-admin-active-company"
+                  value={activeCompany?.id || selectedLoginCompanyId}
+                  onChange={(e) => {
+                    const newCompId = e.target.value;
+                    if (onSelectCompany) {
+                      onSelectCompany(newCompId);
+                    }
+                    setSelectedLoginCompanyId(newCompId);
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('attendo_active_company_id', newCompId);
+                      localStorage.setItem('attendo_admin_company_id', newCompId);
+                    }
+                    soundService.playSuccessChime();
+                  }}
+                  className="bg-transparent border-none text-[11px] text-purple-300 font-bold outline-none cursor-pointer hover:text-purple-200"
+                >
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.id} className="bg-slate-900 text-white font-medium">
+                      {c.supermarketName} ({c.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <span className="text-xs font-mono text-emerald-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                <Store className="w-3.5 h-3.5" /> {activeCompany?.supermarketName || 'Store'} Supermarket &bull; Store HQ
+              </span>
+            )}
+
             <NetworkSyncBadge compact />
             <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-mono font-bold">
               CODE: {activeCompany?.code || 'STORE'}
             </span>
+
+            {/* Google Auth User Badge */}
+            {googleUser && (
+              <div className="flex items-center gap-1.5 bg-blue-500/15 border border-blue-500/30 rounded-xl px-2 py-0.5 text-[11px] text-blue-200">
+                {googleUser.photoURL ? (
+                  <img src={googleUser.photoURL} alt="" className="w-4 h-4 rounded-full object-cover" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full bg-blue-500 text-[9px] text-white flex items-center justify-center font-bold">G</div>
+                )}
+                <span className="font-semibold truncate max-w-[120px]">{googleUser.displayName || googleUser.email}</span>
+                <button
+                  type="button"
+                  onClick={handleGoogleSignOut}
+                  className="text-blue-300 hover:text-white text-[10px] underline ml-0.5 cursor-pointer"
+                  title="Sign out of Google Account"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
 
             {/* Switch Company / Sign Out */}
             <button
@@ -764,8 +903,20 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               title="Sign out of current store and switch company"
             >
               <LogOut className="w-3 h-3 text-rose-400" />
-              <span>Switch Company / Sign Out</span>
+              <span>Sign Out</span>
             </button>
+
+            {/* Back to Apps Manager */}
+            {onBackToAppsManager && (
+              <button
+                onClick={onBackToAppsManager}
+                className="px-2.5 py-1 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/40 font-semibold text-[11px] flex items-center gap-1.5 cursor-pointer transition-all"
+                title="Return to Apps Manager & Enterprise HQ"
+              >
+                <Layers className="w-3 h-3 text-amber-400" />
+                <span>Apps Manager</span>
+              </button>
+            )}
           </div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight mt-1">
             {activeCompany?.supermarketName || 'Store'} Manager & HR Administration
@@ -843,24 +994,35 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <span>Clean Roster Ready for Staff Enrollment</span>
+                    <span>{activeCompany?.supermarketName || 'Supermarket'} Roster Empty</span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono">
                       READY
                     </span>
                   </h4>
                   <p className="text-xs text-slate-300 mt-0.5 max-w-xl">
-                    You can now add your own {activeCompany?.supermarketName || 'supermarket'} employees with their real names, job titles, departments, shifts, and biometric face photos.
+                    Enroll your staff with real face photos & PIN, or seed realistic sample employees for {activeCompany?.supermarketName || 'this store'} in 1 click.
                   </p>
                 </div>
               </div>
-              <button
-                id="overview-enroll-first-btn"
-                onClick={handleOpenAddEmp}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/25 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer"
-              >
-                <ScanFace className="w-4 h-4" />
-                <span>+ Enroll First Employee</span>
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  id="overview-seed-sample-btn"
+                  onClick={onRestoreSampleEmployees}
+                  className="px-3.5 py-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/40 font-bold text-xs active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+                  title={`Generate sample supermarket employees for ${activeCompany?.supermarketName}`}
+                >
+                  <Sparkles className="w-4 h-4 text-purple-400" />
+                  <span>Seed Sample Staff</span>
+                </button>
+                <button
+                  id="overview-enroll-first-btn"
+                  onClick={handleOpenAddEmp}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/25 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer"
+                >
+                  <ScanFace className="w-4 h-4" />
+                  <span>+ Enroll First Employee</span>
+                </button>
+              </div>
             </div>
           )}
           
@@ -1155,7 +1317,18 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     ? `Your staff directory is clean and ready for your real ${activeCompany?.supermarketName || 'supermarket'} business. Click "+ Enroll New Staff" to register your cashiers, stockers, grocery crew, warehouse staff, and supervisors with their real face biometric and 4-digit PIN.`
                     : 'No staff match the current search filter.'}
                 </p>
-                <div className="flex items-center justify-center gap-2 mt-4">
+                <div className="flex items-center justify-center gap-2.5 mt-4 flex-wrap">
+                  {employees.length === 0 && (
+                    <button
+                      id="directory-seed-sample-btn"
+                      onClick={onRestoreSampleEmployees}
+                      className="px-4 py-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/40 font-bold text-xs active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 shadow-md"
+                      title={`Generate sample supermarket staff for ${activeCompany?.supermarketName}`}
+                    >
+                      <Sparkles className="w-4 h-4 text-purple-400" />
+                      <span>Seed Sample Staff</span>
+                    </button>
+                  )}
                   <button
                     onClick={handleOpenAddEmp}
                     className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/25 hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-2"

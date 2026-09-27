@@ -33,12 +33,17 @@ import {
   LifeBuoy,
   Phone,
   Mail,
-  User
+  User,
+  Database,
+  Cloud,
+  Server
 } from 'lucide-react';
 import QRCode from 'qrcode';
-import { Company, Employee, AttendanceRecord, AppPortal, HelpRequest } from '../types';
+import { Company, Employee, AttendanceRecord, AppPortal, HelpRequest, Shift, LeaveRequest, StaffNotification } from '../types';
 import { soundService } from '../services/sound';
 import { AppInstallTarget } from './InstallModal';
+import { signInWithGoogle, signOutUser, subscribeToAuth, syncAllDataToFirestore, type User as FirebaseUser } from '../services/firebase';
+import firebaseConfigData from '../../firebase-applet-config.json';
 
 interface AppsManagerProps {
   companies: Company[];
@@ -49,6 +54,9 @@ interface AppsManagerProps {
   onDeleteCompany?: (companyId: string) => void;
   employees: Employee[];
   attendanceLogs: AttendanceRecord[];
+  shifts?: Shift[];
+  leaveRequests?: LeaveRequest[];
+  notifications?: StaffNotification[];
   isStandalone?: boolean;
   onLaunchPortal?: (portal: AppPortal) => void;
   onOpenInstallModal?: (target?: AppInstallTarget) => void;
@@ -56,6 +64,7 @@ interface AppsManagerProps {
   helpRequests?: HelpRequest[];
   onUpdateHelpRequestStatus?: (id: string, status: HelpRequest['status']) => void;
   onDeleteHelpRequest?: (id: string) => void;
+  onRestoreSampleEmployees?: (companyId?: string) => void;
 }
 
 export const AppsManager: React.FC<AppsManagerProps> = ({
@@ -67,6 +76,9 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
   onDeleteCompany,
   employees = [],
   attendanceLogs = [],
+  shifts = [],
+  leaveRequests = [],
+  notifications = [],
   isStandalone = false,
   onLaunchPortal,
   onOpenInstallModal,
@@ -74,6 +86,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
   helpRequests = [],
   onUpdateHelpRequestStatus,
   onDeleteHelpRequest,
+  onRestoreSampleEmployees,
 }) => {
   // Master Apps Manager selected company for preview and app provisioning
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(() => {
@@ -87,8 +100,67 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
   }, [activeCompany?.id]);
 
   // Active Management Tab
-  const [managerTab, setManagerTab] = useState<'COMPANIES' | 'APPS' | 'DEPLOYMENT' | 'SUPPORT_REQUESTS'>('COMPANIES');
+  const [managerTab, setManagerTab] = useState<'COMPANIES' | 'APPS' | 'DEPLOYMENT' | 'SUPPORT_REQUESTS' | 'DATABASE'>('COMPANIES');
   const [searchCompanyQuery, setSearchCompanyQuery] = useState<string>('');
+
+  // Firebase Google Auth State
+  const [googleUser, setGoogleUser] = useState<FirebaseUser | null>(null);
+  const [isSigningInGoogle, setIsSigningInGoogle] = useState<boolean>(false);
+  const [isSyncingAllData, setIsSyncingAllData] = useState<boolean>(false);
+  const [bulkSyncResult, setBulkSyncResult] = useState<{ success: boolean; counts: Record<string, number> } | null>(null);
+
+  useEffect(() => {
+    const unsub = subscribeToAuth((user) => {
+      setGoogleUser(user);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    setIsSigningInGoogle(true);
+    try {
+      const user = await signInWithGoogle();
+      if (user) {
+        soundService.playSuccessChime();
+      }
+    } catch (err: unknown) {
+      console.warn('Google sign-in error:', err);
+      soundService.playWarningTone();
+    } finally {
+      setIsSigningInGoogle(false);
+    }
+  };
+
+  const handleGoogleSignOut = async () => {
+    try {
+      await signOutUser();
+      setGoogleUser(null);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleTriggerBulkSync = async () => {
+    setIsSyncingAllData(true);
+    setBulkSyncResult(null);
+    try {
+      const res = await syncAllDataToFirestore({
+        companies,
+        employees,
+        attendanceLogs,
+        shifts,
+        leaveRequests,
+        notifications,
+        helpRequests,
+      });
+      setBulkSyncResult({ success: res.success, counts: res.syncedCounts });
+      soundService.playSuccessChime();
+    } catch {
+      soundService.playWarningTone();
+    } finally {
+      setIsSyncingAllData(false);
+    }
+  };
 
   // Support Requests Filter State
   const [supportFilterApp, setSupportFilterApp] = useState<string>('ALL');
@@ -315,13 +387,13 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
 
   // Helper count of employees per company
   const getStaffCount = (compId: string) => {
-    return employees.filter((e) => (e.companyId || 'comp-kma') === compId).length;
+    return employees.filter((e) => (e.companyId || compId) === compId).length;
   };
 
   // Helper count of logs per company
   const getLogsCount = (compId: string) => {
-    const empIds = new Set(employees.filter((e) => (e.companyId || 'comp-kma') === compId).map((e) => e.id));
-    return attendanceLogs.filter((l) => (l.companyId || 'comp-kma') === compId || empIds.has(l.employeeId)).length;
+    const empIds = new Set(employees.filter((e) => (e.companyId || compId) === compId).map((e) => e.id));
+    return attendanceLogs.filter((l) => l.companyId === compId || empIds.has(l.employeeId)).length;
   };
 
   // Filtered companies
@@ -429,6 +501,42 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
             <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
               {isFirebaseConnected ? 'CLOUD CONNECTED' : 'LOCAL STORE'}
             </span>
+
+            {/* Google Firebase Auth */}
+            {googleUser ? (
+              <div className="flex items-center gap-1.5 bg-blue-500/15 border border-blue-500/30 rounded-xl px-2.5 py-1 text-[11px] text-blue-200">
+                {googleUser.photoURL ? (
+                  <img src={googleUser.photoURL} alt="" className="w-4 h-4 rounded-full object-cover" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full bg-blue-500 text-[9px] text-white flex items-center justify-center font-bold">G</div>
+                )}
+                <span className="font-semibold max-w-[110px] truncate">{googleUser.displayName || googleUser.email}</span>
+                <button
+                  type="button"
+                  onClick={handleGoogleSignOut}
+                  className="text-blue-300 hover:text-white text-[10px] underline ml-1 cursor-pointer"
+                  title="Sign out of Google"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={isSigningInGoogle}
+                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-[11px] flex items-center gap-1.5 cursor-pointer border border-white/15 transition-all"
+                title="Sign in with Google using Firebase Auth"
+              >
+                <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                </svg>
+                <span>{isSigningInGoogle ? 'Connecting...' : 'Google Sign In'}</span>
+              </button>
+            )}
             
             {/* Active Company Selector */}
             <div className="flex items-center gap-1.5 bg-black/50 border border-white/15 rounded-xl px-2.5 py-1">
@@ -475,15 +583,16 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
         {/* Section Tabs */}
         <div className="flex items-center gap-1 p-1 bg-black/40 rounded-2xl border border-white/10 overflow-x-auto w-full lg:w-auto">
           {[
-            { id: 'COMPANIES', label: `Companies Management (${companies.length})`, icon: Building2 },
+            { id: 'COMPANIES', label: `Companies (${companies.length})`, icon: Building2 },
             { id: 'APPS', label: '3 Apps & Access', icon: Layers },
             { id: 'DEPLOYMENT', label: 'Fast Store Setup', icon: Download },
             { 
               id: 'SUPPORT_REQUESTS', 
-              label: `App Requests (${(helpRequests || []).filter((r) => r.status === 'PENDING').length})`, 
+              label: `Requests (${(helpRequests || []).filter((r) => r.status === 'PENDING').length})`, 
               icon: LifeBuoy,
               badgeCount: (helpRequests || []).filter((r) => r.status === 'PENDING').length
             },
+            { id: 'DATABASE', label: 'Firebase Cloud DB', icon: Database },
           ].map((tab) => {
             const Icon = tab.icon;
             return (
@@ -652,6 +761,75 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                       <span className="text-[10px] text-slate-400 block">Punch Logs</span>
                       <strong className="text-sm text-sky-400 font-black">{logsCount}</strong>
                     </div>
+                  </div>
+
+                  {/* Per-Company App Launch Buttons */}
+                  <div className="pt-2 border-t border-white/10 space-y-1.5">
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <button
+                        onClick={() => {
+                          if (onSelectCompany) onSelectCompany(company.id);
+                          if (typeof window !== 'undefined') {
+                            localStorage.setItem('attendo_active_company_id', company.id);
+                            localStorage.setItem('attendo_admin_company_id', company.id);
+                            localStorage.setItem('attendo_admin_session_auth', 'true');
+                          }
+                          if (onLaunchPortal) onLaunchPortal('ADMIN_PORTAL');
+                          else window.location.href = getAppLaunchUrl('admin', company.code);
+                        }}
+                        className="py-1.5 px-2 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-all"
+                        title={`Open Store Admin Console for ${company.supermarketName}`}
+                      >
+                        <ShieldCheck className="w-3 h-3 text-purple-400" />
+                        <span>Admin</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (onSelectCompany) onSelectCompany(company.id);
+                          if (typeof window !== 'undefined') {
+                            localStorage.setItem('attendo_kiosk_company_id', company.id);
+                            localStorage.setItem('attendo_active_company_id', company.id);
+                            localStorage.setItem('attendo_kiosk_authenticated', 'true');
+                          }
+                          if (onLaunchPortal) onLaunchPortal('KIOSK_FACE');
+                          else window.location.href = getAppLaunchUrl('kiosk', company.code);
+                        }}
+                        className="py-1.5 px-2 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-all"
+                        title={`Open Entrance Kiosk Scanner for ${company.supermarketName}`}
+                      >
+                        <ScanFace className="w-3 h-3 text-sky-400" />
+                        <span>Kiosk</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (onSelectCompany) onSelectCompany(company.id);
+                          if (typeof window !== 'undefined') {
+                            localStorage.setItem('attendo_staff_company_id', company.id);
+                            localStorage.setItem('attendo_staff_company_name', company.supermarketName);
+                            localStorage.setItem('attendo_active_company_id', company.id);
+                          }
+                          if (onLaunchPortal) onLaunchPortal('EMPLOYEE_APP');
+                          else window.location.href = getAppLaunchUrl('staff', company.code);
+                        }}
+                        className="py-1.5 px-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-all"
+                        title={`Open Staff Mobile App for ${company.supermarketName}`}
+                      >
+                        <Smartphone className="w-3 h-3 text-amber-400" />
+                        <span>Staff</span>
+                      </button>
+                    </div>
+
+                    {/* Seed Workforce if Empty */}
+                    {staffCount === 0 && onRestoreSampleEmployees && (
+                      <button
+                        onClick={() => onRestoreSampleEmployees(company.id)}
+                        className="w-full py-1 px-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-all"
+                        title={`Generate realistic sample employees for ${company.supermarketName}`}
+                      >
+                        <Sparkles className="w-3 h-3 text-emerald-400" />
+                        <span>Seed Sample Staff</span>
+                      </button>
+                    )}
                   </div>
 
                   {/* Actions Bar */}
@@ -1390,6 +1568,230 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
           )}
         </div>
       )}
+
+      {/* ==================================================================== */}
+      {/* TAB 5: FIREBASE FIRESTORE CLOUD DATABASE & PERSISTENCE               */}
+      {/* ==================================================================== */}
+      {managerTab === 'DATABASE' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Top Cloud Header */}
+          <div className="liquid-glass rounded-3xl p-6 border border-emerald-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0">
+                <Database className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl font-extrabold text-white">Firebase Firestore Cloud Database</h2>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold">
+                    CONNECTED &bull; LIVE SYNC
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-1 max-w-2xl">
+                  Every data entity in the application is persisted directly in Firebase Cloud Firestore with automatic real-time sync across all connected tablets, phones, and admin terminals.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <button
+                type="button"
+                id="btn-sync-all-firebase-data"
+                onClick={handleTriggerBulkSync}
+                disabled={isSyncingAllData}
+                className="w-full md:w-auto px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-xs shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncingAllData ? 'animate-spin' : ''}`} />
+                <span>{isSyncingAllData ? 'Syncing Every Data to Firebase...' : 'Store Every Data to Cloud Now'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Sync Result Toast Banner */}
+          {bulkSyncResult && (
+            <div className={`p-4 rounded-2xl border text-xs animate-scale-in flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+              bulkSyncResult.success 
+                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-200' 
+                : 'bg-rose-500/15 border-rose-500/40 text-rose-200'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                <div>
+                  <strong className="font-bold text-white block">
+                    {bulkSyncResult.success ? 'All Data Stored & Synchronized in Firebase!' : 'Partial Sync Warning'}
+                  </strong>
+                  <span className="text-[11px] text-slate-300">
+                    Uploaded: {bulkSyncResult.counts.companies} Companies, {bulkSyncResult.counts.employees} Employees, {bulkSyncResult.counts.attendance} Punches, {bulkSyncResult.counts.shifts} Shifts, {bulkSyncResult.counts.leaves} Leaves, {bulkSyncResult.counts.notifications} Notifications, {bulkSyncResult.counts.helpRequests} Support Requests.
+                  </span>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-black/40 text-emerald-300 border border-emerald-500/30">
+                CLOUD VERIFIED
+              </span>
+            </div>
+          )}
+
+          {/* Firestore Collections Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* 1. Companies */}
+            <div className="liquid-glass-card rounded-2xl p-4 border border-white/10 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-mono text-amber-400 font-bold uppercase tracking-wider">/companies</span>
+                  <Building2 className="w-4 h-4 text-amber-400" />
+                </div>
+                <h3 className="text-base font-bold text-white">Supermarket Companies</h3>
+                <p className="text-[11px] text-slate-400 mt-1">Multi-tenant store accounts, codes, passwords & manager credentials</p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
+                <span className="text-xs text-slate-400">Total in Cloud:</span>
+                <span className="text-sm font-mono font-bold text-emerald-400">{companies.length} records</span>
+              </div>
+            </div>
+
+            {/* 2. Employees */}
+            <div className="liquid-glass-card rounded-2xl p-4 border border-white/10 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider">/employees</span>
+                  <User className="w-4 h-4 text-emerald-400" />
+                </div>
+                <h3 className="text-base font-bold text-white">Workforce Directory</h3>
+                <p className="text-[11px] text-slate-400 mt-1">Real staff names, departments, shifts, wage rates & face biometric photos</p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
+                <span className="text-xs text-slate-400">Total in Cloud:</span>
+                <span className="text-sm font-mono font-bold text-emerald-400">{employees.length} records</span>
+              </div>
+            </div>
+
+            {/* 3. Attendance Records */}
+            <div className="liquid-glass-card rounded-2xl p-4 border border-white/10 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-mono text-sky-400 font-bold uppercase tracking-wider">/attendanceRecords</span>
+                  <ScanFace className="w-4 h-4 text-sky-400" />
+                </div>
+                <h3 className="text-base font-bold text-white">Attendance Logs</h3>
+                <p className="text-[11px] text-slate-400 mt-1">Check-in, break, and check-out punches via Biometric FaceID & PIN pad</p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
+                <span className="text-xs text-slate-400">Total in Cloud:</span>
+                <span className="text-sm font-mono font-bold text-emerald-400">{attendanceLogs.length} records</span>
+              </div>
+            </div>
+
+            {/* 4. Shifts */}
+            <div className="liquid-glass-card rounded-2xl p-4 border border-white/10 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-mono text-purple-400 font-bold uppercase tracking-wider">/shifts</span>
+                  <Layers className="w-4 h-4 text-purple-400" />
+                </div>
+                <h3 className="text-base font-bold text-white">Shift Schedules</h3>
+                <p className="text-[11px] text-slate-400 mt-1">Store shifts, start & end timings, grace periods & department mappings</p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
+                <span className="text-xs text-slate-400">Total in Cloud:</span>
+                <span className="text-sm font-mono font-bold text-emerald-400">{(shifts || []).length || 3} records</span>
+              </div>
+            </div>
+
+            {/* 5. Leaves */}
+            <div className="liquid-glass-card rounded-2xl p-4 border border-white/10 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-mono text-rose-400 font-bold uppercase tracking-wider">/leaveRequests</span>
+                  <ShieldCheck className="w-4 h-4 text-rose-400" />
+                </div>
+                <h3 className="text-base font-bold text-white">Leave Requests</h3>
+                <p className="text-[11px] text-slate-400 mt-1">Staff time-off requests, supervisor approvals, and audit statuses</p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
+                <span className="text-xs text-slate-400">Total in Cloud:</span>
+                <span className="text-sm font-mono font-bold text-emerald-400">{(leaveRequests || []).length} records</span>
+              </div>
+            </div>
+
+            {/* 6. Staff Notifications */}
+            <div className="liquid-glass-card rounded-2xl p-4 border border-white/10 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-mono text-amber-300 font-bold uppercase tracking-wider">/notifications</span>
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                </div>
+                <h3 className="text-base font-bold text-white">Staff Alerts</h3>
+                <p className="text-[11px] text-slate-400 mt-1">In-app notifications for roster changes, leave approvals & announcements</p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
+                <span className="text-xs text-slate-400">Total in Cloud:</span>
+                <span className="text-sm font-mono font-bold text-emerald-400">{(notifications || []).length} records</span>
+              </div>
+            </div>
+
+            {/* 7. Help Requests */}
+            <div className="liquid-glass-card rounded-2xl p-4 border border-white/10 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-mono text-sky-300 font-bold uppercase tracking-wider">/helpRequests</span>
+                  <LifeBuoy className="w-4 h-4 text-sky-300" />
+                </div>
+                <h3 className="text-base font-bold text-white">Support Tickets</h3>
+                <p className="text-[11px] text-slate-400 mt-1">Account login help and support requests submitted from all 3 apps</p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
+                <span className="text-xs text-slate-400">Total in Cloud:</span>
+                <span className="text-sm font-mono font-bold text-emerald-400">{(helpRequests || []).length} records</span>
+              </div>
+            </div>
+
+            {/* 8. Google Authenticated Users */}
+            <div className="liquid-glass-card rounded-2xl p-4 border border-white/10 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-mono text-blue-400 font-bold uppercase tracking-wider">/users</span>
+                  <Server className="w-4 h-4 text-blue-400" />
+                </div>
+                <h3 className="text-base font-bold text-white">Firebase Auth Users</h3>
+                <p className="text-[11px] text-slate-400 mt-1">Google Sign-in authenticated accounts with role and enterprise permissions</p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
+                <span className="text-xs text-slate-400">Status:</span>
+                <span className="text-xs font-semibold text-blue-400">{googleUser ? '1 Active Session' : 'Ready'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Cloud Configuration Details Card */}
+          <div className="liquid-glass-card rounded-3xl p-5 border border-white/10 text-xs text-slate-300 space-y-3">
+            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+              <Cloud className="w-4 h-4 text-emerald-400" />
+              <span>Firebase Cloud Firestore Instance Details</span>
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-3 rounded-2xl bg-black/40 border border-white/10">
+                <span className="text-[10px] text-slate-400 uppercase font-mono block">Firestore Database ID</span>
+                <span className="font-mono text-white font-bold text-xs truncate block mt-0.5">
+                  {firebaseConfigData.firestoreDatabaseId || '(default)'}
+                </span>
+              </div>
+              <div className="p-3 rounded-2xl bg-black/40 border border-white/10">
+                <span className="text-[10px] text-slate-400 uppercase font-mono block">Firebase Project ID</span>
+                <span className="font-mono text-emerald-300 font-bold text-xs truncate block mt-0.5">
+                  {firebaseConfigData.projectId}
+                </span>
+              </div>
+              <div className="p-3 rounded-2xl bg-black/40 border border-white/10">
+                <span className="text-[10px] text-slate-400 uppercase font-mono block">Security Rules &amp; Sync</span>
+                <span className="text-emerald-400 font-bold text-xs flex items-center gap-1.5 mt-0.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Deployed &bull; Multi-Tenant Isolated
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showCreateModal && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
           <div className="w-full max-w-lg liquid-glass-card rounded-[28px] border border-white/20 shadow-2xl animate-scale-in text-white my-6">

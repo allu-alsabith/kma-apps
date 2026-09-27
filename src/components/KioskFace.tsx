@@ -25,7 +25,8 @@ import {
   EyeOff,
   KeyRound,
   Users,
-  Hash 
+  Hash,
+  Layers
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Employee, AttendanceRecord, PunchType, Company, HelpRequest } from '../types';
@@ -44,6 +45,7 @@ interface KioskFaceProps {
   companies?: Company[];
   onSelectCompany?: (companyId: string) => void;
   onSubmitHelpRequest?: (request: Omit<HelpRequest, 'id' | 'createdAt' | 'status'>) => Promise<void> | void;
+  onBackToAppsManager?: () => void;
 }
 
 export const KioskFace: React.FC<KioskFaceProps> = ({
@@ -56,6 +58,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   companies = [],
   onSelectCompany,
   onSubmitHelpRequest,
+  onBackToAppsManager,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -78,9 +81,20 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
 
   const [terminalCompanyId, setTerminalCompanyId] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('attendo_kiosk_company_id') || activeCompany?.id || 'comp-kma';
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlComp = urlParams.get('company') || urlParams.get('store') || urlParams.get('code');
+      if (urlComp) {
+        const found = (companies || []).find(
+          (c) =>
+            c.code.toLowerCase() === urlComp.toLowerCase() ||
+            c.id === urlComp ||
+            c.supermarketName.toLowerCase() === urlComp.toLowerCase()
+        );
+        if (found) return found.id;
+      }
+      return localStorage.getItem('attendo_kiosk_company_id') || activeCompany?.id || companies?.[0]?.id || 'comp-kma';
     }
-    return activeCompany?.id || 'comp-kma';
+    return activeCompany?.id || companies?.[0]?.id || 'comp-kma';
   });
 
   const connectedCompany = useMemo(() => {
@@ -117,7 +131,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   const companyEmployees = useMemo(() => {
     if (!connectedCompany) return employees;
     return (employees || []).filter(
-      (e) => e.companyId === connectedCompany.id || (!e.companyId && connectedCompany.id === 'comp-kma')
+      (e) => (e.companyId || connectedCompany.id) === connectedCompany.id
     );
   }, [employees, connectedCompany]);
 
@@ -326,7 +340,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
     const status = isLate ? 'LATE' : 'ON_TIME';
 
     onNewPunch({
-      companyId: connectedCompany?.id,
+      companyId: employee.companyId || connectedCompany?.id,
       employeeId: employee.id,
       employeeName: employee.name,
       department: employee.department,
@@ -559,6 +573,17 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                 Biometric Staff Entrance Terminal &amp; Attendance Station
               </p>
             </div>
+            {onBackToAppsManager && (
+              <button
+                type="button"
+                onClick={onBackToAppsManager}
+                className="ml-auto px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-white/10"
+                title="Open Enterprise Apps Manager & Store Provisioning"
+              >
+                <Layers className="w-3.5 h-3.5 text-amber-400" />
+                <span>Apps Manager</span>
+              </button>
+            )}
           </div>
 
           {/* Informational Guidance */}
@@ -716,12 +741,36 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       
       {/* TOP HEADER: STATUS & TERMINAL SETTINGS */}
       <div className="w-full flex items-center justify-between px-2 mb-2">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="w-3 h-3 rounded-full bg-emerald-400 animate-ping shrink-0" />
           <span className="text-xs font-mono text-emerald-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
-            <Store className="w-3.5 h-3.5" />
-            {companySupermarketName} Entrance Scanner
+            <Store className="w-3.5 h-3.5 shrink-0" />
+            {companySupermarketName}
           </span>
+          {companies && companies.length > 1 && (
+            <select
+              id="select-kiosk-store"
+              value={connectedCompany?.id}
+              onChange={(e) => {
+                const targetId = e.target.value;
+                setTerminalCompanyId(targetId);
+                if (onSelectCompany) onSelectCompany(targetId);
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem('attendo_kiosk_company_id', targetId);
+                  localStorage.setItem('attendo_active_company_id', targetId);
+                }
+                soundService.playSuccessChime();
+              }}
+              className="bg-black/70 border border-white/20 rounded-lg px-2 py-0.5 text-[10px] text-amber-300 font-bold outline-none cursor-pointer hover:border-amber-400"
+              title="Switch terminal to another registered supermarket store"
+            >
+              {companies.map((c) => (
+                <option key={c.id} value={c.id} className="bg-slate-950 text-white font-normal">
+                  {c.supermarketName} ({c.code})
+                </option>
+              ))}
+            </select>
+          )}
           <span className="px-2 py-0.5 rounded-full bg-white/10 text-slate-300 font-mono text-[10px] font-bold">
             {connectedCompany?.code || 'STORE'}
           </span>
@@ -758,6 +807,17 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           >
             <Lock className="w-4 h-4 text-amber-400" />
           </button>
+
+          {/* Return to Apps Manager */}
+          {onBackToAppsManager && (
+            <button
+              onClick={onBackToAppsManager}
+              className="p-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 transition-all border border-purple-500/30 cursor-pointer"
+              title="Return to Apps Manager"
+            >
+              <Layers className="w-4 h-4 text-amber-400" />
+            </button>
+          )}
         </div>
       </div>
 

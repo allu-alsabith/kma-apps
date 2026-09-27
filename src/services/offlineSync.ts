@@ -13,8 +13,10 @@ import {
   deleteHelpRequestFromFirestore,
   syncStaffNotificationToFirestore,
   updateNotificationReadInFirestore,
+  syncShiftToFirestore,
+  deleteShiftFromFirestore,
 } from './firebase';
-import { AttendanceRecord, Employee, LeaveRequest, Company, HelpRequest, StaffNotification } from '../types';
+import { AttendanceRecord, Employee, LeaveRequest, Company, HelpRequest, StaffNotification, Shift } from '../types';
 
 export type OfflineActionType =
   | 'SYNC_PUNCH'
@@ -29,7 +31,9 @@ export type OfflineActionType =
   | 'SYNC_HELP_STATUS'
   | 'SYNC_DELETE_HELP_REQUEST'
   | 'SYNC_NOTIFICATION'
-  | 'SYNC_NOTIFICATION_READ';
+  | 'SYNC_NOTIFICATION_READ'
+  | 'SYNC_SHIFT'
+  | 'SYNC_DELETE_SHIFT';
 
 export interface OfflineQueueItem {
   id: string;
@@ -226,6 +230,12 @@ class OfflineSyncManager {
             break;
           case 'SYNC_NOTIFICATION_READ':
             await updateNotificationReadInFirestore(item.payload.id, item.payload.read);
+            break;
+          case 'SYNC_SHIFT':
+            await syncShiftToFirestore(item.payload as Shift);
+            break;
+          case 'SYNC_DELETE_SHIFT':
+            await deleteShiftFromFirestore(item.payload as string);
             break;
           default:
             break;

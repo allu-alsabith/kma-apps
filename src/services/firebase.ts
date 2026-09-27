@@ -4,8 +4,16 @@ import {
   initializeAuth, 
   indexedDBLocalPersistence, 
   browserLocalPersistence, 
-  inMemoryPersistence 
+  inMemoryPersistence,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged,
+  browserPopupRedirectResolver,
+  type User
 } from 'firebase/auth';
+
+export type { User };
 import { 
   getFirestore,
   initializeFirestore,
@@ -23,7 +31,7 @@ import {
   writeBatch,
   getDocs
 } from 'firebase/firestore';
-import { Employee, AttendanceRecord, LeaveRequest, StaffNotification, Company, HelpRequest } from '../types';
+import { Employee, AttendanceRecord, LeaveRequest, StaffNotification, Company, HelpRequest, Shift } from '../types';
 import firebaseConfigData from '../../firebase-applet-config.json';
 
 // Initialize Firebase App
@@ -38,13 +46,14 @@ const firebaseConfig = {
 
 export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Auth without popup redirect resolver to prevent cross-origin iframe creation in sandboxed preview
+// Initialize Auth with persistence and popup resolver for Google Sign-in
 let authInstance: ReturnType<typeof getAuth>;
 try {
   authInstance = initializeAuth(app, {
     persistence: typeof window !== 'undefined'
       ? [indexedDBLocalPersistence, browserLocalPersistence]
       : inMemoryPersistence,
+    popupRedirectResolver: typeof window !== 'undefined' ? browserPopupRedirectResolver : undefined,
   });
 } catch {
   try {
@@ -54,6 +63,40 @@ try {
   }
 }
 export const auth = authInstance;
+
+// Google Sign-In Provider
+export const googleAuthProvider = new GoogleAuthProvider();
+googleAuthProvider.setCustomParameters({ prompt: 'select_account' });
+
+export async function signInWithGoogle(): Promise<User> {
+  const result = await signInWithPopup(auth, googleAuthProvider);
+  if (result.user) {
+    const profile: UserProfile = {
+      uid: result.user.uid,
+      email: result.user.email,
+      displayName: result.user.displayName,
+      photoURL: result.user.photoURL,
+      role: 'ADMIN',
+      lastLoginAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    };
+    await syncUserProfileToFirestore(profile);
+  }
+  return result.user;
+}
+
+export async function signOutUser(): Promise<void> {
+  await signOut(auth);
+}
+
+export function subscribeToAuth(callback: (user: User | null) => void): () => void {
+  try {
+    return onAuthStateChanged(auth, callback);
+  } catch {
+    callback(null);
+    return () => {};
+  }
+}
 
 // Use custom database ID if provisioned, or default
 const databaseId = firebaseConfigData.firestoreDatabaseId && firebaseConfigData.firestoreDatabaseId.trim() !== ''
@@ -176,6 +219,19 @@ export const ATTENDANCE_COLLECTION = 'attendanceRecords';
 export const LEAVES_COLLECTION = 'leaveRequests';
 export const NOTIFICATIONS_COLLECTION = 'notifications';
 export const HELP_REQUESTS_COLLECTION = 'helpRequests';
+export const SHIFTS_COLLECTION = 'shifts';
+export const USERS_COLLECTION = 'users';
+
+export interface UserProfile {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  role?: 'ADMIN' | 'MANAGER' | 'STAFF' | 'OWNER';
+  companyId?: string;
+  lastLoginAt: string;
+  createdAt?: string;
+}
 
 // Real-time synchronization listeners
 export function subscribeToCompanies(
@@ -542,6 +598,165 @@ export async function deleteHelpRequestFromFirestore(requestId: string): Promise
     await deleteDoc(docRef);
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, docPath);
+  }
+}
+
+// ==========================================
+// SHIFTS SYNCHRONIZATION
+// ==========================================
+export function subscribeToShifts(
+  onData: (shifts: Shift[]) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const q = collection(db, SHIFTS_COLLECTION);
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const list: Shift[] = [];
+      snapshot.forEach((d) => {
+        const data = d.data() as Shift;
+        list.push({ ...data, id: data.id || d.id });
+      });
+      onData(list);
+    },
+    (err) => {
+      handleFirestoreError(err, OperationType.LIST, SHIFTS_COLLECTION);
+      if (onError) onError(err);
+    }
+  );
+}
+
+export async function syncShiftToFirestore(shift: Shift): Promise<void> {
+  const docPath = `${SHIFTS_COLLECTION}/${shift.id}`;
+  try {
+    const docRef = doc(db, SHIFTS_COLLECTION, shift.id);
+    await setDoc(docRef, shift, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, docPath);
+  }
+}
+
+export async function deleteShiftFromFirestore(shiftId: string): Promise<void> {
+  const docPath = `${SHIFTS_COLLECTION}/${shiftId}`;
+  try {
+    const docRef = doc(db, SHIFTS_COLLECTION, shiftId);
+    await deleteDoc(docRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, docPath);
+  }
+}
+
+// ==========================================
+// USER PROFILES & AUTH PERSISTENCE
+// ==========================================
+export async function syncUserProfileToFirestore(profile: UserProfile): Promise<void> {
+  const docPath = `${USERS_COLLECTION}/${profile.uid}`;
+  try {
+    const docRef = doc(db, USERS_COLLECTION, profile.uid);
+    await setDoc(docRef, profile, { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, docPath);
+  }
+}
+
+export async function getUserProfileFromFirestore(uid: string): Promise<UserProfile | null> {
+  const docPath = `${USERS_COLLECTION}/${uid}`;
+  try {
+    const docRef = doc(db, USERS_COLLECTION, uid);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data() as UserProfile;
+    }
+    return null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, docPath);
+    return null;
+  }
+}
+
+// ==========================================
+// BULK CLOUD PERSISTENCE (STORE EVERY DATA IN FIREBASE)
+// ==========================================
+export async function syncAllDataToFirestore(data: {
+  companies?: Company[];
+  employees?: Employee[];
+  attendanceLogs?: AttendanceRecord[];
+  shifts?: Shift[];
+  leaveRequests?: LeaveRequest[];
+  notifications?: StaffNotification[];
+  helpRequests?: HelpRequest[];
+}): Promise<{ success: boolean; syncedCounts: Record<string, number> }> {
+  const counts: Record<string, number> = {
+    companies: 0,
+    employees: 0,
+    attendance: 0,
+    shifts: 0,
+    leaves: 0,
+    notifications: 0,
+    helpRequests: 0,
+  };
+
+  try {
+    // 1. Sync Companies
+    if (data.companies && data.companies.length > 0) {
+      for (const comp of data.companies) {
+        await syncCompanyToFirestore(comp);
+        counts.companies++;
+      }
+    }
+
+    // 2. Sync Employees
+    if (data.employees && data.employees.length > 0) {
+      for (const emp of data.employees) {
+        await syncEmployeeToFirestore(emp);
+        counts.employees++;
+      }
+    }
+
+    // 3. Sync Attendance Records
+    if (data.attendanceLogs && data.attendanceLogs.length > 0) {
+      for (const rec of data.attendanceLogs) {
+        await syncAttendanceRecordToFirestore(rec);
+        counts.attendance++;
+      }
+    }
+
+    // 4. Sync Shifts
+    if (data.shifts && data.shifts.length > 0) {
+      for (const sh of data.shifts) {
+        await syncShiftToFirestore(sh);
+        counts.shifts++;
+      }
+    }
+
+    // 5. Sync Leave Requests
+    if (data.leaveRequests && data.leaveRequests.length > 0) {
+      for (const leave of data.leaveRequests) {
+        await syncLeaveRequestToFirestore(leave);
+        counts.leaves++;
+      }
+    }
+
+    // 6. Sync Notifications
+    if (data.notifications && data.notifications.length > 0) {
+      for (const notif of data.notifications) {
+        await syncStaffNotificationToFirestore(notif);
+        counts.notifications++;
+      }
+    }
+
+    // 7. Sync Help Requests
+    if (data.helpRequests && data.helpRequests.length > 0) {
+      for (const req of data.helpRequests) {
+        await syncHelpRequestToFirestore(req);
+        counts.helpRequests++;
+      }
+    }
+
+    return { success: true, syncedCounts: counts };
+  } catch (error) {
+    console.error('Error syncing all data to Firestore:', error);
+    return { success: false, syncedCounts: counts };
   }
 }
 

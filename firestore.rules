@@ -107,5 +107,17 @@ service cloud.firestore {
       allow list: if true;
       allow write: if isValidId(settingId);
     }
+
+    match /shifts/{shiftId} {
+      allow get: if isValidId(shiftId);
+      allow list: if true;
+      allow write: if isValidId(shiftId);
+    }
+
+    match /users/{userId} {
+      allow get: if isValidId(userId);
+      allow list: if true;
+      allow write: if isValidId(userId);
+    }
   }
 }

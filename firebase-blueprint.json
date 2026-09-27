@@ -136,9 +136,50 @@
         "createdAt": { "type": "string" }
       },
       "required": ["id", "appName", "message", "status", "createdAt"]
+    },
+    "Shift": {
+      "title": "Shift",
+      "description": "Store working shift schedule with start time, end time, and grace period",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "department": { "type": "string" },
+        "color": { "type": "string" },
+        "breakDurationMinutes": { "type": "number" },
+        "gracePeriodMinutes": { "type": "number" },
+        "companyId": { "type": "string" }
+      },
+      "required": ["id", "name", "startTime", "endTime"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Google authenticated user account with role, linked company, and audit profile",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string" },
+        "companyId": { "type": "string" },
+        "lastLoginAt": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid"]
     }
   },
   "firestore": {
+    "/shifts/{shiftId}": {
+      "schema": "Shift",
+      "description": "Store operational shifts and duty timing"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Google authenticated user profiles"
+    },
     "/companies/{companyId}": {
       "schema": "Company",
       "description": "Registered supermarket companies and their credentials"
