@@ -17,7 +17,6 @@ import {
   Check, 
   ExternalLink, 
   QrCode, 
-  Download, 
   AlertTriangle, 
   Search, 
   X, 
@@ -36,7 +35,8 @@ import {
   User,
   Database,
   Cloud,
-  Server
+  Server,
+  Globe
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { Company, Employee, AttendanceRecord, AppPortal, HelpRequest, Shift, LeaveRequest, StaffNotification } from '../types';
@@ -88,7 +88,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
 }) => {
   // Master Apps Manager selected company for preview and app provisioning
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(() => {
-    return activeCompany?.id || companies[0]?.id || 'comp-kma';
+    return activeCompany?.id || companies[0]?.id || '';
   });
 
   useEffect(() => {
@@ -583,7 +583,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
           {[
             { id: 'COMPANIES', label: `Companies (${companies.length})`, icon: Building2 },
             { id: 'APPS', label: '3 Apps & Access', icon: Layers },
-            { id: 'DEPLOYMENT', label: 'Fast Store Setup', icon: Download },
+            { id: 'DEPLOYMENT', label: 'Fast Store Setup', icon: Share2 },
             { 
               id: 'SUPPORT_REQUESTS', 
               label: `Requests (${(helpRequests || []).filter((r) => r.status === 'PENDING').length})`, 
@@ -636,7 +636,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search companies by name or code..."
+                placeholder="Search companies by name or code"
                 value={searchCompanyQuery}
                 onChange={(e) => setSearchCompanyQuery(e.target.value)}
                 className="w-full bg-slate-900/80 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-amber-400"
@@ -863,6 +863,29 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
               );
             })}
           </div>
+
+          {filteredCompanies.length === 0 && (
+            <div className="liquid-glass-card rounded-3xl p-12 text-center border border-white/10 space-y-4">
+              <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
+                <Building2 className="w-8 h-8" />
+              </div>
+              <div className="max-w-md mx-auto space-y-1">
+                <h3 className="text-lg font-bold text-white">No Companies Registered Yet</h3>
+                <p className="text-xs text-slate-400">
+                  {companies.length === 0
+                    ? "Get started by registering your company or store branch. Configure your store credentials, shifts, and staff directory."
+                    : "No companies match your search query."}
+                </p>
+              </div>
+              <button
+                onClick={handleOpenCreateModal}
+                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-emerald-500 text-slate-950 font-black text-xs shadow-xl shadow-amber-500/20 hover:brightness-110 active:scale-95 transition-all inline-flex items-center gap-2 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Register Your Business / Store</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -886,8 +909,8 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                 onClick={onOpenInstallModal}
                 className="px-3 py-1.5 rounded-xl liquid-button text-xs text-emerald-300 hover:text-white flex items-center gap-1.5 font-bold cursor-pointer"
               >
-                <Download className="w-3.5 h-3.5" />
-                <span>Open Deployment Modal</span>
+                <Globe className="w-3.5 h-3.5" />
+                <span>All App Web Addresses</span>
               </button>
             )}
           </div>
@@ -972,15 +995,39 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                     <span>QR Code</span>
                   </button>
                 </div>
-                {onOpenInstallModal && (
-                  <button
-                    onClick={() => onOpenInstallModal('ADMIN')}
-                    className="w-full py-2 px-3 rounded-xl liquid-button bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer border border-emerald-500/30 transition-all"
-                  >
-                    <Download className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Download App (APK / iOS)</span>
-                  </button>
-                )}
+                {/* Dedicated Web Address for Admin App */}
+                <div className="p-2.5 rounded-2xl bg-black/60 border border-emerald-500/30 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-300 font-bold flex items-center gap-1">
+                      <Globe className="w-3 h-3 text-emerald-400" />
+                      Web Address:
+                    </span>
+                    {copiedKey === 'admin-web-addr' ? (
+                      <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 animate-pulse">
+                        <Check className="w-3 h-3" /> Copied!
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 font-mono">Store PC Console</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      readOnly
+                      value={getAppLaunchUrl('admin', authenticatedCompany?.code)}
+                      className="flex-1 bg-slate-900/80 border border-white/10 rounded-xl px-2.5 py-1.5 text-[11px] font-mono text-emerald-300 focus:outline-none select-all truncate"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleCopyText(getAppLaunchUrl('admin', authenticatedCompany?.code), 'admin-web-addr')}
+                      className="py-1.5 px-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+                      title="Copy Store Admin Web Address"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1070,15 +1117,39 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                     <span>QR Code</span>
                   </button>
                 </div>
-                {onOpenInstallModal && (
-                  <button
-                    onClick={() => onOpenInstallModal('KIOSK')}
-                    className="w-full py-2 px-3 rounded-xl liquid-button bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer border border-sky-500/30 transition-all"
-                  >
-                    <Download className="w-3.5 h-3.5 text-sky-400" />
-                    <span>Download Kiosk (APK / iOS)</span>
-                  </button>
-                )}
+                {/* Dedicated Web Address for Kiosk */}
+                <div className="p-2.5 rounded-2xl bg-black/60 border border-sky-500/30 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-300 font-bold flex items-center gap-1">
+                      <Globe className="w-3 h-3 text-sky-400" />
+                      Web Address:
+                    </span>
+                    {copiedKey === 'kiosk-web-addr' ? (
+                      <span className="text-[10px] text-sky-400 font-bold flex items-center gap-1 animate-pulse">
+                        <Check className="w-3 h-3" /> Copied!
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 font-mono">Entrance Door Tablet</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      readOnly
+                      value={getAppLaunchUrl('kiosk', authenticatedCompany?.code)}
+                      className="flex-1 bg-slate-900/80 border border-white/10 rounded-xl px-2.5 py-1.5 text-[11px] font-mono text-sky-300 focus:outline-none select-all truncate"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleCopyText(getAppLaunchUrl('kiosk', authenticatedCompany?.code), 'kiosk-web-addr')}
+                      className="py-1.5 px-2.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+                      title="Copy Kiosk Web Address"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1168,15 +1239,39 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                     <span>QR Code</span>
                   </button>
                 </div>
-                {onOpenInstallModal && (
-                  <button
-                    onClick={() => onOpenInstallModal('STAFF')}
-                    className="w-full py-2 px-3 rounded-xl liquid-button bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer border border-amber-500/30 transition-all"
-                  >
-                    <Download className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Download Staff App (APK / iOS)</span>
-                  </button>
-                )}
+                {/* Dedicated Web Address for Staff App */}
+                <div className="p-2.5 rounded-2xl bg-black/60 border border-amber-500/30 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-300 font-bold flex items-center gap-1">
+                      <Globe className="w-3 h-3 text-amber-400" />
+                      Web Address:
+                    </span>
+                    {copiedKey === 'staff-web-addr' ? (
+                      <span className="text-[10px] text-amber-400 font-bold flex items-center gap-1 animate-pulse">
+                        <Check className="w-3 h-3" /> Copied!
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 font-mono">Staff Phone App</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      readOnly
+                      value={getAppLaunchUrl('staff', authenticatedCompany?.code)}
+                      className="flex-1 bg-slate-900/80 border border-white/10 rounded-xl px-2.5 py-1.5 text-[11px] font-mono text-amber-300 focus:outline-none select-all truncate"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleCopyText(getAppLaunchUrl('staff', authenticatedCompany?.code), 'staff-web-addr')}
+                      className="py-1.5 px-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+                      title="Copy Staff Web Address"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1192,7 +1287,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
           <div className="liquid-glass rounded-3xl p-6 border border-white/15 space-y-5 shadow-2xl">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                <Download className="w-6 h-6" />
+                <Share2 className="w-6 h-6" />
               </div>
               <div>
                 <h2 className="text-lg font-black text-white">
@@ -1374,7 +1469,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                   <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Search requests..."
+                    placeholder="Search requests"
                     value={supportSearchQuery}
                     onChange={(e) => setSupportSearchQuery(e.target.value)}
                     className="w-full bg-slate-900/80 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 outline-none focus:border-amber-400"
@@ -1813,7 +1908,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                   <label className="text-slate-300 font-bold block mb-1">Supermarket Brand Name *</label>
                   <input
                     type="text"
-                    placeholder="e.g. Metro Mart"
+                    placeholder="Supermarket brand name"
                     value={formSupermarketName}
                     onChange={(e) => {
                       setFormSupermarketName(e.target.value);
@@ -1828,7 +1923,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                   <label className="text-slate-300 font-bold block mb-1">Company Code * (Short)</label>
                   <input
                     type="text"
-                    placeholder="e.g. METRO"
+                    placeholder="Store code"
                     value={formCode}
                     onChange={(e) => setFormCode(e.target.value.toUpperCase())}
                     className="w-full bg-slate-900 border border-white/15 focus:border-amber-400 rounded-xl px-3 py-2 text-white font-mono uppercase outline-none"
@@ -1840,7 +1935,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                 <label className="text-slate-300 font-bold block mb-1">Legal Company / Entity Name *</label>
                 <input
                   type="text"
-                  placeholder="e.g. Metro Retail Supermarkets Pvt Ltd"
+                  placeholder="Legal company entity name"
                   value={formLegalName}
                   onChange={(e) => setFormLegalName(e.target.value)}
                   className="w-full bg-slate-900 border border-white/15 focus:border-amber-400 rounded-xl px-3 py-2 text-white outline-none"
@@ -1852,7 +1947,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                   <label className="text-slate-300 font-bold block mb-1">Company Password * (For Staff & Apps)</label>
                   <input
                     type="text"
-                    placeholder="e.g. metro123"
+                    placeholder="Store company password"
                     value={formPassword}
                     onChange={(e) => setFormPassword(e.target.value)}
                     className="w-full bg-slate-900 border border-white/15 focus:border-amber-400 rounded-xl px-3 py-2 text-white font-mono outline-none"
@@ -1863,7 +1958,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                   <input
                     type="text"
                     maxLength={6}
-                    placeholder="1234"
+                    placeholder="4-digit PIN"
                     value={formAdminPin}
                     onChange={(e) => setFormAdminPin(e.target.value)}
                     className="w-full bg-slate-900 border border-white/15 focus:border-amber-400 rounded-xl px-3 py-2 text-white font-mono outline-none"
@@ -1875,7 +1970,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                 <label className="text-slate-300 font-bold block mb-1">Store Address / Location</label>
                 <input
                   type="text"
-                  placeholder="e.g. 104 Commercial Street, Central District"
+                  placeholder="Store address and location"
                   value={formAddress}
                   onChange={(e) => setFormAddress(e.target.value)}
                   className="w-full bg-slate-900 border border-white/15 focus:border-amber-400 rounded-xl px-3 py-2 text-white outline-none"
@@ -1887,7 +1982,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                   <label className="text-slate-300 font-bold block mb-1">Contact Email</label>
                   <input
                     type="email"
-                    placeholder="admin@metromart.com"
+                    placeholder="Store contact email"
                     value={formEmail}
                     onChange={(e) => setFormEmail(e.target.value)}
                     className="w-full bg-slate-900 border border-white/15 focus:border-amber-400 rounded-xl px-3 py-2 text-white outline-none"
@@ -1897,7 +1992,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                   <label className="text-slate-300 font-bold block mb-1">Contact Phone</label>
                   <input
                     type="text"
-                    placeholder="+91 98765 00000"
+                    placeholder="Store phone number"
                     value={formPhone}
                     onChange={(e) => setFormPhone(e.target.value)}
                     className="w-full bg-slate-900 border border-white/15 focus:border-amber-400 rounded-xl px-3 py-2 text-white outline-none"

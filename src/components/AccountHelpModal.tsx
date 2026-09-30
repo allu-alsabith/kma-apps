@@ -156,7 +156,7 @@ export const AccountHelpModal: React.FC<AccountHelpModalProps> = ({
                   <User className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400 pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="e.g. Sarah / EMP-101"
+                    placeholder="Enter your name or employee ID"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
                     className="w-full bg-slate-900 border border-white/15 rounded-2xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
@@ -191,7 +191,7 @@ export const AccountHelpModal: React.FC<AccountHelpModalProps> = ({
                   <Phone className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400 pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="+91 ... or email"
+                    placeholder="Enter phone number or email"
                     value={contactInfo}
                     onChange={(e) => setContactInfo(e.target.value)}
                     className="w-full bg-slate-900 border border-white/15 rounded-2xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
@@ -226,7 +226,7 @@ export const AccountHelpModal: React.FC<AccountHelpModalProps> = ({
               <textarea
                 required
                 rows={3}
-                placeholder="Describe what is happening (e.g. My PIN is not accepted, cannot sign into tablet, face scan does not identify me...)"
+                placeholder="Describe the issue you are experiencing"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 className="w-full bg-slate-900 border border-white/15 rounded-2xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 leading-relaxed resize-none"

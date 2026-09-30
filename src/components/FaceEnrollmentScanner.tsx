@@ -427,7 +427,7 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="https://example.com/employee-photo.jpg"
+              placeholder="Enter image URL"
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               className="flex-1 bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 font-mono text-ellipsis"

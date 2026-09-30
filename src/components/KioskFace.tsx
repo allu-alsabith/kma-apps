@@ -46,7 +46,6 @@ interface KioskFaceProps {
   companies?: Company[];
   onSelectCompany?: (companyId: string) => void;
   onSubmitHelpRequest?: (request: Omit<HelpRequest, 'id' | 'createdAt' | 'status'>) => Promise<void> | void;
-  onBackToAppsManager?: () => void;
 }
 
 export const KioskFace: React.FC<KioskFaceProps> = ({
@@ -59,7 +58,6 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   companies = [],
   onSelectCompany,
   onSubmitHelpRequest,
-  onBackToAppsManager,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -69,16 +67,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   // ==========================================
   // KIOSK AUTHENTICATION / ACTIVATION SESSION
   // ==========================================
-  const [isKioskLoggedIn, setIsKioskLoggedIn] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const auth = localStorage.getItem('attendo_kiosk_authenticated');
-      const compId = localStorage.getItem('attendo_kiosk_company_id');
-      if (auth === 'true' && compId) {
-        return true;
-      }
-    }
-    return false;
-  });
+  const [isKioskLoggedIn, setIsKioskLoggedIn] = useState<boolean>(false);
 
   const [terminalCompanyId, setTerminalCompanyId] = useState<string>(() => {
     if (typeof window !== 'undefined') {
@@ -93,9 +82,9 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
         );
         if (found) return found.id;
       }
-      return localStorage.getItem('attendo_kiosk_company_id') || activeCompany?.id || companies?.[0]?.id || 'comp-kma';
+      return localStorage.getItem('attendo_kiosk_company_id') || activeCompany?.id || companies?.[0]?.id || '';
     }
-    return activeCompany?.id || companies?.[0]?.id || 'comp-kma';
+    return activeCompany?.id || companies?.[0]?.id || '';
   });
 
   const connectedCompany = useMemo(() => {
@@ -105,28 +94,12 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   const companySupermarketName = connectedCompany?.supermarketName?.trim() || 'Store';
 
   // Login form fields
-  const [selectedKioskCompanyId, setSelectedKioskCompanyId] = useState<string>(() => {
-    return terminalCompanyId || activeCompany?.id || companies[0]?.id || '';
-  });
-  const [kioskCompanyName, setKioskCompanyName] = useState<string>(() => {
-    return connectedCompany?.supermarketName || companies[0]?.supermarketName || '';
-  });
-  const [kioskCompanyCode, setKioskCompanyCode] = useState<string>(() => {
-    return connectedCompany?.code || companies[0]?.code || '';
-  });
+  const [kioskCompanyName, setKioskCompanyName] = useState<string>('');
+  const [kioskCompanyCode, setKioskCompanyCode] = useState<string>('');
   const [kioskCompanyPassword, setKioskCompanyPassword] = useState<string>('');
   const [showKioskPassword, setShowKioskPassword] = useState<boolean>(false);
   const [kioskLoginError, setKioskLoginError] = useState<string | null>(null);
   const [showAccountHelpModal, setShowAccountHelpModal] = useState<boolean>(false);
-
-  // Sync with active or connected company
-  useEffect(() => {
-    if (connectedCompany) {
-      setSelectedKioskCompanyId(connectedCompany.id);
-      setKioskCompanyName(connectedCompany.supermarketName);
-      setKioskCompanyCode(connectedCompany.code);
-    }
-  }, [connectedCompany]);
 
   // Filter employees belonging to the paired company
   const companyEmployees = useMemo(() => {
@@ -154,8 +127,8 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           c.code.trim().toLowerCase() === inputName
       );
     }
-    if (!matched && selectedKioskCompanyId) {
-      matched = (companies || []).find((c) => c.id === selectedKioskCompanyId);
+    if (!matched && terminalCompanyId) {
+      matched = (companies || []).find((c) => c.id === terminalCompanyId);
     }
 
     if (!matched) {
@@ -168,10 +141,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
     const isPasswordCorrect =
       (expectedPass && inputPass === expectedPass) ||
       (expectedPass && inputPass.toLowerCase() === expectedPass.toLowerCase()) ||
-      matched.adminPin?.trim() === inputPass ||
-      inputPass === 'admin123' ||
-      inputPass === 'kma' ||
-      (matched.code === 'KMA' && (inputPass === 'kma' || inputPass === 'kma123'));
+      Boolean(matched.adminPin && matched.adminPin.trim() === inputPass);
 
     if (!isPasswordCorrect) {
       setKioskLoginError(`Incorrect company password or PIN for ${matched.supermarketName}.`);
@@ -530,7 +500,9 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   const handleManagerUnlock = (e: React.FormEvent) => {
     e.preventDefault();
     const pin = managerUnlockPin.trim();
-    const isMasterPin = pin === '9999' || pin === '1234' || (connectedCompany && pin === connectedCompany.adminPin);
+    const isMasterPin = Boolean(
+      connectedCompany && (pin === connectedCompany.adminPin?.trim() || pin === connectedCompany.password?.trim())
+    );
 
     if (isMasterPin) {
       setShowManagerUnlockModal(false);
@@ -574,17 +546,6 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                 Biometric Staff Entrance Terminal &amp; Attendance Station
               </p>
             </div>
-            {onBackToAppsManager && (
-              <button
-                type="button"
-                onClick={onBackToAppsManager}
-                className="ml-auto px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-white/10"
-                title="Open Enterprise Apps Manager & Store Provisioning"
-              >
-                <Layers className="w-3.5 h-3.5 text-amber-400" />
-                <span>Apps Manager</span>
-              </button>
-            )}
           </div>
 
           {/* Informational Guidance */}
@@ -604,36 +565,13 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
               </div>
             )}
 
-            {/* Registered Company Quick Selector */}
-            {companies && companies.length > 0 && (
-              <div>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-1">
-                  Select Registered Company
-                </label>
-                <select
-                  id="select-kiosk-company"
-                  value={selectedKioskCompanyId}
-                  onChange={(e) => {
-                    const compId = e.target.value;
-                    setSelectedKioskCompanyId(compId);
-                    const target = companies.find((c) => c.id === compId);
-                    if (target) {
-                      setKioskCompanyName(target.supermarketName);
-                      setKioskCompanyCode(target.code);
-                      if (target.password) {
-                        setKioskCompanyPassword(target.password);
-                      }
-                    }
-                    if (kioskLoginError) setKioskLoginError(null);
-                  }}
-                  className="w-full bg-slate-900 border border-white/15 rounded-2xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-400 font-medium cursor-pointer"
-                >
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id} className="bg-slate-950 text-white">
-                      [{c.code}] {c.supermarketName} — {c.name}
-                    </option>
-                  ))}
-                </select>
+            {/* Empty Companies Notice */}
+            {(!companies || companies.length === 0) && (
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs flex items-start gap-2.5">
+                <Info className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+                <p className="leading-relaxed">
+                  No company has been registered yet. Please launch the business setup screen or Store Admin Console to register your store first.
+                </p>
               </div>
             )}
 
@@ -808,17 +746,6 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           >
             <Lock className="w-4 h-4 text-amber-400" />
           </button>
-
-          {/* Return to Apps Manager */}
-          {onBackToAppsManager && (
-            <button
-              onClick={onBackToAppsManager}
-              className="p-2 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 transition-all border border-purple-500/30 cursor-pointer"
-              title="Return to Apps Manager"
-            >
-              <Layers className="w-4 h-4 text-amber-400" />
-            </button>
-          )}
         </div>
       </div>
 
@@ -1313,32 +1240,19 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
             )}
 
             <div className="w-full mt-4 space-y-3">
-              {/* Staff Select / Emp ID input */}
+              {/* Staff Emp ID input */}
               <div>
                 <label className="text-[10px] font-bold text-slate-400 block mb-1">
-                  SELECT EMPLOYEE OR ENTER STAFF ID
+                  ENTER EMPLOYEE ID
                 </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <select
-                    value={staffPinEmpId}
-                    onChange={(e) => setStaffPinEmpId(e.target.value)}
-                    className="w-full bg-slate-900 border border-white/20 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-sky-400 cursor-pointer"
-                  >
-                    <option value="">Choose Staff...</option>
-                    {companyEmployees.map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.name} ({e.id})
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    placeholder="or type ID"
-                    value={staffPinEmpId}
-                    onChange={(e) => setStaffPinEmpId(e.target.value)}
-                    className="w-full bg-slate-900 border border-white/20 rounded-xl px-2.5 py-2 text-xs text-white uppercase focus:outline-none focus:border-sky-400 font-mono"
-                  />
-                </div>
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter employee ID"
+                  value={staffPinEmpId}
+                  onChange={(e) => setStaffPinEmpId(e.target.value)}
+                  className="w-full bg-slate-900 border border-white/20 rounded-xl px-3 py-2.5 text-xs text-white uppercase focus:outline-none focus:border-sky-400 font-mono text-center tracking-wider"
+                />
               </div>
 
               {/* 4-Digit PIN Display */}
@@ -1451,7 +1365,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                   maxLength={6}
                   autoFocus
                   required
-                  placeholder="••••"
+                  placeholder="Enter PIN"
                   value={managerUnlockPin}
                   onChange={(e) => setManagerUnlockPin(e.target.value)}
                   className="w-full bg-slate-900 border border-white/20 rounded-2xl py-3 text-center text-xl font-mono text-white tracking-widest focus:outline-none focus:border-amber-400"
@@ -1479,7 +1393,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
               </div>
 
               <p className="text-[10px] text-slate-500 text-center pt-1">
-                Default Master PIN: <span className="text-amber-400 font-mono">9999</span> or <span className="text-amber-400 font-mono">1234</span>
+                Authorized store administrators only
               </p>
             </form>
           </div>

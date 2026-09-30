@@ -23,6 +23,22 @@ export const isSampleStaff = (emp: { name?: string; employeeName?: string; id?: 
   if (id && (id.startsWith('KMA-10') || id.startsWith('CITY-10') || id.startsWith('FRESH-10'))) return true;
   return false;
 };
+
+// Helper to filter out any legacy pre-seeded mock companies so user starts with a real-life clean company setup
+export const isSampleCompany = (c: Partial<Company>): boolean => {
+  if (!c) return false;
+  const sampleIds = ['comp-kma', 'comp-city', 'comp-fresh'];
+  const sampleCodes = ['KMA', 'CITY', 'FRESH'];
+  const sampleNames = [
+    'KMA Supermarket', 'City Central Hypermarket Ltd', 'FreshMart Organic & Gourmet Store',
+    'KMA', 'City Hyper', 'FreshMart', 'Workforce Retail Pvt Ltd'
+  ];
+  if (c.id && sampleIds.includes(c.id)) return true;
+  if (c.code && sampleCodes.includes(c.code.toUpperCase())) return true;
+  if (c.name && sampleNames.includes(c.name)) return true;
+  if (c.supermarketName && sampleNames.includes(c.supermarketName)) return true;
+  return false;
+};
 import { KioskFace } from './components/KioskFace';
 import { EmployeeApp } from './components/EmployeeApp';
 import { AdminPortal } from './components/AdminPortal';
@@ -214,7 +230,7 @@ export default function App() {
     return INITIAL_LEAVES;
   });
 
-  // Multi-Company State (Supports distinct supermarket companies with custom names, codes and passwords)
+  // Multi-Company State (Supports distinct supermarket companies added by the business owner)
   const [companies, setCompanies] = useState<Company[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('attendo_companies');
@@ -222,14 +238,15 @@ export default function App() {
         try {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed;
+            const real = parsed.filter((c) => !isSampleCompany(c));
+            return real;
           }
         } catch {
           // ignore
         }
       }
     }
-    return DEFAULT_COMPANIES;
+    return [];
   });
 
   // Help & Support Requests State (from all apps login screens)
@@ -252,23 +269,16 @@ export default function App() {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const urlComp = urlParams.get('company') || urlParams.get('store') || urlParams.get('code');
-      if (urlComp) {
-        const found = DEFAULT_COMPANIES.find(
-          (c) =>
-            c.code.toLowerCase() === urlComp.toLowerCase() ||
-            c.id === urlComp ||
-            c.supermarketName.toLowerCase() === urlComp.toLowerCase()
-        );
-        if (found) return found.id;
-      }
       const saved = localStorage.getItem('attendo_active_company_id');
-      if (saved) return saved;
+      if (saved && !isSampleCompany({ id: saved, code: saved })) {
+        return saved;
+      }
     }
-    return DEFAULT_COMPANIES[0]?.id || 'comp-kma';
+    return '';
   });
 
   const activeCompany = useMemo(() => {
-    return companies.find((c) => c.id === activeCompanyId) || companies[0] || DEFAULT_COMPANIES[0];
+    return companies.find((c) => c.id === activeCompanyId) || companies[0] || undefined;
   }, [companies, activeCompanyId]);
 
   // Scoped Data for Active Company in Admin Portal (Accurately isolated per company)
@@ -481,13 +491,12 @@ export default function App() {
     });
 
     const unsubCompanies = subscribeToCompanies((remoteCompanies) => {
-      if (remoteCompanies && remoteCompanies.length > 0) {
-        setCompanies((prev) => {
-          const map = new Map<string, Company>();
-          prev.forEach((c) => map.set(c.id, c));
-          remoteCompanies.forEach((c) => map.set(c.id, c));
-          return Array.from(map.values());
-        });
+      if (remoteCompanies) {
+        const real = remoteCompanies.filter((c) => !isSampleCompany(c));
+        setCompanies(real);
+        if (real.length > 0) {
+          setActiveCompanyId((current) => current || real[0].id);
+        }
       }
     });
 
@@ -559,10 +568,29 @@ export default function App() {
     localStorage.setItem('attendo_help_requests', JSON.stringify(helpRequests));
   }, [helpRequests]);
 
-  // One-time cleanup: ensure any previously cached mock staff or mock attendance logs are completely removed
+  // One-time cleanup: ensure any previously cached mock staff or mock companies are completely removed
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
+        const rawCompanies = localStorage.getItem('attendo_companies');
+        if (rawCompanies) {
+          const parsed = JSON.parse(rawCompanies);
+          if (Array.isArray(parsed)) {
+            const realOnly = parsed.filter((c) => !isSampleCompany(c));
+            if (realOnly.length !== parsed.length) {
+              setCompanies(realOnly);
+              localStorage.setItem('attendo_companies', JSON.stringify(realOnly));
+              if (realOnly.length > 0) {
+                setActiveCompanyId(realOnly[0].id);
+              } else {
+                setActiveCompanyId('');
+                localStorage.removeItem('attendo_active_company_id');
+                localStorage.removeItem('attendo_admin_company_id');
+                localStorage.removeItem('attendo_admin_session_auth');
+              }
+            }
+          }
+        }
         const rawStaff = localStorage.getItem('attendo_real_workforce_staff');
         if (rawStaff) {
           const parsed = JSON.parse(rawStaff);
@@ -657,11 +685,10 @@ export default function App() {
 
     setActiveCompanyId(newId);
 
-    // Persist company selection and pre-authenticate admin session so user can immediately manage their created company
+    // Persist company selection
     if (typeof window !== 'undefined') {
       localStorage.setItem('attendo_active_company_id', newId);
       localStorage.setItem('attendo_admin_company_id', newId);
-      localStorage.setItem('attendo_admin_session_auth', 'true');
       localStorage.setItem('attendo_staff_company_id', newId);
       localStorage.setItem('attendo_staff_company_name', newCompany.supermarketName);
       localStorage.setItem('attendo_kiosk_company_id', newId);
@@ -686,31 +713,20 @@ export default function App() {
 
   const handleDeleteCompany = async (companyId: string) => {
     const remaining = companies.filter((c) => c.id !== companyId);
-    if (remaining.length === 0) {
-      const freshDefault: Company = {
-        id: `comp-${Date.now()}`,
-        name: 'Workforce Retail Pvt Ltd',
-        supermarketName: 'Workforce',
-        code: 'STORE',
-        password: 'admin',
-        address: 'Main Store HQ',
-        contactEmail: 'admin@workforcesystems.com',
-        contactPhone: '+91 98765 43210',
-        isActive: true,
-        createdAt: new Date().toISOString(),
-      };
-      setCompanies([freshDefault]);
-      setActiveCompanyId(freshDefault.id);
-      offlineSyncService.enqueue('SYNC_DELETE_COMPANY', companyId);
-      offlineSyncService.enqueue('SYNC_COMPANY', freshDefault);
-      autoSyncService.broadcast('COMPANY_DELETED', companyId);
-      autoSyncService.broadcast('COMPANY_ADDED', freshDefault);
-      return;
-    }
     setCompanies(remaining);
     if (activeCompanyId === companyId) {
-      setActiveCompanyId(remaining[0].id);
-      autoSyncService.broadcast('ACTIVE_COMPANY_CHANGED', remaining[0].id);
+      const nextId = remaining.length > 0 ? remaining[0].id : '';
+      setActiveCompanyId(nextId);
+      if (typeof window !== 'undefined') {
+        if (nextId) {
+          localStorage.setItem('attendo_active_company_id', nextId);
+        } else {
+          localStorage.removeItem('attendo_active_company_id');
+          localStorage.removeItem('attendo_admin_session_auth');
+          localStorage.removeItem('attendo_admin_company_id');
+        }
+      }
+      if (nextId) autoSyncService.broadcast('ACTIVE_COMPANY_CHANGED', nextId);
     }
     offlineSyncService.enqueue('SYNC_DELETE_COMPANY', companyId);
     autoSyncService.broadcast('COMPANY_DELETED', companyId);
@@ -1069,19 +1085,6 @@ export default function App() {
     autoSyncService.broadcast('LEAVE_REQUESTED', newReq);
   };
 
-  // Navigate back to Apps Manager HQ
-  const handleReturnToManager = () => {
-    setStandaloneMode('MANAGER');
-    setCurrentPortal('APPS_MANAGER');
-    if (typeof window !== 'undefined') {
-      try {
-        window.history.pushState({}, '', '?app=manager');
-      } catch {
-        // ignore
-      }
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#05070D] text-slate-100 flex flex-col relative selection:bg-emerald-500 selection:text-black">
       
@@ -1120,7 +1123,6 @@ export default function App() {
             onUpdateShift={handleUpdateShift}
             onManualPunch={handleNewPunch}
             onSubmitHelpRequest={handleCreateHelpRequest}
-            onBackToAppsManager={handleReturnToManager}
           />
         )}
 
@@ -1134,7 +1136,6 @@ export default function App() {
             onNewPunch={handleNewPunch}
             isKioskOnlyMode={true}
             onSubmitHelpRequest={handleCreateHelpRequest}
-            onBackToAppsManager={handleReturnToManager}
           />
         )}
 
@@ -1156,7 +1157,6 @@ export default function App() {
             onOpenInstallModal={() => openInstallHub('STAFF')}
             isStaffOnlyMode={true}
             onSubmitHelpRequest={handleCreateHelpRequest}
-            onBackToAppsManager={handleReturnToManager}
           />
         )}
 

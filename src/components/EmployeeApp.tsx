@@ -58,7 +58,6 @@ interface EmployeeAppProps {
   companies?: Company[];
   onSelectCompany?: (companyId: string) => void;
   onSubmitHelpRequest?: (request: Omit<HelpRequest, 'id' | 'createdAt' | 'status'>) => Promise<void> | void;
-  onBackToAppsManager?: () => void;
 }
 
 export const EmployeeApp: React.FC<EmployeeAppProps> = ({
@@ -79,7 +78,6 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
   companies = [],
   onSelectCompany,
   onSubmitHelpRequest,
-  onBackToAppsManager,
 }) => {
   // Mobile screen detection
   const [isMobileScreen, setIsMobileScreen] = useState<boolean>(() => {
@@ -115,9 +113,9 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
         );
         if (found) return found.id;
       }
-      return localStorage.getItem('attendo_staff_company_id') || activeCompany?.id || companies?.[0]?.id || 'comp-kma';
+      return localStorage.getItem('attendo_staff_company_id') || activeCompany?.id || companies?.[0]?.id || '';
     }
-    return activeCompany?.id || companies?.[0]?.id || 'comp-kma';
+    return activeCompany?.id || companies?.[0]?.id || '';
   });
 
   const staffCompany = (companies || []).find((c) => c.id === staffCompanyId) || activeCompany || companies?.[0];
@@ -131,12 +129,8 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
     );
   }, [employees, staffCompany]);
 
-  // Current logged in employee session from localStorage
-  const [currentEmployeeId, setCurrentEmployeeId] = useState<string>(() => {
-    const saved = localStorage.getItem('attendo_staff_session_id');
-    if (saved && employees.some(e => e.id === saved)) return saved;
-    return saved || '';
-  });
+  // Current logged in employee session (starts unauthenticated so employee logs in)
+  const [currentEmployeeId, setCurrentEmployeeId] = useState<string>('');
 
   // Staff Sign-in Form State (Company Name + Company Password + Emp ID + PIN)
   const [selectedStaffCompanyId, setSelectedStaffCompanyId] = useState<string>(() => {
@@ -235,12 +229,6 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
   const isClockedIn = latestPunch?.type === 'IN' || latestPunch?.type === 'BREAK_END';
   const isOnBreak = latestPunch?.type === 'BREAK_START';
 
-  // Enrolled employee for the selected company to ease logging in once user adds staff
-  const enrolledStaffForSelectedCompany = React.useMemo(() => {
-    const targetCompId = selectedStaffCompanyId || staffCompany?.id || companies?.[0]?.id;
-    return (employees || []).find((e) => (e.companyId || targetCompId) === targetCompId);
-  }, [employees, selectedStaffCompanyId, staffCompany, companies]);
-
   const companyStaffCount = React.useMemo(() => {
     const targetCompId = selectedStaffCompanyId || staffCompany?.id || companies?.[0]?.id;
     return (employees || []).filter((e) => (e.companyId || targetCompId) === targetCompId).length;
@@ -276,8 +264,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
     const correctCompanyPass = targetCompany.password?.trim();
     const isCompanyPassValid =
       enteredCompanyPass === correctCompanyPass ||
-      (correctCompanyPass && enteredCompanyPass.toLowerCase() === correctCompanyPass.toLowerCase()) ||
-      (targetCompany.code === 'KMA' && (enteredCompanyPass === 'kma' || enteredCompanyPass === 'kma123'));
+      (correctCompanyPass && enteredCompanyPass.toLowerCase() === correctCompanyPass.toLowerCase());
 
     if (!isCompanyPassValid) {
       setLoginError(`Incorrect company password for ${targetCompany.supermarketName}.`);
@@ -375,10 +362,10 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
           >
             <div className="flex items-center gap-2">
               <Smartphone className="w-4 h-4 text-sky-400" />
-              <span>Install Staff App on your phone</span>
+              <span>Open Staff App on your phone</span>
             </div>
             <span className="px-2 py-0.5 rounded-full bg-sky-500/30 text-sky-300 text-[10px] font-bold flex items-center gap-1">
-              <QrCode className="w-3 h-3" /> Scan QR
+              <QrCode className="w-3 h-3" /> Web Address / QR
             </span>
           </button>
         </div>
@@ -448,6 +435,19 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                   </div>
                 )}
 
+                {/* Empty Companies Notice */}
+                {(!companies || companies.length === 0) && (
+                  <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs flex items-start gap-2.5">
+                    <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="block text-white font-semibold">No Business Registered Yet</strong>
+                      <span className="text-[11px] text-slate-300 leading-tight block mt-0.5">
+                        Please have your store owner or manager set up the company first in the Store Admin Console.
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Company Select Dropdown */}
                 {companies && companies.length > 0 && (
                   <div>
@@ -463,9 +463,6 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                         const target = companies.find((c) => c.id === compId);
                         if (target) {
                           setLoginCompanyName(target.supermarketName);
-                          if (target.password) {
-                            setLoginCompanyPassword(target.password);
-                          }
                         }
                         if (loginError) setLoginError(null);
                       }}
@@ -490,6 +487,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                     <input
                       id="staff-login-company"
                       type="text"
+                      autoComplete="off"
                       required
                       placeholder="Enter company code or name"
                       value={loginCompanyName}
@@ -509,6 +507,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                     <input
                       id="staff-login-company-password"
                       type="password"
+                      autoComplete="current-password"
                       required
                       placeholder="Enter company password"
                       value={loginCompanyPassword}
@@ -525,8 +524,9 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                   <input
                     id="staff-login-id"
                     type="text"
+                    autoComplete="off"
                     required
-                    placeholder="e.g. EMP-1001"
+                    placeholder="Enter employee ID or phone"
                     value={loginEmpId}
                     onChange={(e) => setLoginEmpId(e.target.value)}
                     className="w-full bg-slate-900 border border-white/15 rounded-2xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-400 font-mono"
@@ -540,9 +540,10 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                   <input
                     id="staff-login-pin"
                     type="password"
+                    autoComplete="new-password"
                     maxLength={4}
                     required
-                    placeholder="••••"
+                    placeholder="Enter 4-digit PIN"
                     value={loginPin}
                     onChange={(e) => setLoginPin(e.target.value)}
                     className="w-full bg-slate-900 border border-white/15 rounded-2xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-400 font-mono tracking-widest text-center text-sm"
@@ -559,29 +560,6 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                       </span>
                     </div>
                   </div>
-                )}
-
-                {enrolledStaffForSelectedCompany && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const targetComp = companies.find((c) => c.id === (enrolledStaffForSelectedCompany.companyId || selectedStaffCompanyId));
-                      if (targetComp) {
-                        setSelectedStaffCompanyId(targetComp.id);
-                        setLoginCompanyName(targetComp.supermarketName);
-                        setLoginCompanyPassword(targetComp.password || '');
-                      }
-                      setLoginEmpId(enrolledStaffForSelectedCompany.id);
-                      setLoginPin(enrolledStaffForSelectedCompany.pin || '1234');
-                      if (loginError) setLoginError(null);
-                      soundService.playSuccessChime();
-                    }}
-                    className="w-full py-1.5 px-2.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-300 text-[10px] font-semibold flex items-center justify-between cursor-pointer transition-all"
-                    title="Click to select enrolled staff"
-                  >
-                    <span className="truncate">Enrolled: {enrolledStaffForSelectedCompany.name.split(' ')[0]} ({enrolledStaffForSelectedCompany.id})</span>
-                    <span className="font-mono text-emerald-400 font-bold ml-1 shrink-0">PIN: {enrolledStaffForSelectedCompany.pin || '••••'}</span>
-                  </button>
                 )}
 
                 <button
@@ -613,18 +591,6 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                     <LifeBuoy className="w-3.5 h-3.5" />
                     <span>Need Help?</span>
                   </button>
-
-                  {onBackToAppsManager && (
-                    <button
-                      type="button"
-                      onClick={onBackToAppsManager}
-                      className="text-purple-300 hover:text-white font-semibold text-[11px] flex items-center gap-1.5 py-1 px-3 rounded-xl bg-purple-500/15 border border-purple-500/30 hover:bg-purple-500/25 transition-all cursor-pointer"
-                      title="Return to Apps Manager"
-                    >
-                      <Layers className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Apps Manager</span>
-                    </button>
-                  )}
                 </div>
               </div>
 
@@ -787,29 +753,25 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                   </div>
                 </div>
 
-                {/* Mobile Attendance Punch Action Card */}
-                <div className="rounded-2xl p-4 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-white/15 shadow-xl space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center">
-                        <ScanFace className="w-4 h-4" />
+                {/* Mobile Attendance Punch Action Card - Only shown if mobile punch is enabled */}
+                {currentEmployee.allowMobilePunch !== false && (
+                  <div className="rounded-2xl p-4 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-white/15 shadow-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center">
+                          <ScanFace className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-white block">Mobile Attendance Punch</span>
+                          <span className="text-[10px] text-slate-400">Biometric FaceID + Geofence</span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-xs font-bold text-white block">Mobile Attendance Punch</span>
-                        <span className="text-[10px] text-slate-400">Biometric FaceID + Geofence</span>
-                      </div>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1">
+                        <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                        Ready
+                      </span>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                      {currentEmployee.allowMobilePunch === false ? 'Kiosk Only' : 'Ready'}
-                    </span>
-                  </div>
 
-                  {currentEmployee.allowMobilePunch === false ? (
-                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-200 leading-relaxed">
-                      Mobile punching has been restricted by your Store HR Manager. Please clock in and out using the physical Entrance Face Kiosk.
-                    </div>
-                  ) : (
                     <div>
                       {!isClockedIn && !isOnBreak ? (
                         <button
@@ -865,8 +827,8 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Quick Stats Grid */}
                 <div className="grid grid-cols-2 gap-2.5">
@@ -1171,7 +1133,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                   <div className="flex items-center justify-between text-slate-300">
                     <span className="text-slate-400">Mobile Punch:</span>
                     <span className={currentEmployee.allowMobilePunch === false ? "text-amber-400 font-semibold" : "text-emerald-400 font-semibold"}>
-                      {currentEmployee.allowMobilePunch === false ? "Kiosk Only (Restricted)" : "Enabled (Face ID + GPS)"}
+                      {currentEmployee.allowMobilePunch === false ? "Entrance Kiosk Only" : "Enabled (Face ID + GPS)"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-slate-300">
@@ -1319,7 +1281,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                     rows={2}
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    placeholder="Briefly state reason for leave..."
+                    placeholder="Reason for leave"
                     required
                     className="w-full bg-slate-900 border border-white/15 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-sky-400"
                   />

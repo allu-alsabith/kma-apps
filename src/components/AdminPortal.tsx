@@ -86,7 +86,6 @@ interface AdminPortalProps {
   onUpdateShift?: (shift: Shift) => void;
   onManualPunch: (record: Omit<AttendanceRecord, 'id' | 'timestamp' | 'date' | 'time'>) => void;
   onSubmitHelpRequest?: (request: Omit<HelpRequest, 'id' | 'createdAt' | 'status'>) => Promise<void> | void;
-  onBackToAppsManager?: () => void;
 }
 
 export const AdminPortal: React.FC<AdminPortalProps> = ({
@@ -118,7 +117,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onUpdateShift,
   onManualPunch,
   onSubmitHelpRequest,
-  onBackToAppsManager,
 }) => {
   const [showAccountHelpModal, setShowAccountHelpModal] = useState<boolean>(false);
   const [adminTab, setAdminTab] = useState<'OVERVIEW' | 'DIRECTORY' | 'SHIFTS' | 'LEAVES' | 'PAYROLL'>('OVERVIEW');
@@ -126,26 +124,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState<string>('ALL');
 
   // Store Admin Company Session Authentication
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const isAuth = localStorage.getItem('attendo_admin_session_auth') === 'true';
-      const savedCompId = localStorage.getItem('attendo_admin_company_id');
-      if (isAuth && savedCompId) {
-        return true;
-      }
-    }
-    return false;
-  });
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(false);
 
-  const [selectedLoginCompanyId, setSelectedLoginCompanyId] = useState<string>(() => {
-    return activeCompany?.id || companies[0]?.id || '';
-  });
-  const [loginCompanyName, setLoginCompanyName] = useState<string>(() => {
-    return activeCompany?.supermarketName || companies[0]?.supermarketName || '';
-  });
-  const [loginCompanyCode, setLoginCompanyCode] = useState<string>(() => {
-    return activeCompany?.code || companies[0]?.code || '';
-  });
+  const [loginCompanyName, setLoginCompanyName] = useState<string>('');
+  const [loginCompanyCode, setLoginCompanyCode] = useState<string>('');
   const [loginCompanyPassword, setLoginCompanyPassword] = useState<string>('');
   const [showLoginPassword, setShowLoginPassword] = useState<boolean>(false);
   const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
@@ -195,19 +177,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     }
   };
 
-  // Sync login fields when activeCompany or companies prop updates
-  useEffect(() => {
-    if (activeCompany) {
-      setSelectedLoginCompanyId(activeCompany.id);
-      setLoginCompanyName(activeCompany.supermarketName);
-      setLoginCompanyCode(activeCompany.code);
-    } else if (companies && companies.length > 0) {
-      setSelectedLoginCompanyId(companies[0].id);
-      setLoginCompanyName(companies[0].supermarketName);
-      setLoginCompanyCode(companies[0].code);
-    }
-  }, [activeCompany, companies]);
-
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setAdminLoginError(null);
@@ -216,8 +185,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     const inputCode = loginCompanyCode.trim().toUpperCase();
     const inputPassword = loginCompanyPassword.trim();
 
-    if (!inputCode && !inputName && !selectedLoginCompanyId) {
-      setAdminLoginError('Please select a company or enter your Company Code.');
+    if (!inputCode && !inputName) {
+      setAdminLoginError('Please enter your Company Code or Name.');
       soundService.playWarningTone();
       return;
     }
@@ -227,7 +196,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       return;
     }
 
-    // Match company prioritizing Code, then Supermarket Name / Full Name, then selected dropdown
+    // Match company prioritizing Code, then Supermarket Name / Full Name
     let matchedCompany = companies.find((c) => inputCode && c.code.trim().toUpperCase() === inputCode);
     if (!matchedCompany && inputName) {
       matchedCompany = companies.find(
@@ -237,28 +206,22 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           c.code.trim().toLowerCase() === inputName
       );
     }
-    if (!matchedCompany && selectedLoginCompanyId) {
-      matchedCompany = companies.find((c) => c.id === selectedLoginCompanyId);
-    }
 
     if (!matchedCompany) {
-      setAdminLoginError(`No registered company found with Code "${inputCode || loginCompanyName}". Open Apps Manager to view or create companies.`);
+      setAdminLoginError(`No registered company found with Code "${inputCode || loginCompanyName}". Please verify store credentials or contact administrator.`);
       soundService.playWarningTone();
       return;
     }
 
-    // Validate Password (supporting exact, case-insensitive, PIN, and legacy fallbacks)
+    // Validate Password (supporting exact, case-insensitive, and PIN)
     const expectedPassword = (matchedCompany.password || '').trim();
     const isPasswordValid =
       (expectedPassword && inputPassword === expectedPassword) ||
       (expectedPassword && inputPassword.toLowerCase() === expectedPassword.toLowerCase()) ||
-      inputPassword === matchedCompany.adminPin?.trim() ||
-      inputPassword === 'admin123' ||
-      inputPassword === 'kma' ||
-      (matchedCompany.code === 'KMA' && (inputPassword === 'kma' || inputPassword === 'kma123'));
+      inputPassword === matchedCompany.adminPin?.trim();
 
     if (!isPasswordValid) {
-      setAdminLoginError(`Incorrect Company Password for ${matchedCompany.supermarketName}. Check password configured in Apps Manager.`);
+      setAdminLoginError(`Incorrect Company Password for ${matchedCompany.supermarketName}. Please verify password or contact administrator.`);
       soundService.playWarningTone();
       return;
     }
@@ -299,8 +262,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [newEmpPayBasis, setNewEmpPayBasis] = useState<PayBasis>('DAILY');
   const [newEmpWageRate, setNewEmpWageRate] = useState<number>(650);
   const [newEmpAllowMobilePunch, setNewEmpAllowMobilePunch] = useState<boolean>(true);
-  const [newEmpPin, setNewEmpPin] = useState<string>('1234');
-  const [newEmpPhone, setNewEmpPhone] = useState<string>('+91 98765 43210');
+  const [newEmpPin, setNewEmpPin] = useState<string>('');
+  const [newEmpPhone, setNewEmpPhone] = useState<string>('');
   const [newEmpAvatar, setNewEmpAvatar] = useState<string>('');
 
   const handleOpenAddEmp = () => {
@@ -313,8 +276,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     setNewEmpPayBasis('DAILY');
     setNewEmpWageRate(650);
     setNewEmpAllowMobilePunch(true);
-    setNewEmpPin(String(1000 + (nextNum % 9000)));
-    setNewEmpPhone('+91 98765 43210');
+    setNewEmpPin('');
+    setNewEmpPhone('');
     setNewEmpAvatar('');
     setEnrollError(null);
     setShowAddEmpModal(true);
@@ -448,12 +411,27 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
     const trimmedRole = newEmpRole.trim();
     if (!trimmedRole) {
-      setEnrollError('Please enter a job designation (e.g. Cashier, Butcher, Stocker).');
+      setEnrollError('Please enter a job designation.');
       soundService.playWarningTone();
       return;
     }
 
     const assignedId = newEmpId.trim() || `EMP-${1000 + employees.length + 1}`;
+    
+    const trimmedPin = newEmpPin.trim();
+    if (!trimmedPin || trimmedPin.length !== 4 || !/^\d{4}$/.test(trimmedPin)) {
+      setEnrollError('Please enter a secure 4-digit staff PIN (e.g. 7492).');
+      soundService.playWarningTone();
+      return;
+    }
+
+    const trimmedPhone = newEmpPhone.trim();
+    if (!trimmedPhone) {
+      setEnrollError('Please enter the employee contact phone number.');
+      soundService.playWarningTone();
+      return;
+    }
+
     const finalAvatar =
       newEmpAvatar.trim() ||
       `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(trimmedName)}&backgroundColor=0284c7,059669,d97706`;
@@ -467,15 +445,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         : Math.round(rateNum / 200);
 
     const newEmp: Employee = {
-      companyId: activeCompany?.id || selectedLoginCompanyId || 'comp-kma',
+      companyId: activeCompany?.id || companies?.[0]?.id || '',
       id: assignedId,
       name: trimmedName,
       role: trimmedRole,
       department: newEmpDept,
       shiftId: newEmpShift,
-      phone: newEmpPhone.trim() || '+91 98765 43210',
-      email: `${trimmedName.toLowerCase().replace(/\s+/g, '.')}@${(activeCompany?.code || 'kma').toLowerCase()}supermarket.com`,
-      pin: newEmpPin.trim() || '1234',
+      phone: trimmedPhone,
+      email: `${trimmedName.toLowerCase().replace(/\s+/g, '.')}@${(activeCompany?.code || 'store').toLowerCase()}supermarket.com`,
+      pin: trimmedPin,
       avatar: finalAvatar,
       faceRegistered: true,
       faceRegisteredDate: new Date().toISOString().split('T')[0],
@@ -602,17 +580,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 Supermarket Store HR & Workforce Administration
               </p>
             </div>
-            {onBackToAppsManager && (
-              <button
-                type="button"
-                onClick={onBackToAppsManager}
-                className="ml-auto px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-white/10"
-                title="Open Enterprise Apps Manager & Store Provisioning"
-              >
-                <Layers className="w-3.5 h-3.5 text-amber-400" />
-                <span>Apps Manager</span>
-              </button>
-            )}
           </div>
 
           {/* Guidance Banner */}
@@ -634,42 +601,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </div>
             )}
 
-            {/* Company Quick-Selector Dropdown */}
-            {companies && companies.length > 0 && (
-              <div>
-                <label className="text-xs font-bold text-slate-300 block mb-1.5 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Store className="w-3.5 h-3.5 text-purple-400" />
-                    <span>Select Registered Company</span>
-                  </span>
-                  <span className="text-[10px] text-purple-300 font-semibold">{companies.length} Available</span>
-                </label>
-                <div className="relative">
-                  <select
-                    id="select-admin-company"
-                    value={selectedLoginCompanyId}
-                    onChange={(e) => {
-                      const compId = e.target.value;
-                      setSelectedLoginCompanyId(compId);
-                      const target = companies.find((c) => c.id === compId);
-                      if (target) {
-                        setLoginCompanyName(target.supermarketName);
-                        setLoginCompanyCode(target.code);
-                        if (target.password) {
-                          setLoginCompanyPassword(target.password);
-                        }
-                      }
-                      if (adminLoginError) setAdminLoginError(null);
-                    }}
-                    className="w-full bg-slate-900/90 border border-white/15 focus:border-purple-400 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none transition-all cursor-pointer font-medium"
-                  >
-                    {companies.map((c) => (
-                      <option key={c.id} value={c.id} className="bg-slate-950 text-white">
-                        [{c.code}] {c.supermarketName} — {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            {/* Empty Companies Notice */}
+            {(!companies || companies.length === 0) && (
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+                <p className="leading-relaxed">
+                  No company has been registered yet. Please complete the Business Registration wizard to set up your store credentials.
+                </p>
               </div>
             )}
 
@@ -729,7 +667,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   <KeyRound className="w-3.5 h-3.5 text-purple-400" />
                   <span>Company Password</span>
                 </span>
-                <span className="text-[10px] text-slate-500">Configured in Apps Manager</span>
+                <span className="text-[10px] text-slate-500">Store Admin Password</span>
               </label>
               <div className="relative">
                 <input
@@ -842,13 +780,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 <span className="text-[10px] text-slate-400 font-semibold">Store:</span>
                 <select
                   id="select-admin-active-company"
-                  value={activeCompany?.id || selectedLoginCompanyId}
+                  value={activeCompany?.id || companies?.[0]?.id || ''}
                   onChange={(e) => {
                     const newCompId = e.target.value;
                     if (onSelectCompany) {
                       onSelectCompany(newCompId);
                     }
-                    setSelectedLoginCompanyId(newCompId);
                     if (typeof window !== 'undefined') {
                       localStorage.setItem('attendo_active_company_id', newCompId);
                       localStorage.setItem('attendo_admin_company_id', newCompId);
@@ -905,18 +842,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               <LogOut className="w-3 h-3 text-rose-400" />
               <span>Sign Out</span>
             </button>
-
-            {/* Back to Apps Manager */}
-            {onBackToAppsManager && (
-              <button
-                onClick={onBackToAppsManager}
-                className="px-2.5 py-1 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/40 font-semibold text-[11px] flex items-center gap-1.5 cursor-pointer transition-all"
-                title="Return to Apps Manager & Enterprise HQ"
-              >
-                <Layers className="w-3 h-3 text-amber-400" />
-                <span>Apps Manager</span>
-              </button>
-            )}
           </div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight mt-1">
             {activeCompany?.supermarketName || 'Store'} Manager & HR Administration
@@ -1254,7 +1179,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 <input
                   type="text"
-                  placeholder="Search staff name, ID, role..."
+                  placeholder="Search staff name, ID, role"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-slate-900/80 border border-white/15 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
@@ -2034,7 +1959,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     <label className="text-xs font-semibold text-slate-300 block mb-1">Employee ID (Optional)</label>
                     <input
                       type="text"
-                      placeholder={`e.g. EMP-${1000 + employees.length + 1}`}
+                      placeholder="Employee ID"
                       value={newEmpId}
                       onChange={(e) => setNewEmpId(e.target.value)}
                       className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white font-mono focus:border-emerald-400 outline-none"
@@ -2045,7 +1970,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     <input
                       id="enroll-staff-name-input"
                       type="text"
-                      placeholder="e.g. John Doe"
+                      placeholder="Full name"
                       value={newEmpName}
                       onChange={(e) => {
                         setNewEmpName(e.target.value);
@@ -2062,7 +1987,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   <label className="text-xs font-semibold text-slate-300 block mb-1">Job Designation *</label>
                   <input
                     type="text"
-                    placeholder="e.g. Cashier / Butcher / Floor Manager"
+                    placeholder="Job designation / role"
                     value={newEmpRole}
                     onChange={(e) => {
                       setNewEmpRole(e.target.value);
@@ -2147,7 +2072,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                           value={newEmpWageRate}
                           onChange={(e) => setNewEmpWageRate(parseFloat(e.target.value) || 0)}
                           className="w-full bg-slate-900 border border-white/15 rounded-xl pl-8 pr-3 py-2 text-xs text-white font-mono font-bold focus:border-emerald-400 outline-none"
-                          placeholder={newEmpPayBasis === 'DAILY' ? '650' : newEmpPayBasis === 'WEEKLY' ? '4200' : '18000'}
+                          placeholder="Enter rate amount"
                         />
                       </div>
                     </div>
@@ -2244,11 +2169,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   <div>
                     <label className="text-xs font-semibold text-slate-300 block mb-1">Staff PIN (4-Digits)</label>
                     <input
-                      type="text"
+                      type="password"
                       maxLength={4}
+                      placeholder="e.g. 5821"
                       value={newEmpPin}
-                      onChange={(e) => setNewEmpPin(e.target.value)}
-                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white font-mono text-center tracking-widest focus:border-emerald-400 outline-none"
+                      onChange={(e) => setNewEmpPin(e.target.value.replace(/\D/g, ''))}
+                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white font-mono text-center tracking-widest focus:border-emerald-400 outline-none placeholder:text-slate-600"
                     />
                   </div>
                 </div>
@@ -2256,11 +2182,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 <div>
                   <label className="text-xs font-semibold text-slate-300 block mb-1">Phone Number</label>
                   <input
-                    type="text"
+                    type="tel"
                     value={newEmpPhone}
                     onChange={(e) => setNewEmpPhone(e.target.value)}
-                    className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white font-mono focus:border-emerald-400 outline-none"
-                    placeholder="+1 (555) 000-0000"
+                    className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white font-mono focus:border-emerald-400 outline-none placeholder:text-slate-600"
+                    placeholder="e.g. +91 98765 43210"
                   />
                 </div>
 
