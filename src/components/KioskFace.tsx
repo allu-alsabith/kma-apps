@@ -23,16 +23,20 @@ import {
   ShieldCheck, 
   Eye, 
   EyeOff,
-  KeyRound,
   Users,
   Hash,
   Layers,
-  Info
+  Info,
+  UserX,
+  ShieldAlert,
+  AlertOctagon,
+  CameraOff
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { Employee, AttendanceRecord, PunchType, Company, HelpRequest } from '../types';
+import { Employee, AttendanceRecord, PunchType, Company, HelpRequest, StaffNotification } from '../types';
 import { soundService } from '../services/sound';
 import { formatTime12H, get12HTimeString } from '../utils/formatters';
+import { matchFaceAgainstEnrolledStaff } from '../utils/faceRecognition';
 import { AccountHelpModal } from './AccountHelpModal';
 import { NetworkSyncBadge } from './NetworkSyncBadge';
 
@@ -46,6 +50,7 @@ interface KioskFaceProps {
   companies?: Company[];
   onSelectCompany?: (companyId: string) => void;
   onSubmitHelpRequest?: (request: Omit<HelpRequest, 'id' | 'createdAt' | 'status'>) => Promise<void> | void;
+  onSecurityAlert?: (notification: StaffNotification) => void;
 }
 
 export const KioskFace: React.FC<KioskFaceProps> = ({
@@ -58,6 +63,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   companies = [],
   onSelectCompany,
   onSubmitHelpRequest,
+  onSecurityAlert,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -195,10 +201,14 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   const [isSoundEnabled, setIsSoundEnabled] = useState<boolean>(true);
 
   // Scanning & Punch Execution States
-  const [scanningStatus, setScanningStatus] = useState<'IDLE' | 'DETECTING' | 'MATCHED' | 'FAILED'>('IDLE');
+  const [scanningStatus, setScanningStatus] = useState<
+    'IDLE' | 'DETECTING' | 'MATCHED' | 'FAILED' | 'NO_FACE' | 'UNRECOGNIZED'
+  >('IDLE');
   const [matchedEmployee, setMatchedEmployee] = useState<Employee | null>(null);
   const [matchScore, setMatchScore] = useState<number>(0);
   const [executedPunchType, setExecutedPunchType] = useState<PunchType | null>(null);
+  const [unrecognizedSnapshot, setUnrecognizedSnapshot] = useState<string | null>(null);
+  const [securityNotice, setSecurityNotice] = useState<string | null>(null);
 
   // Dynamic Options State for Staff punch
   const [staffPunchOptions, setStaffPunchOptions] = useState<{
@@ -222,12 +232,6 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
 
   // Selected staff member for targeted scanning / punch
   const [selectedStaffIdForScan, setSelectedStaffIdForScan] = useState<string>('');
-
-  // Staff PIN Keypad Punch Modal
-  const [showStaffPinModal, setShowStaffPinModal] = useState<boolean>(false);
-  const [staffPinEmpId, setStaffPinEmpId] = useState<string>('');
-  const [staffPinInput, setStaffPinInput] = useState<string>('');
-  const [staffPinError, setStaffPinError] = useState<string | null>(null);
 
   // Start Camera Feed
   const startCamera = useCallback(async () => {
@@ -304,8 +308,9 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   const executePunch = useCallback((
     employee: Employee,
     typeToPunch: PunchType,
-    method: 'KIOSK_FACE' | 'KIOSK_PIN' = 'KIOSK_FACE',
-    confidence = 0.985
+    method: 'KIOSK_FACE' = 'KIOSK_FACE',
+    confidence = 0.985,
+    snapshotUrl?: string
   ) => {
     const isLate = Math.random() > 0.88;
     const status = isLate ? 'LATE' : 'ON_TIME';
@@ -319,8 +324,9 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       device: method,
       kioskLocation: `${companySupermarketName} Supermarket • Staff Entrance Terminal`,
       confidenceScore: confidence,
+      snapshotUrl: snapshotUrl || employee.avatar,
       status: status,
-      notes: `${typeToPunch} punch processed via ${method === 'KIOSK_PIN' ? 'Staff PIN Pad' : 'Biometric FaceID'}.`,
+      notes: `${typeToPunch} punch processed via Biometric FaceID.`,
     });
 
     const now = new Date();
@@ -332,7 +338,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       time: timeString,
       type: typeToPunch,
       status: status,
-      avatar: employee.avatar,
+      avatar: snapshotUrl || employee.avatar,
     });
 
     setExecutedPunchType(typeToPunch);
@@ -370,121 +376,161 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       setMatchedEmployee(null);
       setExecutedPunchType(null);
       setStaffPunchOptions(null);
+      setUnrecognizedSnapshot(null);
+      setSecurityNotice(null);
+      setSelectedStaffIdForScan('');
     }, 3400);
   }, [onNewPunch, connectedCompany, companySupermarketName, isSoundEnabled]);
 
-  // Biometric Face Scan Verification & Smart Punch Routing
-  const handleTriggerFaceScan = (targetedStaff?: Employee) => {
+  // Advanced Biometric Face Scan Verification & Security Inspection
+  const handleTriggerFaceScan = async (targetedStaff?: Employee) => {
     if (scanningStatus === 'DETECTING' || scanningStatus === 'MATCHED') return;
-    if (companyEmployees.length === 0) return;
+    
+    if (companyEmployees.length === 0) {
+      if (isSoundEnabled) {
+        soundService.speakWarning(`No staff enrolled for ${companySupermarketName} yet. Please enroll staff in Store Admin.`);
+      }
+      return;
+    }
 
     setScanningStatus('DETECTING');
+    setSecurityNotice(null);
+    setUnrecognizedSnapshot(null);
     if (isSoundEnabled) {
       soundService.playScanBeep();
     }
 
-    // Capture frame on canvas if video is active
-    if (videoRef.current && canvasRef.current) {
-      try {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        canvas.width = video.videoWidth || 640;
-        canvas.height = video.videoHeight || 480;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        }
-      } catch {
-        // Fallback
-      }
-    }
-
-    // Fast biometric verification matching against enrolled company staff
-    setTimeout(() => {
-      const targetEmp = targetedStaff ||
-        (selectedStaffIdForScan ? companyEmployees.find(e => e.id === selectedStaffIdForScan) : null) ||
-        companyEmployees[0];
-
-      if (targetEmp) {
-        const score = parseFloat((0.982 + Math.random() * 0.015).toFixed(3));
-        setMatchScore(score);
-        setMatchedEmployee(targetEmp);
-
-        const { currentState, lastPunchTime } = getStaffCurrentTodayState(targetEmp);
-        const firstName = targetEmp.name.split(' ')[0];
-
-        if (currentState === 'NOT_PUNCHED_IN') {
-          // If not punched in: automatically record Punch IN and say punched in!
-          setScanningStatus('MATCHED');
-          executePunch(targetEmp, 'IN', 'KIOSK_FACE', score);
-        } else if (currentState === 'ON_SHIFT') {
-          // If already punched in: show options like start break and punch out
-          setScanningStatus('MATCHED');
-          setStaffPunchOptions({
-            employee: targetEmp,
-            currentState: 'ON_SHIFT',
-            lastPunchTime,
-          });
-          if (isSoundEnabled) {
-            soundService.playNotificationTone();
-            soundService.speakConfirmation(`${firstName} verified. Please select Start Break or Punch Out.`);
-          }
-        } else if (currentState === 'ON_BREAK') {
-          // If already started break: show options end break only
-          setScanningStatus('MATCHED');
-          setStaffPunchOptions({
-            employee: targetEmp,
-            currentState: 'ON_BREAK',
-            lastPunchTime,
-          });
-          if (isSoundEnabled) {
-            soundService.playNotificationTone();
-            soundService.speakConfirmation(`Welcome back ${firstName}. Tap End Break to resume shift.`);
-          }
-        }
-      } else {
-        setScanningStatus('FAILED');
+    if (!videoRef.current) {
+      setScanningStatus('NO_FACE');
+      if (isSoundEnabled) {
         soundService.playWarningTone();
-        setTimeout(() => setScanningStatus('IDLE'), 1200);
+        soundService.speakWarning('Camera stream offline. Please check camera permission.');
       }
-    }, 320);
-  };
-
-  // Staff 4-Digit PIN Punch Handler (Direct Keypad Punch)
-  const handleStaffPinPunch = (chosenType?: PunchType) => {
-    setStaffPinError(null);
-    const pin = staffPinInput.trim();
-    if (!pin) {
-      setStaffPinError('Please enter your 4-digit Staff PIN.');
-      soundService.playWarningTone();
-      return;
-    }
-    const foundEmp = companyEmployees.find((e) => {
-      const idMatches = staffPinEmpId.trim() ? (
-        e.id.toUpperCase() === staffPinEmpId.trim().toUpperCase() ||
-        e.phone.replace(/\D/g, '') === staffPinEmpId.trim().replace(/\D/g, '')
-      ) : true;
-      return idMatches && e.pin === pin;
-    });
-
-    if (!foundEmp) {
-      setStaffPinError('Invalid Staff PIN or Employee ID. Check with Store HR.');
-      soundService.playWarningTone();
       return;
     }
 
-    const { currentState } = getStaffCurrentTodayState(foundEmp);
-    let punchTypeToRecord: PunchType = chosenType || 'IN';
-    if (!chosenType) {
-      if (currentState === 'NOT_PUNCHED_IN') punchTypeToRecord = 'IN';
-      else if (currentState === 'ON_SHIFT') punchTypeToRecord = 'OUT';
-      else if (currentState === 'ON_BREAK') punchTypeToRecord = 'BREAK_END';
-    }
+    const video = videoRef.current;
+    const targetEmpId = targetedStaff?.id || selectedStaffIdForScan || undefined;
 
-    executePunch(foundEmp, punchTypeToRecord, 'KIOSK_PIN', 1.0);
-    setShowStaffPinModal(false);
-    setStaffPinInput('');
-    setStaffPinEmpId('');
+    try {
+      // Analyze live camera feed using high-speed biometric face recognition engine
+      const matchResult = await matchFaceAgainstEnrolledStaff(
+        video, 
+        companyEmployees, 
+        targetEmpId
+      );
+
+      // SECURITY CHECK 1: NO HUMAN FACE PRESENT IN RETICLE (e.g. camera covered, empty room, dark)
+      if (matchResult.status === 'NO_FACE') {
+        setScanningStatus('NO_FACE');
+        setMatchedEmployee(null);
+        setSecurityNotice('No face detected in screen. Please align your face inside the camera reticle.');
+        if (isSoundEnabled) {
+          soundService.playWarningTone();
+          soundService.speakWarning('No face detected in screen. Please look directly into the camera.');
+        }
+
+        if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+        resetTimerRef.current = setTimeout(() => {
+          setScanningStatus('IDLE');
+          setSecurityNotice(null);
+          setSelectedStaffIdForScan('');
+        }, 3600);
+        return;
+      }
+
+      // SECURITY CHECK 2: UNRECOGNIZED FACE (Non-staff / Stranger / Intruder)
+      if (matchResult.status === 'UNRECOGNIZED' || !matchResult.matchedEmployee) {
+        setScanningStatus('UNRECOGNIZED');
+        setMatchedEmployee(null);
+        setUnrecognizedSnapshot(matchResult.snapshotDataUrl);
+        setSecurityNotice('Unrecognized face detected. Access denied - not an enrolled staff member.');
+
+        if (isSoundEnabled) {
+          soundService.playSecurityAlertTone();
+          soundService.speakWarning('Unrecognized face. Access denied. Incident logged to Store Security.');
+        }
+
+        // Push real-time security alert with the captured photo to Store Admin App
+        if (onSecurityAlert && connectedCompany) {
+          const now = new Date();
+          const securityAlertNotification: StaffNotification = {
+            id: `notif-sec-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            companyId: connectedCompany.id,
+            employeeId: 'ADMIN',
+            employeeName: 'Security Gate Alert',
+            title: '🚨 Unrecognizable Face Detected at Entrance Kiosk',
+            message: `An unrecognized person was detected attempting to verify at Entrance Kiosk "${companySupermarketName} • Staff Entrance". Biometrics did not match any enrolled staff. High-resolution photo captured for security inspection.`,
+            type: 'SECURITY_ALERT',
+            timestamp: now.toISOString(),
+            timeFormatted: get12HTimeString(now, false),
+            read: false,
+            photoUrl: matchResult.snapshotDataUrl,
+            meta: {
+              capturedPhoto: matchResult.snapshotDataUrl,
+              kioskLocation: `${companySupermarketName} • Staff Entrance Terminal`,
+              alertType: 'UNRECOGNIZED_FACE',
+            },
+          };
+          onSecurityAlert(securityAlertNotification);
+        }
+
+        if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+        resetTimerRef.current = setTimeout(() => {
+          setScanningStatus('IDLE');
+          setUnrecognizedSnapshot(null);
+          setSecurityNotice(null);
+          setSelectedStaffIdForScan('');
+        }, 4600);
+        return;
+      }
+
+      // SECURITY CHECK 3: VERIFIED & CONFIRMED STORE STAFF
+      const targetEmp = matchResult.matchedEmployee;
+      const score = matchResult.confidence;
+      setMatchScore(score);
+      setMatchedEmployee(targetEmp);
+
+      const { currentState, lastPunchTime } = getStaffCurrentTodayState(targetEmp);
+      const firstName = targetEmp.name.split(' ')[0];
+
+      if (currentState === 'NOT_PUNCHED_IN') {
+        // If not punched in: automatically record Punch IN and announce welcome!
+        setScanningStatus('MATCHED');
+        executePunch(targetEmp, 'IN', 'KIOSK_FACE', score, matchResult.snapshotDataUrl);
+      } else if (currentState === 'ON_SHIFT') {
+        // If already punched in: show options like start break and punch out
+        setScanningStatus('MATCHED');
+        setStaffPunchOptions({
+          employee: targetEmp,
+          currentState: 'ON_SHIFT',
+          lastPunchTime,
+        });
+        if (isSoundEnabled) {
+          soundService.playNotificationTone();
+          soundService.speakConfirmation(`${firstName} verified. Please select Start Break or Punch Out.`);
+        }
+      } else if (currentState === 'ON_BREAK') {
+        // If already started break: show options end break only
+        setScanningStatus('MATCHED');
+        setStaffPunchOptions({
+          employee: targetEmp,
+          currentState: 'ON_BREAK',
+          lastPunchTime,
+        });
+        if (isSoundEnabled) {
+          soundService.playNotificationTone();
+          soundService.speakConfirmation(`Welcome back ${firstName}. Tap End Break to resume shift.`);
+        }
+      }
+    } catch {
+      setScanningStatus('FAILED');
+      if (isSoundEnabled) {
+        soundService.playWarningTone();
+      }
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = setTimeout(() => setScanningStatus('IDLE'), 1800);
+    }
   };
 
   // Immediate Dismiss / Reset Scanner
@@ -796,16 +842,28 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                   : 'border-4 border-emerald-400 shadow-[0_0_50px_rgba(16,185,129,0.5)] scale-105'
                 : scanningStatus === 'DETECTING'
                 ? 'border-2 border-dashed border-sky-400 shadow-[0_0_40px_rgba(56,189,248,0.4)] animate-pulse'
+                : scanningStatus === 'NO_FACE'
+                ? 'border-3 border-amber-400 shadow-[0_0_50px_rgba(245,158,11,0.6)] animate-pulse'
+                : scanningStatus === 'UNRECOGNIZED'
+                ? 'border-4 border-red-500 shadow-[0_0_60px_rgba(239,68,68,0.7)] animate-shake'
                 : scanningStatus === 'FAILED'
                 ? 'border-2 border-red-500 shadow-[0_0_40px_rgba(239,68,68,0.4)]'
                 : 'border border-white/30 shadow-[inset_0_0_20px_rgba(255,255,255,0.1)]'
             }`}
           >
             {/* Crosshairs */}
-            <div className="absolute top-4 left-6 w-5 h-5 border-t-2 border-l-2 border-emerald-400/80 rounded-tl-lg"></div>
-            <div className="absolute top-4 right-6 w-5 h-5 border-t-2 border-r-2 border-emerald-400/80 rounded-tr-lg"></div>
-            <div className="absolute bottom-4 left-6 w-5 h-5 border-b-2 border-l-2 border-emerald-400/80 rounded-bl-lg"></div>
-            <div className="absolute bottom-4 right-6 w-5 h-5 border-b-2 border-r-2 border-emerald-400/80 rounded-br-lg"></div>
+            <div className={`absolute top-4 left-6 w-5 h-5 border-t-2 border-l-2 rounded-tl-lg ${
+              scanningStatus === 'UNRECOGNIZED' ? 'border-red-400' : scanningStatus === 'NO_FACE' ? 'border-amber-400' : 'border-emerald-400/80'
+            }`}></div>
+            <div className={`absolute top-4 right-6 w-5 h-5 border-t-2 border-r-2 rounded-tr-lg ${
+              scanningStatus === 'UNRECOGNIZED' ? 'border-red-400' : scanningStatus === 'NO_FACE' ? 'border-amber-400' : 'border-emerald-400/80'
+            }`}></div>
+            <div className={`absolute bottom-4 left-6 w-5 h-5 border-b-2 border-l-2 rounded-bl-lg ${
+              scanningStatus === 'UNRECOGNIZED' ? 'border-red-400' : scanningStatus === 'NO_FACE' ? 'border-amber-400' : 'border-emerald-400/80'
+            }`}></div>
+            <div className={`absolute bottom-4 right-6 w-5 h-5 border-b-2 border-r-2 rounded-br-lg ${
+              scanningStatus === 'UNRECOGNIZED' ? 'border-red-400' : scanningStatus === 'NO_FACE' ? 'border-amber-400' : 'border-emerald-400/80'
+            }`}></div>
 
             {/* Scanning Laser Beam */}
             {scanningStatus === 'DETECTING' && (
@@ -823,6 +881,20 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
               </div>
             )}
 
+            {scanningStatus === 'NO_FACE' && (
+              <div className="w-20 h-20 rounded-full bg-amber-500/30 backdrop-blur-xl border-2 border-amber-400 flex flex-col items-center justify-center text-amber-300 animate-scale-in shadow-2xl">
+                <UserX className="w-10 h-10" />
+                <span className="text-[9px] font-black uppercase mt-0.5 tracking-wider">No Face</span>
+              </div>
+            )}
+
+            {scanningStatus === 'UNRECOGNIZED' && (
+              <div className="w-20 h-20 rounded-full bg-red-600/40 backdrop-blur-xl border-2 border-red-500 flex flex-col items-center justify-center text-red-300 animate-scale-in shadow-2xl">
+                <ShieldAlert className="w-10 h-10 animate-bounce" />
+                <span className="text-[9px] font-black uppercase mt-0.5 tracking-wider">Denied</span>
+              </div>
+            )}
+
             {scanningStatus === 'FAILED' && (
               <div className="w-16 h-16 rounded-full bg-red-500/30 backdrop-blur-xl border border-red-400 flex items-center justify-center text-red-400">
                 <AlertTriangle className="w-8 h-8" />
@@ -835,12 +907,22 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
             {scanningStatus === 'DETECTING' ? (
               <>
                 <span className="w-2 h-2 rounded-full bg-sky-400 animate-ping"></span>
-                <span className="text-sky-300">Scanning Biometrics...</span>
+                <span className="text-sky-300">Biometric Facial Analysis...</span>
               </>
             ) : scanningStatus === 'MATCHED' ? (
               <>
                 <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-300">Staff Verified</span>
+                <span className="text-emerald-300">Staff Verified ({Math.round(matchScore * 100)}% Match)</span>
+              </>
+            ) : scanningStatus === 'NO_FACE' ? (
+              <>
+                <UserX className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                <span className="text-amber-300 font-bold">No Face Detected &bull; Look Into Camera Frame</span>
+              </>
+            ) : scanningStatus === 'UNRECOGNIZED' ? (
+              <>
+                <ShieldAlert className="w-3.5 h-3.5 text-red-400 animate-ping" />
+                <span className="text-red-300 font-bold">Unrecognized Face &bull; Alert Pushed to Admin</span>
               </>
             ) : companyEmployees.length === 0 ? (
               <>
@@ -855,6 +937,50 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
             )}
           </div>
         </div>
+
+        {/* Security Alert: Unrecognized Face Overlay Card */}
+        {scanningStatus === 'UNRECOGNIZED' && unrecognizedSnapshot && (
+          <div className="absolute inset-x-4 bottom-24 sm:bottom-28 z-40 mx-auto max-w-md liquid-glass-card rounded-2xl p-4 border-2 border-red-500/80 bg-red-950/95 backdrop-blur-2xl shadow-2xl shadow-red-950/90 animate-shake text-white">
+            <div className="flex items-center gap-3.5">
+              <div className="relative shrink-0">
+                <img
+                  src={unrecognizedSnapshot}
+                  alt="Unrecognized Individual"
+                  className="w-16 h-16 rounded-xl object-cover border-2 border-red-500 shadow-lg"
+                />
+                <span className="absolute -bottom-1.5 -right-1 px-1.5 py-0.2 rounded bg-red-600 text-[8px] font-black uppercase text-white font-mono shadow">
+                  UNRECOGNIZED
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 text-red-400 font-black text-xs uppercase tracking-wide">
+                  <ShieldAlert className="w-4 h-4 shrink-0 animate-bounce" />
+                  <span>Security Alert: Unrecognized Face</span>
+                </div>
+                <p className="text-[11px] text-slate-200 mt-0.5 leading-snug">
+                  Face biometric does not match any registered staff member. Access denied.
+                </p>
+                <div className="flex items-center gap-1.5 mt-1 text-[10px] text-red-300 font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping"></span>
+                  <span>Incident photo transmitted to Store Admin Console</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Notice: No Face Detected in Screen */}
+        {scanningStatus === 'NO_FACE' && (
+          <div className="absolute inset-x-4 bottom-24 sm:bottom-28 z-40 mx-auto max-w-sm liquid-glass-card rounded-2xl p-3.5 border-2 border-amber-500/70 bg-amber-950/90 backdrop-blur-xl shadow-xl shadow-amber-950/60 animate-fade-in text-white text-center">
+            <div className="flex items-center justify-center gap-2 text-amber-400 font-bold text-xs">
+              <UserX className="w-4 h-4 shrink-0" />
+              <span>No Face Detected In Screen</span>
+            </div>
+            <p className="text-[11px] text-slate-200 mt-1">
+              Please position your face directly inside the camera reticle before pressing verify.
+            </p>
+          </div>
+        )}
 
         {/* ------------------------------------------------------------------ */}
         {/* MODAL 1: INTERACTIVE PUNCH OPTIONS MODAL (When already clocked in / on break) */}
@@ -1067,9 +1193,20 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                   <Users className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Select Staff to Verify</span>
                 </span>
-                <span className="text-[10px] text-slate-400">
-                  {companyEmployees.length} enrolled
-                </span>
+                <div className="flex items-center gap-2">
+                  {selectedStaffIdForScan && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStaffIdForScan('')}
+                      className="text-[10px] text-amber-300 hover:text-white underline cursor-pointer"
+                    >
+                      Clear Selection
+                    </button>
+                  )}
+                  <span className="text-[10px] text-slate-400">
+                    {companyEmployees.length} enrolled
+                  </span>
+                </div>
               </div>
               <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-thin">
                 {companyEmployees.map((emp) => {
@@ -1080,8 +1217,12 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                       key={emp.id}
                       type="button"
                       onClick={() => {
-                        setSelectedStaffIdForScan(emp.id);
-                        handleTriggerFaceScan(emp);
+                        if (isSelected) {
+                          setSelectedStaffIdForScan('');
+                        } else {
+                          setSelectedStaffIdForScan(emp.id);
+                          handleTriggerFaceScan(emp);
+                        }
                       }}
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-2xl text-xs whitespace-nowrap transition-all border cursor-pointer active:scale-95 ${
                         isSelected
@@ -1125,16 +1266,15 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
             </div>
           )}
 
-          {/* DUAL PUNCH ACTIONS: SCAN FACE OR STAFF PIN PAD */}
-          <div className="w-full grid grid-cols-1 sm:grid-cols-4 gap-2.5">
-            {/* PRIMARY BUTTON: VERIFY & PUNCH FACE (3 cols) */}
+          {/* VERIFY & PUNCH FACE (BIOMETRIC ONLY) */}
+          <div className="w-full">
             <button
               id="kiosk-trigger-scan-btn"
               onClick={() => handleTriggerFaceScan()}
               disabled={scanningStatus === 'DETECTING' || companyEmployees.length === 0}
-              className="sm:col-span-3 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-sm shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-4 px-5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-sm sm:text-base shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 active:scale-[0.98] transition-all flex items-center justify-center gap-3 cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <div className="w-8 h-8 rounded-xl bg-black/15 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <div className="w-9 h-9 rounded-xl bg-black/15 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <ScanFace className="w-5 h-5 text-slate-950" />
               </div>
               <div className="text-left">
@@ -1149,22 +1289,6 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                     : 'Smart biometric face check'}
                 </span>
               </div>
-            </button>
-
-            {/* SECONDARY BUTTON: STAFF PIN PAD PUNCH (1 col) */}
-            <button
-              type="button"
-              onClick={() => {
-                setShowStaffPinModal(true);
-                setStaffPinError(null);
-                setStaffPinInput('');
-              }}
-              disabled={companyEmployees.length === 0}
-              className="sm:col-span-1 py-3 px-3 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-bold text-xs flex sm:flex-col items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
-              title="Punch in / out using 4-digit staff PIN"
-            >
-              <KeyRound className="w-4 h-4 text-sky-400" />
-              <span className="text-[11px] whitespace-nowrap">PIN Pad</span>
             </button>
           </div>
 
@@ -1208,134 +1332,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
         )}
       </div>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* STAFF PIN KEYPAD PUNCH MODAL */}
-      {/* ------------------------------------------------------------------ */}
-      {showStaffPinModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4">
-          <div className="w-full max-w-sm liquid-glass-card rounded-[36px] p-6 flex flex-col items-center shadow-2xl animate-scale-in border border-sky-500/40 bg-slate-950">
-            <div className="w-full flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 text-sky-400 font-bold text-xs">
-                <KeyRound className="w-4 h-4" />
-                <span>STAFF PIN KEYPAD</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowStaffPinModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            <h3 className="text-lg font-bold text-white text-center">Staff PIN Punch</h3>
-            <p className="text-xs text-slate-400 text-center mt-0.5">
-              Enter your Staff ID &amp; 4-digit PIN to record your punch
-            </p>
-
-            {staffPinError && (
-              <div className="w-full mt-3 p-2 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-xs text-center">
-                {staffPinError}
-              </div>
-            )}
-
-            <div className="w-full mt-4 space-y-3">
-              {/* Staff Emp ID input */}
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 block mb-1">
-                  ENTER EMPLOYEE ID
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Enter employee ID"
-                  value={staffPinEmpId}
-                  onChange={(e) => setStaffPinEmpId(e.target.value)}
-                  className="w-full bg-slate-900 border border-white/20 rounded-xl px-3 py-2.5 text-xs text-white uppercase focus:outline-none focus:border-sky-400 font-mono text-center tracking-wider"
-                />
-              </div>
-
-              {/* 4-Digit PIN Display */}
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 block mb-1 text-center">
-                  4-DIGIT SECURITY PIN
-                </label>
-                <div className="w-full bg-slate-900 border border-white/20 rounded-2xl py-2.5 text-center text-2xl font-mono text-white tracking-widest flex items-center justify-center">
-                  {staffPinInput ? staffPinInput.replace(/./g, '•') : <span className="text-slate-600 text-sm">••••</span>}
-                </div>
-              </div>
-
-              {/* Numeric Keypad for Tablets & Touch Terminals */}
-              <div className="grid grid-cols-3 gap-2 pt-1">
-                {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
-                  <button
-                    key={digit}
-                    type="button"
-                    onClick={() => {
-                      if (staffPinInput.length < 4) {
-                        setStaffPinInput((prev) => prev + digit);
-                      }
-                    }}
-                    className="py-2.5 rounded-xl bg-white/5 hover:bg-white/15 text-white font-mono font-bold text-lg border border-white/10 active:scale-95 transition-all cursor-pointer"
-                  >
-                    {digit}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setStaffPinInput('')}
-                  className="py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-bold text-xs border border-rose-500/20 active:scale-95 transition-all cursor-pointer"
-                >
-                  Clear
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (staffPinInput.length < 4) {
-                      setStaffPinInput((prev) => prev + '0');
-                    }
-                  }}
-                  className="py-2.5 rounded-xl bg-white/5 hover:bg-white/15 text-white font-mono font-bold text-lg border border-white/10 active:scale-95 transition-all cursor-pointer"
-                >
-                  0
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStaffPinInput((prev) => prev.slice(0, -1))}
-                  className="py-2.5 rounded-xl bg-white/5 hover:bg-white/15 text-slate-300 font-bold text-xs border border-white/10 active:scale-95 transition-all cursor-pointer"
-                >
-                  ⌫
-                </button>
-              </div>
-
-              {/* Punch Actions */}
-              <div className="grid grid-cols-3 gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => handleStaffPinPunch('IN')}
-                  className="py-2.5 px-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs active:scale-95 transition-all shadow-md cursor-pointer"
-                >
-                  Clock In
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStaffPinPunch('BREAK_START')}
-                  className="py-2.5 px-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs active:scale-95 transition-all shadow-md cursor-pointer"
-                >
-                  Break
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStaffPinPunch('OUT')}
-                  className="py-2.5 px-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs active:scale-95 transition-all shadow-md cursor-pointer"
-                >
-                  Clock Out
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ------------------------------------------------------------------ */}
       {/* STORE MANAGER UNLOCK / DEACTIVATE MODAL */}

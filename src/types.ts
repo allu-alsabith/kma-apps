@@ -1,12 +1,30 @@
-export type Department = 
-  | 'Cashiers & Front End'
-  | 'Fresh Produce & Fruits'
-  | 'Butchery & Seafood'
-  | 'Bakery & Deli'
-  | 'Grocery & Packaged Goods'
-  | 'Warehouse & Receiving'
-  | 'Store Security & Floor Safety'
-  | 'Hygiene & Cleaning Operations';
+export const DEFAULT_DEPARTMENTS: string[] = [
+  'Cashiers & Front End',
+  'Fresh Produce & Fruits',
+  'Butchery & Seafood',
+  'Bakery & Deli',
+  'Grocery & Packaged Goods',
+  'Warehouse & Receiving',
+  'Store Security & Floor Safety',
+  'Hygiene & Cleaning Operations',
+];
+
+export const SUGGESTED_DEPARTMENTS: string[] = [
+  'Cashiers & Front End',
+  'Fresh Produce & Fruits',
+  'Butchery & Seafood',
+  'Bakery & Deli',
+  'Grocery & Packaged Goods',
+  'Warehouse & Receiving',
+  'Store Security & Floor Safety',
+  'Hygiene & Cleaning Operations',
+  'Dairy & Frozen Foods',
+  'Customer Service & Billing',
+  'Inventory & Stock Control',
+  'Online Orders & Dispatch',
+];
+
+export type Department = string;
 
 export type ShiftId = string;
 
@@ -41,6 +59,7 @@ export interface Company {
   contactEmail?: string;
   contactPhone?: string;
   isActive?: boolean;
+  departments?: string[]; // Configured department floor coverage for this company
 }
 
 export interface Employee {
@@ -97,12 +116,12 @@ export interface LeaveRequest {
   requestedAt: string;
 }
 
-export type NotificationType = 'LEAVE_STATUS' | 'SHIFT_UPDATE' | 'SYSTEM';
+export type NotificationType = 'LEAVE_STATUS' | 'SHIFT_UPDATE' | 'SYSTEM' | 'SECURITY_ALERT';
 
 export interface StaffNotification {
   id: string;
   companyId?: string;
-  employeeId: string; // Target employeeId or 'ALL' for store-wide broadcast
+  employeeId: string; // Target employeeId or 'ALL' or 'ADMIN'
   employeeName?: string;
   title: string;
   message: string;
@@ -111,12 +130,16 @@ export interface StaffNotification {
   timeFormatted?: string; // e.g. "09:30 AM"
   read: boolean;
   leaveStatus?: 'APPROVED' | 'REJECTED';
+  photoUrl?: string; // Captured photo of unrecognized face or security incident
   meta?: {
     leaveId?: string;
     shiftId?: string;
     shiftName?: string;
     oldTimings?: string;
     newTimings?: string;
+    capturedPhoto?: string;
+    kioskLocation?: string;
+    alertType?: 'UNRECOGNIZED_FACE' | 'NO_FACE' | 'SPOOF_ATTEMPT';
   };
 }
 

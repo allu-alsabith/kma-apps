@@ -102,24 +102,16 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
   // Current logged in company and employee session
   const [staffCompanyId, setStaffCompanyId] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlComp = urlParams.get('company') || urlParams.get('store') || urlParams.get('code');
-      if (urlComp) {
-        const found = (companies || []).find(
-          (c) =>
-            c.code.toLowerCase() === urlComp.toLowerCase() ||
-            c.id === urlComp ||
-            c.supermarketName.toLowerCase() === urlComp.toLowerCase()
-        );
-        if (found) return found.id;
+      const savedSession = localStorage.getItem('attendo_staff_session_id');
+      if (savedSession) {
+        return localStorage.getItem('attendo_staff_company_id') || '';
       }
-      return localStorage.getItem('attendo_staff_company_id') || activeCompany?.id || companies?.[0]?.id || '';
     }
-    return activeCompany?.id || companies?.[0]?.id || '';
+    return '';
   });
 
-  const staffCompany = (companies || []).find((c) => c.id === staffCompanyId) || activeCompany || companies?.[0];
-  const supermarketBrandName = staffCompany?.supermarketName?.trim() || 'Store';
+  const staffCompany = staffCompanyId ? (companies || []).find((c) => c.id === staffCompanyId) || null : null;
+  const supermarketBrandName = staffCompany?.supermarketName?.trim() || '';
 
   // Filter employees belonging to this company for staff app
   const companyEmployees = React.useMemo(() => {
@@ -132,28 +124,12 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
   // Current logged in employee session (starts unauthenticated so employee logs in)
   const [currentEmployeeId, setCurrentEmployeeId] = useState<string>('');
 
-  // Staff Sign-in Form State (Company Name + Company Password + Emp ID + PIN)
-  const [selectedStaffCompanyId, setSelectedStaffCompanyId] = useState<string>(() => {
-    return localStorage.getItem('attendo_staff_company_id') || activeCompany?.id || companies?.[0]?.id || '';
-  });
-  const [loginCompanyName, setLoginCompanyName] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('attendo_staff_company_name') || staffCompany?.supermarketName || staffCompany?.code || '';
-    }
-    return staffCompany?.supermarketName || staffCompany?.code || '';
-  });
+  // Staff Sign-in Form State (Company Name + Company Password + Emp ID + PIN) - Starts 100% empty (no auto-fill)
+  const [loginCompanyName, setLoginCompanyName] = useState<string>('');
   const [loginCompanyPassword, setLoginCompanyPassword] = useState<string>('');
   const [loginEmpId, setLoginEmpId] = useState<string>('');
   const [loginPin, setLoginPin] = useState<string>('');
   const [loginError, setLoginError] = useState<string | null>(null);
-
-  // Sync staff company selection
-  useEffect(() => {
-    if (staffCompany) {
-      setSelectedStaffCompanyId(staffCompany.id);
-      setLoginCompanyName(staffCompany.supermarketName);
-    }
-  }, [staffCompany]);
 
   const [activeTab, setActiveTab] = useState<'TODAY' | 'HISTORY' | 'LEAVES' | 'ALERTS' | 'PROFILE'>('TODAY');
 
@@ -230,9 +206,9 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
   const isOnBreak = latestPunch?.type === 'BREAK_START';
 
   const companyStaffCount = React.useMemo(() => {
-    const targetCompId = selectedStaffCompanyId || staffCompany?.id || companies?.[0]?.id;
+    const targetCompId = staffCompany?.id || companies?.[0]?.id;
     return (employees || []).filter((e) => (e.companyId || targetCompId) === targetCompId).length;
-  }, [employees, selectedStaffCompanyId, staffCompany, companies]);
+  }, [employees, staffCompany, companies]);
 
   const handleStaffLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -240,21 +216,21 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
 
     // 1. Verify Company Name or Code
     const query = loginCompanyName.trim().toLowerCase();
-    let targetCompany = (companies || []).find(
-      (c) =>
-        (query && c.code.trim().toLowerCase() === query) ||
-        (query && c.supermarketName.trim().toLowerCase() === query) ||
-        (query && c.name.trim().toLowerCase() === query)
-    );
-    if (!targetCompany && selectedStaffCompanyId) {
-      targetCompany = (companies || []).find((c) => c.id === selectedStaffCompanyId);
-    }
-    if (!targetCompany && activeCompany) {
-      targetCompany = activeCompany;
+    if (!query) {
+      setLoginError('Please enter your company code or name.');
+      soundService.playWarningTone();
+      return;
     }
 
+    const targetCompany = (companies || []).find(
+      (c) =>
+        c.code.trim().toLowerCase() === query ||
+        c.supermarketName.trim().toLowerCase() === query ||
+        c.name.trim().toLowerCase() === query
+    );
+
     if (!targetCompany) {
-      setLoginError('Supermarket company not found. Please select from list or enter company code.');
+      setLoginError('Supermarket company not found. Please verify the company code or name.');
       soundService.playWarningTone();
       return;
     }
@@ -309,12 +285,13 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
     if (typeof window !== 'undefined') {
       localStorage.setItem('attendo_staff_session_id', found.id);
       localStorage.setItem('attendo_staff_company_id', targetCompany.id);
-      localStorage.setItem('attendo_staff_company_name', targetCompany.supermarketName);
+      localStorage.removeItem('attendo_staff_company_name');
     }
     if (onSelectCompany) {
       onSelectCompany(targetCompany.id);
     }
     soundService.playSuccessChime();
+    setLoginCompanyName('');
     setLoginEmpId('');
     setLoginPin('');
     setLoginCompanyPassword('');
@@ -322,7 +299,16 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
 
   const handleStaffLogout = () => {
     setCurrentEmployeeId('');
-    localStorage.removeItem('attendo_staff_session_id');
+    setLoginCompanyName('');
+    setLoginEmpId('');
+    setLoginPin('');
+    setLoginCompanyPassword('');
+    setLoginError(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('attendo_staff_session_id');
+      localStorage.removeItem('attendo_staff_company_name');
+      localStorage.removeItem('attendo_staff_company_id');
+    }
   };
 
   const handleLeaveSubmit = (e: React.FormEvent) => {
@@ -422,7 +408,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                 </div>
                 <h2 className="text-xl font-black text-white tracking-tight">Staff Sign In</h2>
                 <p className="text-xs text-slate-400 mt-1 max-w-[260px] mx-auto">
-                  {supermarketBrandName} Supermarket • Staff Attendance Portal
+                  Staff Attendance Portal
                 </p>
               </div>
 
@@ -445,35 +431,6 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                         Please have your store owner or manager set up the company first in the Store Admin Console.
                       </span>
                     </div>
-                  </div>
-                )}
-
-                {/* Company Select Dropdown */}
-                {companies && companies.length > 0 && (
-                  <div>
-                    <label className="text-[11px] font-semibold text-slate-300 block mb-1">
-                      Select Supermarket Company
-                    </label>
-                    <select
-                      id="staff-select-company"
-                      value={selectedStaffCompanyId}
-                      onChange={(e) => {
-                        const compId = e.target.value;
-                        setSelectedStaffCompanyId(compId);
-                        const target = companies.find((c) => c.id === compId);
-                        if (target) {
-                          setLoginCompanyName(target.supermarketName);
-                        }
-                        if (loginError) setLoginError(null);
-                      }}
-                      className="w-full bg-slate-900 border border-white/15 rounded-2xl px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-400 font-medium cursor-pointer"
-                    >
-                      {companies.map((c) => (
-                        <option key={c.id} value={c.id} className="bg-slate-950 text-white">
-                          [{c.code}] {c.supermarketName}
-                        </option>
-                      ))}
-                    </select>
                   </div>
                 )}
 
@@ -549,18 +506,6 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                     className="w-full bg-slate-900 border border-white/15 rounded-2xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-400 font-mono tracking-widest text-center text-sm"
                   />
                 </div>
- 
-                {companyStaffCount === 0 && (
-                  <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs flex items-start gap-2.5">
-                    <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="block text-white font-semibold">No Staff Enrolled Yet</strong>
-                      <span className="text-[11px] text-slate-300 leading-tight block mt-0.5">
-                        Your store administrator will register your staff account in the Store Admin Console with your Employee ID and 4-digit PIN.
-                      </span>
-                    </div>
-                  </div>
-                )}
 
                 <button
                   id="btn-staff-login-submit"

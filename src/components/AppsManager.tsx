@@ -36,10 +36,12 @@ import {
   Database,
   Cloud,
   Server,
-  Globe
+  Globe,
+  Tag,
+  PlusCircle
 } from 'lucide-react';
 import QRCode from 'qrcode';
-import { Company, Employee, AttendanceRecord, AppPortal, HelpRequest, Shift, LeaveRequest, StaffNotification } from '../types';
+import { Company, Employee, AttendanceRecord, AppPortal, HelpRequest, Shift, LeaveRequest, StaffNotification, DEFAULT_DEPARTMENTS, SUGGESTED_DEPARTMENTS } from '../types';
 import { soundService } from '../services/sound';
 import { AppInstallTarget } from './InstallModal';
 import { signInWithGoogle, signOutUser, subscribeToAuth, syncAllDataToFirestore, type User as FirebaseUser } from '../services/firebase';
@@ -65,6 +67,173 @@ interface AppsManagerProps {
   onUpdateHelpRequestStatus?: (id: string, status: HelpRequest['status']) => void;
   onDeleteHelpRequest?: (id: string) => void;
 }
+
+// Reusable selector for store department floor coverage and custom coverage zones
+interface DepartmentFloorCoverageSelectorProps {
+  selectedDepartments: string[];
+  onToggle: (dept: string) => void;
+  customInput: string;
+  onCustomInputChange: (val: string) => void;
+  onAddCustom: () => void;
+  onRemove: (dept: string) => void;
+  onSelectAll: () => void;
+  onClearAll: () => void;
+}
+
+const DepartmentFloorCoverageSelector: React.FC<DepartmentFloorCoverageSelectorProps> = ({
+  selectedDepartments,
+  onToggle,
+  customInput,
+  onCustomInputChange,
+  onAddCustom,
+  onRemove,
+  onSelectAll,
+  onClearAll,
+}) => {
+  return (
+    <div className="space-y-3 p-4 rounded-2xl bg-white/[0.03] border border-white/10">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-1.5 text-amber-400 font-bold text-xs">
+            <Layers className="w-3.5 h-3.5" />
+            <span>Department Floor Coverage *</span>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            Select store floor zones or type custom departments needed for this company
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onSelectAll}
+            className="px-2 py-1 rounded-lg text-[10px] bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition-all cursor-pointer font-medium"
+          >
+            Select All
+          </button>
+          <button
+            type="button"
+            onClick={onClearAll}
+            className="px-2 py-1 rounded-lg text-[10px] bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-all cursor-pointer font-medium"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+
+      {/* Preset Department Options */}
+      <div>
+        <label className="text-[11px] font-semibold text-slate-300 block mb-1.5">
+          Select Standard Department Floor Coverage (Tap to toggle)
+        </label>
+        <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+          {SUGGESTED_DEPARTMENTS.map((dept) => {
+            const isSelected = selectedDepartments.includes(dept);
+            return (
+              <button
+                key={dept}
+                type="button"
+                onClick={() => onToggle(dept)}
+                className={`px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
+                  isSelected
+                    ? 'bg-amber-500/20 text-amber-200 border border-amber-500/40 shadow-sm'
+                    : 'bg-white/5 text-slate-400 border border-white/5 hover:bg-white/10 hover:text-slate-200'
+                }`}
+              >
+                {isSelected ? (
+                  <Check className="w-3 h-3 text-amber-400 shrink-0" />
+                ) : (
+                  <Plus className="w-3 h-3 text-slate-500 shrink-0" />
+                )}
+                <span>{dept}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Add Custom Department Floor Coverage */}
+      <div>
+        <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+          Add Custom Department Floor Coverage
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Type custom floor coverage (e.g. Pharmacy & Health, Electronics Floor...)"
+            value={customInput}
+            onChange={(e) => onCustomInputChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                onAddCustom();
+              }
+            }}
+            className="flex-1 bg-slate-900 border border-white/15 focus:border-amber-400 rounded-xl px-3 py-2 text-white text-xs outline-none"
+          />
+          <button
+            type="button"
+            onClick={onAddCustom}
+            disabled={!customInput.trim()}
+            className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:hover:bg-amber-500 text-slate-950 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Selected Coverage Tags List */}
+      <div className="pt-2 border-t border-white/5">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            Active Selected Floor Coverage ({selectedDepartments.length} Zones)
+          </span>
+          {selectedDepartments.length === 0 && (
+            <span className="text-[10px] text-rose-400 font-semibold animate-pulse">
+              No departments selected
+            </span>
+          )}
+        </div>
+        {selectedDepartments.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
+            {selectedDepartments.map((dept) => {
+              const isPreset = SUGGESTED_DEPARTMENTS.includes(dept);
+              return (
+                <span
+                  key={dept}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold border ${
+                    isPreset
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                      : 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                  }`}
+                >
+                  <span>{dept}</span>
+                  {!isPreset && (
+                    <span className="px-1 py-0.2 rounded bg-emerald-500/30 text-[8px] font-mono uppercase text-emerald-200">
+                      Custom
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onRemove(dept)}
+                    className="hover:text-white p-0.5 rounded cursor-pointer transition-colors"
+                    title={`Remove ${dept}`}
+                  >
+                    <X className="w-3 h-3 text-slate-400 hover:text-rose-400" />
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300/80 text-[11px] text-center">
+            Select standard departments above or type custom floor coverage zones.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export const AppsManager: React.FC<AppsManagerProps> = ({
   companies = [],
@@ -181,6 +350,8 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
   const [formAddress, setFormAddress] = useState<string>('');
   const [formEmail, setFormEmail] = useState<string>('');
   const [formPhone, setFormPhone] = useState<string>('');
+  const [formDepartments, setFormDepartments] = useState<string[]>([...DEFAULT_DEPARTMENTS]);
+  const [customDeptInput, setCustomDeptInput] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
@@ -259,6 +430,49 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
   // Alias for compatibility with sub-components and app launchers
   const authenticatedCompany = selectedCompany;
 
+  // Department Floor Coverage Management Helpers
+  const toggleDepartment = (dept: string) => {
+    setFormDepartments((prev) => {
+      if (prev.includes(dept)) {
+        return prev.filter((d) => d !== dept);
+      } else {
+        return [...prev, dept];
+      }
+    });
+  };
+
+  const handleAddCustomDepartment = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = customDeptInput.trim();
+    if (!trimmed) return;
+    const exists = formDepartments.some((d) => d.toLowerCase() === trimmed.toLowerCase());
+    if (exists) {
+      setFormError(`Department "${trimmed}" is already in the floor coverage list.`);
+      soundService.playWarningTone();
+      return;
+    }
+    setFormDepartments((prev) => [...prev, trimmed]);
+    setCustomDeptInput('');
+    soundService.playSuccessChime();
+  };
+
+  const handleRemoveDepartment = (dept: string) => {
+    setFormDepartments((prev) => prev.filter((d) => d !== dept));
+  };
+
+  const handleSelectAllSuggested = () => {
+    setFormDepartments((prev) => {
+      const merged = new Set([...prev, ...SUGGESTED_DEPARTMENTS]);
+      return Array.from(merged);
+    });
+    soundService.playSuccessChime();
+  };
+
+  const handleClearAllDepartments = () => {
+    setFormDepartments([]);
+    soundService.playWarningTone();
+  };
+
   // Open Create Modal
   const handleOpenCreateModal = () => {
     setFormLegalName('');
@@ -269,6 +483,8 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
     setFormAddress('');
     setFormEmail('');
     setFormPhone('');
+    setFormDepartments([...DEFAULT_DEPARTMENTS]);
+    setCustomDeptInput('');
     setFormError(null);
     setShowCreateModal(true);
   };
@@ -285,6 +501,12 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
 
     if (!legName || !supName || !code || !pass) {
       setFormError('Legal name, supermarket brand name, company code, and company password are required.');
+      soundService.playWarningTone();
+      return;
+    }
+
+    if (formDepartments.length === 0) {
+      setFormError('Please select or add at least one department floor coverage zone for your company.');
       soundService.playWarningTone();
       return;
     }
@@ -306,6 +528,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
         contactEmail: formEmail.trim() || `admin@${code.toLowerCase()}.com`,
         contactPhone: formPhone.trim() || '+91 98765 00000',
         isActive: true,
+        departments: formDepartments,
       });
       if (created && created.id) {
         setSelectedCompanyId(created.id);
@@ -316,7 +539,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
     }
 
     soundService.playSuccessChime();
-    setFormSuccess(`Company "${supName}" created successfully! Code: ${code} | Password: ${pass}. You can now sign into Store Admin, Kiosk, and Staff App.`);
+    setFormSuccess(`Company "${supName}" created successfully! Code: ${code} | Password: ${pass}. Floor coverage configured: ${formDepartments.length} zones.`);
     setTimeout(() => setFormSuccess(null), 8000);
     setShowCreateModal(false);
   };
@@ -332,6 +555,12 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
     setFormAddress(comp.address || '');
     setFormEmail(comp.contactEmail || '');
     setFormPhone(comp.contactPhone || '');
+    setFormDepartments(
+      comp.departments && comp.departments.length > 0
+        ? [...comp.departments]
+        : [...DEFAULT_DEPARTMENTS]
+    );
+    setCustomDeptInput('');
     setFormError(null);
     setShowEditModal(true);
   };
@@ -352,6 +581,12 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
       return;
     }
 
+    if (formDepartments.length === 0) {
+      setFormError('Please select or add at least one department floor coverage zone for your company.');
+      soundService.playWarningTone();
+      return;
+    }
+
     const updated: Company = {
       ...companyToEdit,
       name: legName,
@@ -362,11 +597,12 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
       address: formAddress.trim() || companyToEdit.address,
       contactEmail: formEmail.trim() || companyToEdit.contactEmail,
       contactPhone: formPhone.trim() || companyToEdit.contactPhone,
+      departments: formDepartments,
     };
 
     onUpdateCompany(updated);
     soundService.playSuccessChime();
-    setFormSuccess(`Updated "${supName}" company settings.`);
+    setFormSuccess(`Updated "${supName}" company settings & floor coverage (${formDepartments.length} zones).`);
     setTimeout(() => setFormSuccess(null), 5000);
     setShowEditModal(false);
   };
@@ -761,6 +997,31 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                     </div>
                   </div>
 
+                  {/* Department Floor Coverage preview */}
+                  <div className="p-2.5 rounded-2xl bg-white/[0.04] border border-white/5 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-slate-400 flex items-center gap-1 font-medium">
+                        <Layers className="w-3 h-3 text-amber-400" />
+                        <span>Department Floor Coverage:</span>
+                      </span>
+                      <span className="font-bold text-amber-300">
+                        {(company.departments && company.departments.length > 0 ? company.departments.length : DEFAULT_DEPARTMENTS.length)} Zones
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {((company.departments && company.departments.length > 0 ? company.departments : DEFAULT_DEPARTMENTS).slice(0, 3)).map((d) => (
+                        <span key={d} className="px-1.5 py-0.5 rounded bg-white/5 border border-white/5 text-[9px] text-slate-300 truncate max-w-[120px]">
+                          {d}
+                        </span>
+                      ))}
+                      {((company.departments?.length || DEFAULT_DEPARTMENTS.length) > 3) && (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-[9px] text-amber-300 font-semibold">
+                          +{(company.departments?.length || DEFAULT_DEPARTMENTS.length) - 3} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Per-Company App Launch Buttons */}
                   <div className="pt-2 border-t border-white/10 space-y-1.5">
                     <div className="grid grid-cols-3 gap-1.5">
@@ -802,8 +1063,6 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                         onClick={() => {
                           if (onSelectCompany) onSelectCompany(company.id);
                           if (typeof window !== 'undefined') {
-                            localStorage.setItem('attendo_staff_company_id', company.id);
-                            localStorage.setItem('attendo_staff_company_name', company.supermarketName);
                             localStorage.setItem('attendo_active_company_id', company.id);
                           }
                           if (onLaunchPortal) onLaunchPortal('EMPLOYEE_APP');
@@ -2000,6 +2259,18 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                 </div>
               </div>
 
+              {/* Department Floor Coverage Selection & Custom Input */}
+              <DepartmentFloorCoverageSelector
+                selectedDepartments={formDepartments}
+                onToggle={toggleDepartment}
+                customInput={customDeptInput}
+                onCustomInputChange={setCustomDeptInput}
+                onAddCustom={handleAddCustomDepartment}
+                onRemove={handleRemoveDepartment}
+                onSelectAll={handleSelectAllSuggested}
+                onClearAll={handleClearAllDepartments}
+              />
+
               <div className="pt-3 border-t border-white/10 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
@@ -2129,6 +2400,18 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                   />
                 </div>
               </div>
+
+              {/* Department Floor Coverage Selection & Custom Input */}
+              <DepartmentFloorCoverageSelector
+                selectedDepartments={formDepartments}
+                onToggle={toggleDepartment}
+                customInput={customDeptInput}
+                onCustomInputChange={setCustomDeptInput}
+                onAddCustom={handleAddCustomDepartment}
+                onRemove={handleRemoveDepartment}
+                onSelectAll={handleSelectAllSuggested}
+                onClearAll={handleClearAllDepartments}
+              />
 
               <div className="pt-3 border-t border-white/10 flex items-center justify-end gap-2.5">
                 <button

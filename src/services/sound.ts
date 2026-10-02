@@ -130,6 +130,34 @@ class SoundService {
     }
   }
 
+  // Security alarm / siren pulse for unauthorized individuals & unrecognized faces
+  playSecurityAlertTone() {
+    try {
+      this.initCtx();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.linearRampToValueAtTime(440, now + 0.18);
+      osc.frequency.linearRampToValueAtTime(880, now + 0.36);
+      osc.frequency.linearRampToValueAtTime(440, now + 0.54);
+
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.6);
+    } catch {
+      // Silent catch
+    }
+  }
+
   // Voice announcement using browser SpeechSynthesis
   speakConfirmation(message: string) {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -139,6 +167,22 @@ class SoundService {
         utterance.rate = 1.05;
         utterance.pitch = 1.0;
         utterance.volume = 0.85;
+        window.speechSynthesis.speak(utterance);
+      } catch {
+        // Speech synthesis fallback
+      }
+    }
+  }
+
+  // Security Warning announcement using browser SpeechSynthesis
+  speakWarning(message: string) {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(message);
+        utterance.rate = 1.0;
+        utterance.pitch = 0.95;
+        utterance.volume = 1.0;
         window.speechSynthesis.speak(utterance);
       } catch {
         // Speech synthesis fallback

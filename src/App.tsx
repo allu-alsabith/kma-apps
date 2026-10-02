@@ -69,6 +69,7 @@ import {
   syncStaffNotificationToFirestore,
   updateNotificationReadInFirestore,
   deleteNotificationFromFirestore,
+  clearAllNotificationsInFirestore,
   syncCompanyToFirestore,
   deleteCompanyFromFirestore,
   syncHelpRequestToFirestore,
@@ -689,8 +690,6 @@ export default function App() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('attendo_active_company_id', newId);
       localStorage.setItem('attendo_admin_company_id', newId);
-      localStorage.setItem('attendo_staff_company_id', newId);
-      localStorage.setItem('attendo_staff_company_name', newCompany.supermarketName);
       localStorage.setItem('attendo_kiosk_company_id', newId);
     }
 
@@ -1068,6 +1067,21 @@ export default function App() {
     autoSyncService.broadcast('NOTIFICATION_DELETED', id);
   };
 
+  // Clear all notifications
+  const handleClearAllNotifications = () => {
+    setNotifications([]);
+    clearAllNotificationsInFirestore();
+    autoSyncService.broadcast('NOTIFICATION_CLEARED_ALL', null);
+  };
+
+  // Push Security Alert Notification from Entrance Face Kiosk to Store Admin
+  const handleSecurityAlert = (alertNotif: StaffNotification) => {
+    setNotifications((prev) => [alertNotif, ...prev]);
+    syncStaffNotificationToFirestore(alertNotif);
+    autoSyncService.broadcast('NOTIFICATION_ADDED', alertNotif);
+    soundService.playSecurityAlertTone();
+  };
+
   // Staff submit leave
   const handleApplyLeave = (leaveData: Omit<LeaveRequest, 'id' | 'requestedAt' | 'status'>) => {
     const now = new Date();
@@ -1123,6 +1137,9 @@ export default function App() {
             onUpdateShift={handleUpdateShift}
             onManualPunch={handleNewPunch}
             onSubmitHelpRequest={handleCreateHelpRequest}
+            onMarkNotificationAsRead={handleMarkNotificationAsRead}
+            onDeleteNotification={handleDeleteNotification}
+            onClearAllNotifications={handleClearAllNotifications}
           />
         )}
 
@@ -1136,6 +1153,7 @@ export default function App() {
             onNewPunch={handleNewPunch}
             isKioskOnlyMode={true}
             onSubmitHelpRequest={handleCreateHelpRequest}
+            onSecurityAlert={handleSecurityAlert}
           />
         )}
 

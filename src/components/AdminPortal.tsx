@@ -41,11 +41,16 @@ import {
   CheckCheck,
   SlidersHorizontal,
   LogOut,
-  LifeBuoy
+  LifeBuoy,
+  ShieldAlert,
+  Camera,
+  AlertOctagon,
+  ZoomIn
 } from 'lucide-react';
-import { Employee, Shift, AttendanceRecord, LeaveRequest, Department, PayBasis, StaffNotification, Company, AppPortal, HelpRequest } from '../types';
+import { Employee, Shift, AttendanceRecord, LeaveRequest, Department, PayBasis, StaffNotification, Company, AppPortal, HelpRequest, DEFAULT_DEPARTMENTS } from '../types';
 import { soundService } from '../services/sound';
 import { FaceEnrollmentScanner } from './FaceEnrollmentScanner';
+import { clearBiometricCache } from '../utils/faceRecognition';
 import { AccountHelpModal } from './AccountHelpModal';
 import { NetworkSyncBadge } from './NetworkSyncBadge';
 import { signInWithGoogle, signOutUser, subscribeToAuth, type User } from '../services/firebase';
@@ -86,6 +91,9 @@ interface AdminPortalProps {
   onUpdateShift?: (shift: Shift) => void;
   onManualPunch: (record: Omit<AttendanceRecord, 'id' | 'timestamp' | 'date' | 'time'>) => void;
   onSubmitHelpRequest?: (request: Omit<HelpRequest, 'id' | 'createdAt' | 'status'>) => Promise<void> | void;
+  onMarkNotificationAsRead?: (notificationId: string) => void;
+  onDeleteNotification?: (notificationId: string) => void;
+  onClearAllNotifications?: () => void;
 }
 
 export const AdminPortal: React.FC<AdminPortalProps> = ({
@@ -117,11 +125,42 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onUpdateShift,
   onManualPunch,
   onSubmitHelpRequest,
+  onMarkNotificationAsRead,
+  onDeleteNotification,
+  onClearAllNotifications,
 }) => {
   const [showAccountHelpModal, setShowAccountHelpModal] = useState<boolean>(false);
-  const [adminTab, setAdminTab] = useState<'OVERVIEW' | 'DIRECTORY' | 'SHIFTS' | 'LEAVES' | 'PAYROLL'>('OVERVIEW');
+  const [adminTab, setAdminTab] = useState<'OVERVIEW' | 'DIRECTORY' | 'SHIFTS' | 'LEAVES' | 'PAYROLL' | 'SECURITY'>('OVERVIEW');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState<string>('ALL');
+
+  // Real-time Push Notification & Security Inspection States
+  const [liveSecurityToast, setLiveSecurityToast] = useState<StaffNotification | null>(null);
+  const [inspectingAlertPhoto, setInspectingAlertPhoto] = useState<StaffNotification | null>(null);
+  const [lastSeenAlertId, setLastSeenAlertId] = useState<string>('');
+
+  // Scoped Security Notifications
+  const securityAlertNotifications = useMemo(() => {
+    return (notifications || []).filter(
+      (n) => n.type === 'SECURITY_ALERT' && (!n.companyId || !activeCompany?.id || n.companyId === activeCompany.id)
+    );
+  }, [notifications, activeCompany]);
+
+  const unreadSecurityAlertsCount = useMemo(() => {
+    return securityAlertNotifications.filter((n) => !n.read).length;
+  }, [securityAlertNotifications]);
+
+  // Detect incoming security alert push notifications and trigger audio + toast banner
+  useEffect(() => {
+    if (securityAlertNotifications.length > 0) {
+      const latest = securityAlertNotifications[0];
+      if (latest && !latest.read && latest.id !== lastSeenAlertId) {
+        setLastSeenAlertId(latest.id);
+        setLiveSecurityToast(latest);
+        soundService.playSecurityAlertTone();
+      }
+    }
+  }, [securityAlertNotifications, lastSeenAlertId]);
 
   // Store Admin Company Session Authentication
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(false);
@@ -250,6 +289,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     soundService.playWarningTone();
   };
 
+  // Department health & presence breakdown: strictly scoped to the active company's selected department floor coverage
+  const departmentsList: string[] = useMemo(() => {
+    if (activeCompany?.departments && activeCompany.departments.length > 0) {
+      return activeCompany.departments;
+    }
+    return DEFAULT_DEPARTMENTS;
+  }, [activeCompany?.departments]);
+
   // New Employee Enrollment Modal State
   const [showAddEmpModal, setShowAddEmpModal] = useState<boolean>(false);
   const [enrollError, setEnrollError] = useState<string | null>(null);
@@ -257,7 +304,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [newEmpId, setNewEmpId] = useState<string>('');
   const [newEmpName, setNewEmpName] = useState<string>('');
   const [newEmpRole, setNewEmpRole] = useState<string>('Cashier');
-  const [newEmpDept, setNewEmpDept] = useState<Department>('Cashiers & Front End');
+  const [newEmpDept, setNewEmpDept] = useState<string>(() => departmentsList[0] || 'Cashiers & Front End');
   const [newEmpShift, setNewEmpShift] = useState<Shift['id']>('shift-morning');
   const [newEmpPayBasis, setNewEmpPayBasis] = useState<PayBasis>('DAILY');
   const [newEmpWageRate, setNewEmpWageRate] = useState<number>(650);
@@ -266,13 +313,20 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [newEmpPhone, setNewEmpPhone] = useState<string>('');
   const [newEmpAvatar, setNewEmpAvatar] = useState<string>('');
 
+  // Keep newEmpDept in sync with company department coverage if company changes
+  useEffect(() => {
+    if (departmentsList.length > 0 && !departmentsList.includes(newEmpDept)) {
+      setNewEmpDept(departmentsList[0]);
+    }
+  }, [departmentsList, newEmpDept]);
+
   const handleOpenAddEmp = () => {
     const nextNum = employees.length + 1;
     setNewEmpId(`EMP-${1000 + nextNum}`);
     setNewEmpName('');
     setNewEmpRole('Cashier');
-    setNewEmpDept('Cashiers & Front End');
-    setNewEmpShift('shift-morning');
+    setNewEmpDept(departmentsList[0] || 'Cashiers & Front End');
+    setNewEmpShift(shifts[0]?.id || 'shift-morning');
     setNewEmpPayBasis('DAILY');
     setNewEmpWageRate(650);
     setNewEmpAllowMobilePunch(true);
@@ -377,18 +431,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     );
   }, [employees, leaveRequests]);
 
-  // Department health & presence breakdown
-  const departmentsList: Department[] = [
-    'Cashiers & Front End',
-    'Fresh Produce & Fruits',
-    'Butchery & Seafood',
-    'Bakery & Deli',
-    'Grocery & Packaged Goods',
-    'Warehouse & Receiving',
-    'Store Security & Floor Safety',
-    'Hygiene & Cleaning Operations',
-  ];
-
   // Filtered employees
   const filteredEmployees = employees.filter((emp) => {
     const matchesSearch = emp.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -465,6 +507,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     };
 
     onAddEmployee(newEmp);
+    clearBiometricCache(newEmp.id);
     soundService.playSuccessChime();
     setEnrollSuccessMessage(`Successfully enrolled ${newEmp.name} (${newEmp.id})! Biometrics & ${newEmpPayBasis === 'DAILY' ? 'Daily Wage' : newEmpPayBasis === 'WEEKLY' ? 'Weekly Wage' : 'Monthly Salary'} active.`);
     setTimeout(() => {
@@ -493,6 +536,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     if (!editingEmp || !editingEmp.name.trim()) return;
 
     onUpdateEmployee(editingEmp);
+    clearBiometricCache(editingEmp.id);
     soundService.playSuccessChime();
     setShowEditEmpModal(false);
     setEditingEmp(null);
@@ -866,6 +910,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   : 'Leaves' 
             },
             { id: 'PAYROLL', label: 'Payroll Export' },
+            { 
+              id: 'SECURITY', 
+              label: unreadSecurityAlertsCount > 0 
+                ? `🚨 Security (${unreadSecurityAlertsCount})` 
+                : securityAlertNotifications.length > 0 
+                  ? `Security Alerts (${securityAlertNotifications.length})` 
+                  : 'Security Alerts' 
+            },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -873,7 +925,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               onClick={() => setAdminTab(tab.id as typeof adminTab)}
               className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                 adminTab === tab.id
-                  ? 'bg-gradient-to-b from-white/25 to-white/5 text-white shadow-lg border border-white/20'
+                  ? tab.id === 'SECURITY' && unreadSecurityAlertsCount > 0
+                    ? 'bg-gradient-to-b from-rose-500/50 to-rose-700/50 text-white shadow-lg border border-rose-400'
+                    : 'bg-gradient-to-b from-white/25 to-white/5 text-white shadow-lg border border-white/20'
+                  : tab.id === 'SECURITY' && unreadSecurityAlertsCount > 0
+                  ? 'text-rose-400 font-extrabold bg-rose-500/15 border border-rose-500/30 animate-pulse'
                   : 'text-slate-400 hover:text-white hover:bg-white/5'
               }`}
             >
@@ -882,6 +938,77 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           ))}
         </div>
       </div>
+
+      {/* Real-time Floating Security Push Notification Alert Toast (Unrecognizable Face Detected) */}
+      {liveSecurityToast && (
+        <div className="liquid-glass-card rounded-3xl p-4 border-2 border-red-500/80 bg-red-950/95 shadow-2xl shadow-red-950/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-shake text-xs text-white">
+          <div className="flex items-center gap-3.5 min-w-0">
+            {/* Captured Photo Thumbnail */}
+            <div className="relative shrink-0">
+              {liveSecurityToast.photoUrl || liveSecurityToast.meta?.capturedPhoto ? (
+                <img
+                  src={liveSecurityToast.photoUrl || liveSecurityToast.meta?.capturedPhoto}
+                  alt="Unrecognized individual"
+                  className="w-14 h-14 rounded-2xl object-cover border-2 border-red-500 shadow-md cursor-pointer hover:scale-105 transition-transform"
+                  onClick={() => setInspectingAlertPhoto(liveSecurityToast)}
+                  title="Click to inspect photo in high resolution"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-2xl bg-red-900/60 border-2 border-red-500 flex items-center justify-center text-red-300">
+                  <ShieldAlert className="w-7 h-7 animate-bounce" />
+                </div>
+              )}
+              <span className="absolute -bottom-1 -right-1 px-1 py-0.2 rounded bg-red-600 text-[8px] font-black uppercase text-white font-mono shadow">
+                PHOTO
+              </span>
+            </div>
+
+            <div className="min-w-0 space-y-0.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2 py-0.5 rounded-full bg-red-500/30 text-red-200 text-[10px] font-mono font-bold flex items-center gap-1 border border-red-500/40">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" />
+                  🚨 ENTRANCE KIOSK BREACH ALERT
+                </span>
+                <span className="text-[10px] text-red-300/80 font-mono">
+                  {liveSecurityToast.timeFormatted || 'Just now'}
+                </span>
+              </div>
+              <h4 className="font-bold text-white text-sm tracking-tight truncate">
+                {liveSecurityToast.title || 'Unrecognizable Face Detected at Entrance Kiosk'}
+              </h4>
+              <p className="text-slate-200 text-[11px] line-clamp-1 leading-snug">
+                {liveSecurityToast.message}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+            <button
+              type="button"
+              id="btn-inspect-toast-photo"
+              onClick={() => {
+                setInspectingAlertPhoto(liveSecurityToast);
+                setAdminTab('SECURITY');
+              }}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-lg shadow-red-600/30 transition-all active:scale-95"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>Inspect Photo</span>
+            </button>
+            <button
+              type="button"
+              id="btn-dismiss-security-toast"
+              onClick={() => {
+                if (onMarkNotificationAsRead) onMarkNotificationAsRead(liveSecurityToast.id);
+                setLiveSecurityToast(null);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-xs font-semibold cursor-pointer transition-all"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Real-time Banner on Successful Staff Enrollment */}
       {enrollSuccessMessage && (
@@ -1120,7 +1247,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             {/* DEPARTMENT STAFFING READINESS (1 Column) */}
             <div className="liquid-glass rounded-3xl p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-white">Department Floor Coverage</h3>
+                <div>
+                  <h3 className="text-base font-bold text-white">Department Floor Coverage</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {activeCompany?.supermarketName ? `${activeCompany.supermarketName} • ` : ''}
+                    {departmentsList.length} Selected Coverage Zone{departmentsList.length === 1 ? '' : 's'}
+                  </p>
+                </div>
                 <span className="text-xs text-emerald-400 font-mono">Store Open</span>
               </div>
 
@@ -1919,6 +2052,389 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* TAB 6: SECURITY & ENTRANCE KIOSK SURVEILLANCE                            */}
+      {/* ========================================================================= */}
+      {adminTab === 'SECURITY' && (
+        <div className="space-y-6 animate-fade-in">
+          
+          {/* Header Security Status Command Card */}
+          <div className="liquid-glass rounded-3xl p-6 border border-red-500/30 bg-gradient-to-r from-red-950/40 via-slate-900/60 to-slate-950/80 shadow-2xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-600 to-rose-700 p-0.5 shadow-xl shadow-red-600/30 shrink-0 animate-pulse">
+                <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-red-400">
+                  <ShieldAlert className="w-8 h-8" />
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-xl font-extrabold text-white tracking-tight">
+                    Entrance Kiosk Security &amp; Biometric Protection
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/40 font-mono text-[10px] font-black uppercase">
+                    NON-STAFF ACCESS DENIED
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                  Real-time perimeter surveillance for <strong>{activeCompany?.supermarketName || 'Supermarket'}</strong>. 
+                  When non-staff or strangers attempt face verification, the Entrance Kiosk denies access, captures a high-resolution photo, and immediately pushes an alert here.
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2.5 flex-wrap self-end lg:self-center">
+              {unreadSecurityAlertsCount > 0 && (
+                <button
+                  type="button"
+                  id="btn-mark-all-security-reviewed"
+                  onClick={() => {
+                    securityAlertNotifications.forEach((n) => {
+                      if (!n.read && onMarkNotificationAsRead) {
+                        onMarkNotificationAsRead(n.id);
+                      }
+                    });
+                    soundService.playSuccessChime();
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all border border-white/10"
+                >
+                  <CheckCheck className="w-4 h-4 text-emerald-400" />
+                  <span>Mark All Reviewed</span>
+                </button>
+              )}
+
+              {securityAlertNotifications.length > 0 && onClearAllNotifications && (
+                <button
+                  type="button"
+                  id="btn-clear-security-alerts"
+                  onClick={() => {
+                    setConfirmModal({
+                      title: 'Clear Security Incident Logs',
+                      message: 'Are you sure you want to clear all security incident alerts and captured photos from this store console?',
+                      confirmText: 'Clear Security Logs',
+                      onConfirm: () => {
+                        onClearAllNotifications();
+                        soundService.playSuccessChime();
+                        setConfirmModal(null);
+                      },
+                    });
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all border border-red-500/30"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Clear Logs</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Key Security Surveillance Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="liquid-glass-card rounded-2xl p-4 border border-emerald-500/30 space-y-1">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Kiosk Gate Status</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+              </div>
+              <p className="text-lg font-black text-emerald-400">ARMED &amp; ONLINE</p>
+              <p className="text-[11px] text-slate-400 truncate">{activeCompany?.supermarketName || 'Store'} Entrance Terminal</p>
+            </div>
+
+            <div className="liquid-glass-card rounded-2xl p-4 border border-rose-500/30 space-y-1">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Unrecognizable Faces Blocked</span>
+                <ShieldAlert className="w-4 h-4 text-rose-400" />
+              </div>
+              <p className="text-lg font-black text-rose-400">
+                {securityAlertNotifications.length} <span className="text-xs text-slate-400 font-normal">incidents</span>
+              </p>
+              <p className="text-[11px] text-rose-300 font-semibold">
+                {unreadSecurityAlertsCount > 0 ? `${unreadSecurityAlertsCount} pending manager review` : 'All incidents reviewed'}
+              </p>
+            </div>
+
+            <div className="liquid-glass-card rounded-2xl p-4 border border-sky-500/30 space-y-1">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Biometric Staff Vault</span>
+                <Users className="w-4 h-4 text-sky-400" />
+              </div>
+              <p className="text-lg font-black text-white">{employees.length} Enrolled</p>
+              <p className="text-[11px] text-slate-400">Authorized for entrance access</p>
+            </div>
+
+            <div className="liquid-glass-card rounded-2xl p-4 border border-purple-500/30 space-y-1">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Intruder Policy</span>
+                <Lock className="w-4 h-4 text-purple-400" />
+              </div>
+              <p className="text-lg font-black text-purple-300">ZERO TOLERANCE</p>
+              <p className="text-[11px] text-slate-400">Photo captured upon non-staff verification</p>
+            </div>
+          </div>
+
+          {/* Security Alert Feed */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <Bell className="w-4 h-4 text-rose-400" />
+                <span>Security Incident Feed &bull; Photo Evidence Log ({securityAlertNotifications.length})</span>
+              </h4>
+              <span className="text-xs text-slate-400">Click any photo to view full-resolution surveillance capture</span>
+            </div>
+
+            {securityAlertNotifications.length === 0 ? (
+              <div className="liquid-glass-card rounded-3xl p-10 text-center border border-white/10 flex flex-col items-center justify-center space-y-3">
+                <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-xl">
+                  <ShieldCheck className="w-8 h-8" />
+                </div>
+                <h4 className="text-base font-bold text-white">No Security Breaches Detected</h4>
+                <p className="text-xs text-slate-400 max-w-md">
+                  All face scans at the Entrance Kiosk have belonged to enrolled supermarket staff members. 
+                  If an unauthorized non-staff individual attempts to scan their face, their photo and alert will appear here immediately.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {securityAlertNotifications.map((alert) => {
+                  const photo = alert.photoUrl || alert.meta?.capturedPhoto;
+                  const isUnread = !alert.read;
+                  return (
+                    <div
+                      key={alert.id}
+                      className={`liquid-glass-card rounded-3xl p-4 sm:p-5 border transition-all ${
+                        isUnread
+                          ? 'border-red-500/60 bg-red-950/40 shadow-xl shadow-red-950/40'
+                          : 'border-white/10 bg-slate-900/60'
+                      }`}
+                    >
+                      <div className="flex items-start gap-4">
+                        {/* High-res Photo Thumbnail with Zoom Indicator */}
+                        <div className="relative shrink-0 group">
+                          {photo ? (
+                            <div 
+                              onClick={() => setInspectingAlertPhoto(alert)}
+                              className="relative cursor-pointer overflow-hidden rounded-2xl border-2 border-red-500 shadow-lg group-hover:scale-105 transition-all"
+                            >
+                              <img
+                                src={photo}
+                                alt="Captured Unrecognized Individual"
+                                className="w-24 h-24 sm:w-28 sm:h-28 object-cover bg-black"
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                                <ZoomIn className="w-6 h-6" />
+                              </div>
+                              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-red-600/90 text-white font-mono text-[8px] font-black uppercase">
+                                EVIDENCE
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="w-24 h-24 rounded-2xl bg-red-900/40 border-2 border-red-500 flex flex-col items-center justify-center text-red-400">
+                              <ShieldAlert className="w-8 h-8" />
+                              <span className="text-[9px] font-bold mt-1">NO PHOTO</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Incident Metadata & Details */}
+                        <div className="flex-1 min-w-0 space-y-1.5">
+                          <div className="flex items-center justify-between gap-1 flex-wrap">
+                            <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 font-mono text-[10px] font-black border border-red-500/40">
+                              UNRECOGNIZABLE FACE
+                            </span>
+                            <span className="text-[11px] text-slate-400 font-mono">
+                              {alert.timeFormatted || new Date(alert.timestamp).toLocaleTimeString()}
+                            </span>
+                          </div>
+
+                          <h5 className="font-bold text-white text-sm leading-snug">
+                            {alert.title}
+                          </h5>
+
+                          <p className="text-xs text-slate-300 leading-relaxed line-clamp-2">
+                            {alert.message}
+                          </p>
+
+                          <div className="pt-1 text-[11px] text-slate-400 flex flex-col gap-0.5">
+                            <span className="truncate">
+                              Location: <strong className="text-slate-200">{alert.meta?.kioskLocation || `${activeCompany?.supermarketName || 'Store'} Entrance Terminal`}</strong>
+                            </span>
+                            <span className="text-rose-400 font-semibold font-mono">
+                              Biometric Score: 0.0% Match (No enrolled staff match)
+                            </span>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-2 pt-2 flex-wrap">
+                            {photo && (
+                              <button
+                                type="button"
+                                onClick={() => setInspectingAlertPhoto(alert)}
+                                className="px-2.5 py-1 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all border border-red-500/30"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Inspect Full Photo</span>
+                              </button>
+                            )}
+
+                            {isUnread && onMarkNotificationAsRead && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onMarkNotificationAsRead(alert.id);
+                                  soundService.playSuccessChime();
+                                }}
+                                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all"
+                              >
+                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>Mark Reviewed</span>
+                              </button>
+                            )}
+
+                            {onDeleteNotification && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onDeleteNotification(alert.id);
+                                  soundService.playNotificationTone();
+                                }}
+                                className="p-1 rounded-lg text-slate-500 hover:text-rose-400 ml-auto cursor-pointer transition-all"
+                                title="Delete incident record"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+
+      {/* FULL-SCREEN PHOTO EVIDENCE INSPECTION MODAL */}
+      {inspectingAlertPhoto && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-2xl flex items-center justify-center p-3 sm:p-5 animate-fade-in">
+          <div className="w-full max-w-lg liquid-glass-card rounded-[32px] border-2 border-red-500/60 bg-slate-950 shadow-2xl animate-scale-in flex flex-col overflow-hidden max-h-[92vh]">
+            
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-red-950/40 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center border border-red-500/40">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white">Security Photo Inspection</h3>
+                  <p className="text-[11px] text-red-300/80 font-mono">
+                    Incident ID: {inspectingAlertPhoto.id}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInspectingAlertPhoto(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center cursor-pointer transition-all shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto space-y-4 flex flex-col items-center">
+              {/* Photo Display */}
+              <div className="relative w-full max-w-sm rounded-2xl overflow-hidden border-2 border-red-500 shadow-2xl bg-black">
+                {inspectingAlertPhoto.photoUrl || inspectingAlertPhoto.meta?.capturedPhoto ? (
+                  <img
+                    src={inspectingAlertPhoto.photoUrl || inspectingAlertPhoto.meta?.capturedPhoto}
+                    alt="Captured intruder snapshot"
+                    className="w-full h-auto max-h-[380px] object-contain"
+                  />
+                ) : (
+                  <div className="w-full h-64 flex flex-col items-center justify-center text-slate-400">
+                    <Camera className="w-12 h-12 text-slate-600 mb-2" />
+                    <span>No snapshot data attached</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Forensic Details Breakdown */}
+              <div className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2 text-xs">
+                <div className="flex items-center justify-between py-1 border-b border-white/10">
+                  <span className="text-slate-400 font-semibold">Incident Type:</span>
+                  <span className="text-red-400 font-mono font-bold">UNRECOGNIZED_FACE (Access Denied)</span>
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-white/10">
+                  <span className="text-slate-400 font-semibold">Detection Timestamp:</span>
+                  <span className="text-white font-mono">{inspectingAlertPhoto.timeFormatted} ({new Date(inspectingAlertPhoto.timestamp).toLocaleDateString()})</span>
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-white/10">
+                  <span className="text-slate-400 font-semibold">Terminal Location:</span>
+                  <span className="text-slate-200">{inspectingAlertPhoto.meta?.kioskLocation || `${activeCompany?.supermarketName || 'Store'} Entrance Terminal`}</span>
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-white/10">
+                  <span className="text-slate-400 font-semibold">Biometric Similarity:</span>
+                  <span className="text-red-400 font-bold font-mono">0.0% (No enrolled staff match found)</span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-slate-400 font-semibold">Security Action Taken:</span>
+                  <span className="text-emerald-400 font-bold">DOOR LOCKED &bull; PHOTO TRANSMITTED</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-white/10 bg-slate-900/60 flex items-center justify-between gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  const photo = inspectingAlertPhoto.photoUrl || inspectingAlertPhoto.meta?.capturedPhoto;
+                  if (photo) {
+                    const link = document.createElement('a');
+                    link.href = photo;
+                    link.download = `Security_Incident_${inspectingAlertPhoto.id}.jpg`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }
+                }}
+                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Save Evidence (.jpg)</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                {!inspectingAlertPhoto.read && onMarkNotificationAsRead && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onMarkNotificationAsRead(inspectingAlertPhoto.id);
+                      setInspectingAlertPhoto((prev) => prev ? { ...prev, read: true } : null);
+                      soundService.playSuccessChime();
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all shadow"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Mark as Reviewed</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setInspectingAlertPhoto(null)}
+                  className="px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs cursor-pointer transition-all"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {/* ENROLL EMPLOYEE MODAL */}
       {showAddEmpModal && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4">
@@ -2443,6 +2959,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     onChange={(e) => setEditingEmp({ ...editingEmp, department: e.target.value as Department })}
                     className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white"
                   >
+                    {!departmentsList.includes(editingEmp.department) && (
+                      <option value={editingEmp.department} className="bg-slate-900 text-white">
+                        {editingEmp.department} (Current)
+                      </option>
+                    )}
                     {departmentsList.map(d => (
                       <option key={d} value={d} className="bg-slate-900 text-white">{d}</option>
                     ))}
