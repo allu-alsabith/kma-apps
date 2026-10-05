@@ -344,13 +344,13 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
           <button
             id="btn-employee-phone-install-banner"
             onClick={onOpenInstallModal}
-            className="w-full py-2 px-3 rounded-2xl liquid-button bg-gradient-to-r from-sky-500/20 via-white/5 to-emerald-500/20 border border-sky-400/30 flex items-center justify-between text-xs font-semibold text-slate-200 hover:text-white transition-all cursor-pointer shadow-lg"
+            className="w-full py-2 px-3 rounded-xl bg-white border border-[#E2E8F0] shadow-xs flex items-center justify-between text-xs font-semibold text-slate-700 hover:text-[#1E293B] hover:bg-slate-50 transition-all cursor-pointer"
           >
             <div className="flex items-center gap-2">
-              <Smartphone className="w-4 h-4 text-sky-400" />
+              <Smartphone className="w-4 h-4 text-[#2563EB]" />
               <span>Open Staff App on your phone</span>
             </div>
-            <span className="px-2 py-0.5 rounded-full bg-sky-500/30 text-sky-300 text-[10px] font-bold flex items-center gap-1">
+            <span className="px-2 py-0.5 rounded-md bg-blue-50 text-[#2563EB] text-[10px] font-semibold flex items-center gap-1 border border-blue-200">
               <QrCode className="w-3 h-3" /> Web Address / QR
             </span>
           </button>

@@ -163,31 +163,31 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
   }, [activeMode, capturedPreview]);
 
   return (
-    <div className="rounded-2xl p-3.5 bg-slate-950/80 border border-white/15 space-y-3">
+    <div className="rounded-xl p-3.5 bg-white border border-[#E2E8F0] space-y-3 shadow-xs text-[#1E293B]">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <ScanFace className="w-4 h-4 text-emerald-400" />
-          <span className="text-xs font-bold text-white">Staff Face Biometrics</span>
+          <ScanFace className="w-4 h-4 text-[#2563EB]" />
+          <span className="text-xs font-bold text-[#1E293B]">Staff Face Biometrics</span>
           {capturedPreview ? (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> Captured
+            <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Photo Ready
             </span>
           ) : (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-medium">
+            <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200 font-medium">
               Optional / Ready
             </span>
           )}
         </div>
         
         {/* Source Mode Tabs */}
-        <div className="flex items-center gap-1 p-0.5 bg-slate-900 rounded-lg border border-white/10 text-[10px]">
+        <div className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-lg border border-slate-200 text-[10px]">
           <button
             type="button"
             onClick={() => setActiveMode('CAMERA')}
             className={`px-2 py-1 rounded-md font-semibold transition-all cursor-pointer ${
               activeMode === 'CAMERA'
-                ? 'bg-emerald-500 text-slate-950 font-bold'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#2563EB] text-white font-bold shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Camera
@@ -197,8 +197,8 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
             onClick={() => setActiveMode('UPLOAD')}
             className={`px-2 py-1 rounded-md font-semibold transition-all cursor-pointer ${
               activeMode === 'UPLOAD'
-                ? 'bg-emerald-500 text-slate-950 font-bold'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#2563EB] text-white font-bold shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Upload
@@ -208,8 +208,8 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
             onClick={() => setActiveMode('SAMPLES')}
             className={`px-2 py-1 rounded-md font-semibold transition-all cursor-pointer ${
               activeMode === 'SAMPLES'
-                ? 'bg-emerald-500 text-slate-950 font-bold'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#2563EB] text-white font-bold shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Presets
@@ -219,8 +219,8 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
             onClick={() => setActiveMode('URL')}
             className={`px-2 py-1 rounded-md font-semibold transition-all cursor-pointer ${
               activeMode === 'URL'
-                ? 'bg-emerald-500 text-slate-950 font-bold'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#2563EB] text-white font-bold shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Link
@@ -233,25 +233,25 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
 
       {/* PREVIEW OF CAPTURED FACE (if one is currently set) */}
       {capturedPreview && activeMode !== 'SAMPLES' && !isStreaming ? (
-        <div className="relative flex items-center gap-3.5 p-3 rounded-2xl bg-white/5 border border-emerald-500/30">
+        <div className="relative flex items-center gap-3.5 p-3 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0]">
           <div className="relative shrink-0">
             <img
               src={capturedPreview}
               alt={staffName}
-              className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-400 shadow-xl"
+              className="w-14 h-14 rounded-xl object-cover border border-[#CBD5E1] shadow-xs"
             />
-            <div className="absolute -bottom-1 -right-1 p-0.5 rounded-full bg-emerald-500 text-black">
+            <div className="absolute -bottom-1 -right-1 p-0.5 rounded-full bg-emerald-600 text-white">
               <CheckCircle2 className="w-3.5 h-3.5" />
             </div>
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-300">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span>Face Photo Attached</span>
             </div>
-            <p className="text-[10px] text-slate-300 mt-0.5">
-              Synced for entrance kiosk & mobile clock-in.
+            <p className="text-[10px] text-slate-500 mt-0.5">
+              Synced for entrance kiosk &amp; mobile clock-in.
             </p>
             <div className="flex items-center gap-2 mt-1.5">
               <button
@@ -260,18 +260,18 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
                   setActiveMode('CAMERA');
                   startCamera();
                 }}
-                className="text-[10px] text-sky-400 hover:text-sky-300 font-semibold cursor-pointer flex items-center gap-1 underline"
+                className="text-[11px] text-[#2563EB] hover:text-blue-700 font-semibold cursor-pointer flex items-center gap-1 underline"
               >
                 <RefreshCw className="w-2.5 h-2.5" /> Retake Photo
               </button>
-              <span className="text-slate-600">•</span>
+              <span className="text-slate-300">•</span>
               <button
                 type="button"
                 onClick={() => {
                   setCapturedPreview('');
                   onFaceCaptured('');
                 }}
-                className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer underline"
+                className="text-[11px] text-rose-600 hover:text-rose-700 font-semibold cursor-pointer underline"
               >
                 Remove
               </button>
@@ -285,7 +285,7 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
       {/* ============================================================== */}
       {activeMode === 'CAMERA' && (!capturedPreview || isStreaming) && (
         <div className="space-y-2">
-          <div className="relative w-full h-48 bg-slate-900 rounded-2xl overflow-hidden border border-white/20 flex items-center justify-center">
+          <div className="relative w-full h-48 bg-slate-900 rounded-xl overflow-hidden border border-slate-300 flex items-center justify-center">
             {/* Video Element */}
             <video
               ref={videoRef}
@@ -298,14 +298,14 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
             {/* Biometric Scanning Overlay */}
             {isStreaming && (
               <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-                <div className="w-24 h-32 rounded-[40px] border-2 border-emerald-400/80 shadow-[0_0_20px_rgba(16,185,129,0.3)] relative">
+                <div className="w-24 h-32 rounded-[32px] border-2 border-emerald-400/80 shadow-[0_0_20px_rgba(16,185,129,0.3)] relative">
                   <div className="absolute top-2 left-2 w-2.5 h-2.5 border-t-2 border-l-2 border-emerald-400"></div>
                   <div className="absolute top-2 right-2 w-2.5 h-2.5 border-t-2 border-r-2 border-emerald-400"></div>
                   <div className="absolute bottom-2 left-2 w-2.5 h-2.5 border-b-2 border-l-2 border-emerald-400"></div>
                   <div className="absolute bottom-2 right-2 w-2.5 h-2.5 border-b-2 border-r-2 border-emerald-400"></div>
                 </div>
-                <span className="text-[10px] text-emerald-300 font-mono mt-1 bg-black/70 px-2 py-0.5 rounded-full">
-                  Align face & click capture
+                <span className="text-[10px] text-white font-mono mt-1 bg-black/70 px-2 py-0.5 rounded-full">
+                  Align face &amp; click capture
                 </span>
               </div>
             )}
@@ -316,7 +316,7 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
                 <button
                   type="button"
                   onClick={captureSnapshot}
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-bold text-xs shadow-xl flex items-center gap-1.5 hover:brightness-110 active:scale-95 cursor-pointer transition-all"
+                  className="px-4 py-2 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-xs shadow-md flex items-center gap-1.5 active:scale-95 cursor-pointer transition-all"
                 >
                   <Camera className="w-4 h-4" />
                   <span>Capture Face Snapshot</span>
@@ -326,31 +326,31 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
 
             {/* Error or not streaming state */}
             {(!isStreaming || cameraError) && (
-              <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center p-4 text-center">
+              <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center p-4 text-center">
                 <AlertCircle className="w-6 h-6 text-amber-400 mb-1" />
                 <p className="text-xs text-white font-semibold">{cameraError || 'Camera inactive'}</p>
-                <p className="text-[10px] text-slate-400 mt-1 max-w-xs">
+                <p className="text-[10px] text-slate-300 mt-1 max-w-xs">
                   You can grant camera access or easily switch to "Upload" or "Presets" tab.
                 </p>
                 <div className="flex items-center gap-2 mt-3">
                   <button
                     type="button"
                     onClick={startCamera}
-                    className="px-3 py-1.5 rounded-xl bg-emerald-500 text-slate-950 text-[11px] font-bold cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white text-[11px] font-semibold cursor-pointer shadow-xs"
                   >
                     Start Camera
                   </button>
                   <button
                     type="button"
                     onClick={() => setActiveMode('UPLOAD')}
-                    className="px-3 py-1.5 rounded-xl bg-white/10 text-white text-[11px] font-semibold cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-[11px] font-semibold cursor-pointer"
                   >
                     Upload Photo
                   </button>
                   <button
                     type="button"
                     onClick={() => setActiveMode('SAMPLES')}
-                    className="px-3 py-1.5 rounded-xl bg-white/10 text-sky-400 text-[11px] font-semibold cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-[11px] font-semibold cursor-pointer"
                   >
                     Choose Preset
                   </button>
@@ -376,13 +376,13 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
 
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="w-full py-5 border-2 border-dashed border-white/20 hover:border-emerald-400/60 rounded-2xl flex flex-col items-center justify-center p-3 cursor-pointer bg-slate-900/50 hover:bg-slate-900/80 transition-all text-center"
+            className="w-full py-6 border-2 border-dashed border-slate-300 hover:border-[#2563EB] rounded-xl flex flex-col items-center justify-center p-3 cursor-pointer bg-[#F8FAFC] hover:bg-blue-50/50 transition-all text-center"
           >
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-1.5">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#2563EB] flex items-center justify-center mb-1.5 border border-blue-100">
               <Upload className="w-4 h-4" />
             </div>
-            <p className="text-xs font-semibold text-white">Click to Select Staff Photo</p>
-            <p className="text-[10px] text-slate-400 mt-0.5">
+            <p className="text-xs font-semibold text-[#1E293B]">Click to Select Staff Photo</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">
               Select portrait from your phone gallery or computer (JPG, PNG)
             </p>
           </div>
@@ -394,8 +394,8 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
       {/* ============================================================== */}
       {activeMode === 'SAMPLES' && (
         <div className="space-y-2">
-          <p className="text-[10px] text-slate-400">
-            Click any portrait to instantly apply as this staff member's face:
+          <p className="text-[11px] text-slate-500">
+            Click any portrait to apply as this staff member's face:
           </p>
           <div className="grid grid-cols-6 gap-2">
             {SAMPLE_PORTRAITS.map((p, idx) => (
@@ -403,13 +403,13 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
                 key={idx}
                 type="button"
                 onClick={() => handleSelectSample(p.url)}
-                className={`relative rounded-xl overflow-hidden aspect-square border-2 transition-all cursor-pointer ${
-                  capturedPreview === p.url ? 'border-emerald-400 ring-2 ring-emerald-500/40' : 'border-white/10 hover:border-white/40'
+                className={`relative rounded-lg overflow-hidden aspect-square border transition-all cursor-pointer ${
+                  capturedPreview === p.url ? 'border-[#2563EB] ring-2 ring-blue-500/30' : 'border-slate-200 hover:border-slate-400'
                 }`}
               >
                 <img src={p.url} alt={p.label} className="w-full h-full object-cover" />
                 {capturedPreview === p.url && (
-                  <div className="absolute inset-0 bg-emerald-500/30 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-[#2563EB]/30 flex items-center justify-center">
                     <CheckCircle2 className="w-4 h-4 text-white" />
                   </div>
                 )}
@@ -430,12 +430,12 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
               placeholder="Enter image URL"
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
-              className="flex-1 bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 font-mono text-ellipsis"
+              className="flex-1 bg-white border border-[#CBD5E1] rounded-lg px-3 py-2 text-xs text-[#1E293B] placeholder-slate-400 font-mono text-ellipsis focus:outline-none focus:border-[#2563EB]"
             />
             <button
               type="button"
               onClick={handleUrlSubmit}
-              className="px-3 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs cursor-pointer shadow-md"
+              className="px-3 py-2 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-xs cursor-pointer shadow-xs"
             >
               Apply
             </button>

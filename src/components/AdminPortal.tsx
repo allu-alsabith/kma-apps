@@ -599,36 +599,30 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   if (!isAdminLoggedIn) {
     return (
       <div className="w-full max-w-xl mx-auto px-4 py-8 sm:py-16 select-none animate-scale-in">
-        <div className="liquid-glass-card rounded-[32px] p-6 sm:p-8 border border-white/20 shadow-2xl space-y-6 relative overflow-hidden">
-          {/* Subtle Accent Glow */}
-          <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none -z-10"></div>
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -z-10"></div>
-
+        <div className="bg-white rounded-xl p-6 sm:p-8 border border-[#E2E8F0] shadow-sm space-y-6 text-[#1E293B]">
           {/* Header Identity */}
           <div className="flex items-center gap-3.5">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 p-0.5 shadow-lg shadow-purple-500/20 shrink-0">
-              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-purple-400">
-                <Store className="w-7 h-7" />
-              </div>
+            <div className="w-12 h-12 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2563EB] shrink-0">
+              <Store className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                <h1 className="text-xl sm:text-2xl font-bold text-[#1E293B] tracking-tight">
                   Store Admin Login
                 </h1>
-                <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-bold border border-purple-500/30">
+                <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-semibold border border-[#E2E8F0]">
                   STORE HR CONSOLE
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Supermarket Store HR & Workforce Administration
               </p>
             </div>
           </div>
 
           {/* Guidance Banner */}
-          <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-xs text-slate-300 flex items-start gap-2.5">
-            <ShieldCheck className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-slate-700 flex items-start gap-2.5">
+            <ShieldCheck className="w-4 h-4 text-[#2563EB] shrink-0 mt-0.5" />
             <div className="space-y-1 leading-relaxed">
               <p>
                 Sign in with your <strong>Company Code</strong> and <strong>Company Password</strong> to access staff enrollment, shifts roster, attendance, and payroll.
@@ -639,16 +633,16 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           {/* Login Form */}
           <form onSubmit={handleAdminLogin} className="space-y-4">
             {adminLoginError && (
-              <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2 animate-shake">
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+              <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
                 <span className="font-semibold">{adminLoginError}</span>
               </div>
             )}
 
             {/* Empty Companies Notice */}
             {(!companies || companies.length === 0) && (
-              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs flex items-start gap-2.5">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+              <div className="p-3.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
                 <p className="leading-relaxed">
                   No company has been registered yet. Please complete the Business Registration wizard to set up your store credentials.
                 </p>
@@ -657,12 +651,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
             {/* Field 1: Company Name */}
             <div>
-              <label className="text-xs font-bold text-slate-300 block mb-1.5 flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-700 block mb-1.5 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
-                  <Store className="w-3.5 h-3.5 text-purple-400" />
+                  <Store className="w-3.5 h-3.5 text-[#2563EB]" />
                   <span>Company / Supermarket Name</span>
                 </span>
-                <span className="text-[10px] text-slate-500">Supermarket Brand</span>
+                <span className="text-[10px] text-slate-400">Supermarket Brand</span>
               </label>
               <div className="relative">
                 <input
@@ -674,19 +668,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     setLoginCompanyName(e.target.value);
                     if (adminLoginError) setAdminLoginError(null);
                   }}
-                  className="w-full bg-slate-900/90 border border-white/15 focus:border-purple-400 rounded-xl px-3.5 py-2.5 text-sm text-white outline-none transition-all"
+                  className="w-full bg-white border border-[#CBD5E1] focus:border-[#2563EB] rounded-lg px-3.5 py-2.5 text-xs text-[#1E293B] outline-none transition-all placeholder-slate-400"
                 />
               </div>
             </div>
 
             {/* Field 2: Company Code */}
             <div>
-              <label className="text-xs font-bold text-slate-300 block mb-1.5 flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-700 block mb-1.5 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-purple-400" />
+                  <Building2 className="w-3.5 h-3.5 text-[#2563EB]" />
                   <span>Company Code</span>
                 </span>
-                <span className="text-[10px] text-slate-500">Store Code</span>
+                <span className="text-[10px] text-slate-400">Store Code</span>
               </label>
               <div className="relative">
                 <input
@@ -699,19 +693,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     setLoginCompanyCode(e.target.value.toUpperCase());
                     if (adminLoginError) setAdminLoginError(null);
                   }}
-                  className="w-full bg-slate-900/90 border border-white/15 focus:border-purple-400 rounded-xl px-3.5 py-2.5 text-sm text-white font-mono uppercase tracking-wider outline-none transition-all"
+                  className="w-full bg-white border border-[#CBD5E1] focus:border-[#2563EB] rounded-lg px-3.5 py-2.5 text-xs text-[#1E293B] font-mono uppercase tracking-wider outline-none transition-all placeholder-slate-400"
                 />
               </div>
             </div>
 
             {/* Field 3: Company Password */}
             <div>
-              <label className="text-xs font-bold text-slate-300 block mb-1.5 flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-700 block mb-1.5 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
-                  <KeyRound className="w-3.5 h-3.5 text-purple-400" />
+                  <KeyRound className="w-3.5 h-3.5 text-[#2563EB]" />
                   <span>Company Password</span>
                 </span>
-                <span className="text-[10px] text-slate-500">Store Admin Password</span>
+                <span className="text-[10px] text-slate-400">Store Admin Password</span>
               </label>
               <div className="relative">
                 <input
@@ -724,12 +718,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     setLoginCompanyPassword(e.target.value);
                     if (adminLoginError) setAdminLoginError(null);
                   }}
-                  className="w-full bg-slate-900/90 border border-white/15 focus:border-purple-400 rounded-xl px-3.5 py-2.5 pr-10 text-sm text-white font-mono outline-none transition-all"
+                  className="w-full bg-white border border-[#CBD5E1] focus:border-[#2563EB] rounded-lg px-3.5 py-2.5 pr-10 text-xs text-[#1E293B] font-mono outline-none transition-all placeholder-slate-400"
                 />
                 <button
                   type="button"
                   onClick={() => setShowLoginPassword(!showLoginPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
                 >
                   {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -740,7 +734,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             <button
               id="btn-admin-login-submit"
               type="submit"
-              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-500 via-indigo-500 to-purple-600 hover:from-purple-400 hover:to-indigo-400 text-white font-black text-sm shadow-xl shadow-purple-500/25 cursor-pointer transition-all active:scale-[0.99] flex items-center justify-center gap-2 mt-2"
+              className="w-full py-2.5 px-4 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-xs shadow-xs cursor-pointer transition-all active:scale-[0.99] flex items-center justify-center gap-2 mt-2"
             >
               <Lock className="w-4 h-4 text-white" />
               <span>Log In as Store Admin</span>
@@ -749,10 +743,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             {/* Google Sign-in with Firebase Auth */}
             <div className="relative my-2.5">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/10" />
+                <div className="w-full border-t border-[#E2E8F0]" />
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="bg-slate-950 px-2.5 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                <span className="bg-white px-2.5 text-[10px] text-slate-500 font-semibold uppercase tracking-wider">
                   OR SIGN IN WITH FIREBASE AUTH
                 </span>
               </div>
@@ -763,7 +757,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               id="btn-admin-google-signin"
               onClick={handleGoogleSignIn}
               disabled={isSigningInWithGoogle}
-              className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs shadow-md transition-all active:scale-[0.99] flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60"
+              className="w-full py-2.5 px-4 rounded-lg bg-white hover:bg-slate-50 border border-[#CBD5E1] text-[#1E293B] font-semibold text-xs shadow-xs transition-all active:scale-[0.99] flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60"
             >
               <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -776,13 +770,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           </form>
 
           {/* Account Help Option */}
-          <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+          <div className="pt-3 border-t border-[#E2E8F0] flex items-center justify-between text-xs text-slate-500">
             <span>Can&apos;t log in or forgot password?</span>
             <button
               type="button"
               id="btn-admin-account-help"
               onClick={() => setShowAccountHelpModal(true)}
-              className="text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1.5 cursor-pointer transition-all hover:underline"
+              className="text-[#2563EB] hover:text-blue-700 font-semibold flex items-center gap-1.5 cursor-pointer transition-all hover:underline"
             >
               <LifeBuoy className="w-3.5 h-3.5" />
               <span>Account Help</span>
@@ -814,14 +808,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     <div className="w-full max-w-7xl mx-auto p-4 md:p-6 space-y-6 select-none">
       
       {/* STORE MANAGER COMMAND BAR */}
-      <div className="liquid-glass rounded-3xl p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 shadow-2xl">
+      <div className="bg-white rounded-xl p-5 border border-[#E2E8F0] shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 text-[#1E293B]">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             {/* Active Store Switcher Dropdown */}
             {companies && companies.length > 0 ? (
-              <div className="flex items-center gap-1.5 bg-black/60 border border-purple-500/30 rounded-xl px-2.5 py-1">
-                <Store className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                <span className="text-[10px] text-slate-400 font-semibold">Store:</span>
+              <div className="flex items-center gap-1.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg px-2.5 py-1 text-slate-700">
+                <Store className="w-3.5 h-3.5 text-[#2563EB] shrink-0" />
+                <span className="text-[10px] text-slate-500 font-semibold">Store:</span>
                 <select
                   id="select-admin-active-company"
                   value={activeCompany?.id || companies?.[0]?.id || ''}
@@ -836,39 +830,39 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     }
                     soundService.playSuccessChime();
                   }}
-                  className="bg-transparent border-none text-[11px] text-purple-300 font-bold outline-none cursor-pointer hover:text-purple-200"
+                  className="bg-transparent border-none text-[11px] text-slate-800 font-bold outline-none cursor-pointer"
                 >
                   {companies.map((c) => (
-                    <option key={c.id} value={c.id} className="bg-slate-900 text-white font-medium">
+                    <option key={c.id} value={c.id} className="bg-white text-slate-800 font-medium">
                       {c.supermarketName} ({c.code})
                     </option>
                   ))}
                 </select>
               </div>
             ) : (
-              <span className="text-xs font-mono text-emerald-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
-                <Store className="w-3.5 h-3.5" /> {activeCompany?.supermarketName || 'Store'} Supermarket &bull; Store HQ
+              <span className="text-xs font-mono text-slate-700 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                <Store className="w-3.5 h-3.5 text-[#2563EB]" /> {activeCompany?.supermarketName || 'Store'} Supermarket &bull; Store HQ
               </span>
             )}
 
             <NetworkSyncBadge compact />
-            <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-mono font-bold">
+            <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-[#E2E8F0] text-slate-700 text-[10px] font-mono font-bold">
               CODE: {activeCompany?.code || 'STORE'}
             </span>
 
             {/* Google Auth User Badge */}
             {googleUser && (
-              <div className="flex items-center gap-1.5 bg-blue-500/15 border border-blue-500/30 rounded-xl px-2 py-0.5 text-[11px] text-blue-200">
+              <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-lg px-2 py-0.5 text-[11px] text-blue-800">
                 {googleUser.photoURL ? (
                   <img src={googleUser.photoURL} alt="" className="w-4 h-4 rounded-full object-cover" />
                 ) : (
-                  <div className="w-4 h-4 rounded-full bg-blue-500 text-[9px] text-white flex items-center justify-center font-bold">G</div>
+                  <div className="w-4 h-4 rounded-full bg-[#2563EB] text-[9px] text-white flex items-center justify-center font-bold">G</div>
                 )}
                 <span className="font-semibold truncate max-w-[120px]">{googleUser.displayName || googleUser.email}</span>
                 <button
                   type="button"
                   onClick={handleGoogleSignOut}
-                  className="text-blue-300 hover:text-white text-[10px] underline ml-0.5 cursor-pointer"
+                  className="text-[#2563EB] hover:underline text-[10px] ml-0.5 cursor-pointer font-medium"
                   title="Sign out of Google Account"
                 >
                   Sign Out
@@ -880,23 +874,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             <button
               id="btn-admin-sign-out"
               onClick={handleAdminLogout}
-              className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-rose-500/20 hover:text-rose-300 text-slate-300 font-semibold text-[11px] flex items-center gap-1.5 cursor-pointer transition-all border border-white/10"
+              className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 text-slate-700 font-semibold text-[11px] flex items-center gap-1.5 cursor-pointer transition-all border border-[#CBD5E1]"
               title="Sign out of current store and switch company"
             >
-              <LogOut className="w-3 h-3 text-rose-400" />
+              <LogOut className="w-3 h-3 text-slate-500" />
               <span>Sign Out</span>
             </button>
           </div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight mt-1">
-            {activeCompany?.supermarketName || 'Store'} Manager & HR Administration
+          <h1 className="text-xl font-bold text-[#1E293B] tracking-tight mt-1.5">
+            {activeCompany?.supermarketName || 'Store'} Manager &amp; HR Administration
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            {activeCompany?.name || activeCompany?.supermarketName || 'Store'} centralized workforce management, biometric logs & payroll supervision
+          <p className="text-xs text-slate-500 mt-0.5">
+            {activeCompany?.name || activeCompany?.supermarketName || 'Store'} centralized workforce management, biometric logs &amp; payroll supervision
           </p>
         </div>
 
-        {/* Tab Navigation in Liquid Style */}
-        <div className="flex items-center gap-1 p-1 bg-black/40 rounded-2xl border border-white/10 overflow-x-auto w-full lg:w-auto">
+        {/* Tab Navigation in Minimal Classic Style */}
+        <div className="flex items-center gap-1 p-1 bg-[#F8FAFC] rounded-lg border border-[#E2E8F0] overflow-x-auto w-full lg:w-auto">
           {[
             { id: 'OVERVIEW', label: 'Floor Live' },
             { id: 'DIRECTORY', label: `Staff Directory (${employees.length})` },
@@ -913,7 +907,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             { 
               id: 'SECURITY', 
               label: unreadSecurityAlertsCount > 0 
-                ? `🚨 Security (${unreadSecurityAlertsCount})` 
+                ? `Security Alerts (${unreadSecurityAlertsCount})` 
                 : securityAlertNotifications.length > 0 
                   ? `Security Alerts (${securityAlertNotifications.length})` 
                   : 'Security Alerts' 
@@ -923,14 +917,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               key={tab.id}
               id={`admin-tab-${tab.id.toLowerCase()}`}
               onClick={() => setAdminTab(tab.id as typeof adminTab)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
                 adminTab === tab.id
-                  ? tab.id === 'SECURITY' && unreadSecurityAlertsCount > 0
-                    ? 'bg-gradient-to-b from-rose-500/50 to-rose-700/50 text-white shadow-lg border border-rose-400'
-                    : 'bg-gradient-to-b from-white/25 to-white/5 text-white shadow-lg border border-white/20'
-                  : tab.id === 'SECURITY' && unreadSecurityAlertsCount > 0
-                  ? 'text-rose-400 font-extrabold bg-rose-500/15 border border-rose-500/30 animate-pulse'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-[#2563EB] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-[#1E293B] hover:bg-slate-200/50'
               }`}
             >
               {tab.label}
@@ -1039,19 +1029,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
           {/* Clean Roster Welcome & Enroll Action Banner */}
           {employees.length === 0 && (
-            <div className="liquid-glass-card rounded-3xl p-5 border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-slate-900/60 to-sky-500/10 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="bg-white rounded-xl p-5 border border-[#E2E8F0] shadow-xs flex flex-col md:flex-row items-center justify-between gap-4 text-[#1E293B]">
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 shadow-lg shadow-emerald-500/20">
-                  <UserPlus className="w-6 h-6" />
+                <div className="w-10 h-10 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2563EB] shrink-0">
+                  <UserPlus className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-[#1E293B] flex items-center gap-2">
                     <span>{activeCompany?.supermarketName || 'Supermarket'} Workforce Setup</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono">
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 border border-[#E2E8F0] text-slate-700 font-mono font-semibold">
                       READY FOR STAFF
                     </span>
                   </h4>
-                  <p className="text-xs text-slate-300 mt-0.5 max-w-xl">
+                  <p className="text-xs text-slate-500 mt-0.5 max-w-xl">
                     Your roster is ready for setup. Click &ldquo;+ Enroll First Staff Member&rdquo; to add your cashiers, store leads, bakers, and inventory crew with their role, wage, PIN, and face photo.
                   </p>
                 </div>
@@ -1060,7 +1050,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 <button
                   id="overview-enroll-first-btn"
                   onClick={handleOpenAddEmp}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/25 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer"
+                  className="px-5 py-2.5 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer active:scale-98"
                 >
                   <UserPlus className="w-4 h-4" />
                   <span>+ Enroll First Staff Member</span>
@@ -1069,62 +1059,62 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             </div>
           )}
           
-          {/* Top Live Counters (Liquid Glass Cards) */}
+          {/* Top Live Counters */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             
-            <div className="liquid-glass-card rounded-3xl p-4">
-              <div className="flex items-center justify-between text-slate-400 text-xs">
+            <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs text-[#1E293B]">
+              <div className="flex items-center justify-between text-slate-500 text-xs">
                 <span>Active Floor Headcount</span>
-                <Users className="w-4 h-4 text-emerald-400" />
+                <Users className="w-4 h-4 text-[#2563EB]" />
               </div>
               <div className="flex items-baseline gap-2 mt-2">
-                <span className="text-3xl font-extrabold text-white">{activeFloorStaffCount}</span>
-                <span className="text-xs text-slate-400 font-medium">/ {totalStaff} total staff</span>
+                <span className="text-2xl font-bold text-[#1E293B]">{activeFloorStaffCount}</span>
+                <span className="text-xs text-slate-500 font-medium">/ {totalStaff} total staff</span>
               </div>
-              <div className="mt-3 flex items-center gap-1.5 text-[11px] text-emerald-400">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <div className="mt-3 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>Active on store floor</span>
               </div>
             </div>
 
-            <div className="liquid-glass-card rounded-3xl p-4">
-              <div className="flex items-center justify-between text-slate-400 text-xs">
+            <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs text-[#1E293B]">
+              <div className="flex items-center justify-between text-slate-500 text-xs">
                 <span>Late Arrivals Today</span>
-                <Clock className="w-4 h-4 text-amber-400" />
+                <Clock className="w-4 h-4 text-amber-600" />
               </div>
               <div className="flex items-baseline gap-2 mt-2">
-                <span className="text-3xl font-extrabold text-amber-400">{lateCount}</span>
-                <span className="text-xs text-slate-400 font-medium">exceptions</span>
+                <span className="text-2xl font-bold text-[#1E293B]">{lateCount}</span>
+                <span className="text-xs text-slate-500 font-medium">exceptions</span>
               </div>
-              <div className="mt-3 text-[11px] text-slate-400">
+              <div className="mt-3 text-[11px] text-slate-500">
                 Grace period: 15 mins applied
               </div>
             </div>
 
-            <div className="liquid-glass-card rounded-3xl p-4">
-              <div className="flex items-center justify-between text-slate-400 text-xs">
+            <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs text-[#1E293B]">
+              <div className="flex items-center justify-between text-slate-500 text-xs">
                 <span>Biometric FaceID Health</span>
-                <ScanFace className="w-4 h-4 text-sky-400" />
+                <ScanFace className="w-4 h-4 text-[#2563EB]" />
               </div>
               <div className="flex items-baseline gap-2 mt-2">
-                <span className="text-3xl font-extrabold text-sky-400">99.2%</span>
-                <span className="text-xs text-slate-400 font-medium">accuracy</span>
+                <span className="text-2xl font-bold text-[#1E293B]">99.2%</span>
+                <span className="text-xs text-slate-500 font-medium">accuracy</span>
               </div>
-              <div className="mt-3 text-[11px] text-sky-300">
-                Tablet Gate A & Loading Bay online
+              <div className="mt-3 text-[11px] text-slate-500">
+                Tablet Gate A &amp; Loading Bay online
               </div>
             </div>
 
-            <div className="liquid-glass-card rounded-3xl p-4">
-              <div className="flex items-center justify-between text-slate-400 text-xs">
+            <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs text-[#1E293B]">
+              <div className="flex items-center justify-between text-slate-500 text-xs">
                 <span>Pending Approvals</span>
-                <AlertTriangle className="w-4 h-4 text-purple-400" />
+                <AlertTriangle className="w-4 h-4 text-[#2563EB]" />
               </div>
               <div className="flex items-baseline gap-2 mt-2">
-                <span className="text-3xl font-extrabold text-purple-300">{pendingLeavesCount}</span>
-                <span className="text-xs text-slate-400 font-medium">leave requests</span>
+                <span className="text-2xl font-bold text-[#1E293B]">{pendingLeavesCount}</span>
+                <span className="text-xs text-slate-500 font-medium">leave requests</span>
               </div>
-              <div className="mt-3 text-[11px] text-purple-300">
+              <div className="mt-3 text-[11px] text-slate-500">
                 Requires store manager action
               </div>
             </div>
@@ -1135,14 +1125,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             {/* LIVE STREAM OF PUNCHES (2 Columns) */}
-            <div className="lg:col-span-2 liquid-glass rounded-3xl p-5 space-y-4">
+            <div className="lg:col-span-2 bg-white rounded-xl p-5 border border-[#E2E8F0] shadow-xs space-y-4 text-[#1E293B]">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
-                  <h3 className="text-base font-bold text-white">Live Attendance Punch Feed</h3>
+                  <Activity className="w-4 h-4 text-[#2563EB]" />
+                  <h3 className="text-sm font-bold text-[#1E293B]">Live Attendance Punch Feed</h3>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-slate-400 hidden sm:inline">Updating in real-time</span>
+                  <span className="text-xs text-slate-500 hidden sm:inline">Updating in real-time</span>
                   {attendanceLogs.length > 0 && onClearAttendanceLogs && (
                     <button
                       type="button"
@@ -1158,7 +1148,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                           },
                         });
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 border border-white/10 hover:border-rose-500/30 text-[11px] font-medium flex items-center gap-1.5 transition-all cursor-pointer"
+                      className="px-2.5 py-1 rounded-md bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-[#CBD5E1] hover:border-rose-200 text-[11px] font-medium flex items-center gap-1.5 transition-all cursor-pointer"
                       title="Clear punch logs"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -1169,9 +1159,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </div>
 
               {employees.length === 0 && attendanceLogs.length > 0 && (
-                <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2 text-amber-300">
-                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 text-amber-800">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
                     <span>Previous test punches detected ({attendanceLogs.length} records) from before staff directory was cleared.</span>
                   </div>
                   {onClearAttendanceLogs && (
@@ -1181,7 +1171,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         onClearAttendanceLogs();
                         soundService.playSuccessChime();
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-bold text-[11px] whitespace-nowrap transition-colors cursor-pointer"
+                      className="px-2.5 py-1 rounded-md bg-amber-100 hover:bg-amber-200 text-amber-900 font-semibold text-[11px] whitespace-nowrap transition-colors cursor-pointer"
                     >
                       Clear Test Logs
                     </button>
@@ -1191,10 +1181,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
               <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
                 {attendanceLogs.length === 0 ? (
-                  <div className="py-12 px-4 rounded-2xl bg-white/5 border border-white/10 text-center">
-                    <Clock className="w-10 h-10 text-slate-600 mx-auto mb-2" />
-                    <p className="text-sm font-semibold text-white">No attendance records logged yet today</p>
-                    <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                  <div className="py-12 px-4 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-center">
+                    <Clock className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+                    <p className="text-xs font-semibold text-[#1E293B]">No attendance records logged yet today</p>
+                    <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
                       When your enrolled staff punch in via the Face Kiosk tablet or Staff Mobile App, their live attendance records will appear here immediately.
                     </p>
                   </div>
@@ -1202,39 +1192,39 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   attendanceLogs.map((log) => (
                     <div
                       key={log.id}
-                      className="p-3.5 rounded-2xl liquid-glass-card flex items-center justify-between gap-3 border border-white/10 hover:border-white/20 transition-all"
+                      className="p-3 rounded-lg bg-[#F8FAFC] flex items-center justify-between gap-3 border border-[#E2E8F0] hover:border-slate-300 transition-all text-[#1E293B]"
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-xs ${
-                          log.type === 'IN' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                        <div className={`w-8 h-8 rounded-md flex items-center justify-center font-bold text-xs ${
+                          log.type === 'IN' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
                         }`}>
                           {log.type}
                         </div>
 
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-extrabold text-white">{log.employeeName}</span>
-                            <span className="text-[10px] font-mono text-slate-400">({log.employeeId})</span>
+                            <span className="text-xs font-bold text-[#1E293B]">{log.employeeName}</span>
+                            <span className="text-[10px] font-mono text-slate-500">({log.employeeId})</span>
                           </div>
-                          <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
+                          <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
                             <span>{log.department}</span>
                             <span>•</span>
-                            <span className="font-mono text-slate-300">{formatTime12H(log.time, true)}</span>
+                            <span className="font-mono text-slate-700">{formatTime12H(log.time, true)}</span>
                           </div>
                         </div>
                       </div>
 
                       <div className="text-right">
-                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                           log.status === 'ON_TIME'
-                            ? 'bg-emerald-500/20 text-emerald-300'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : log.status === 'LATE'
-                            ? 'bg-amber-500/20 text-amber-300'
-                            : 'bg-white/10 text-slate-300'
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                            : 'bg-slate-100 text-slate-700 border border-[#E2E8F0]'
                         }`}>
                           {log.status}
                         </span>
-                        <span className="block text-[10px] text-slate-400 mt-1">
+                        <span className="block text-[10px] text-slate-400 mt-0.5">
                           {log.device === 'KIOSK_FACE' ? 'Face Terminal' : log.device === 'MOBILE_APP_GPS' ? 'Mobile GPS' : 'PIN Pad'}
                         </span>
                       </div>
@@ -1245,16 +1235,16 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             </div>
 
             {/* DEPARTMENT STAFFING READINESS (1 Column) */}
-            <div className="liquid-glass rounded-3xl p-5 space-y-4">
+            <div className="bg-white rounded-xl p-5 border border-[#E2E8F0] shadow-xs space-y-4 text-[#1E293B]">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-base font-bold text-white">Department Floor Coverage</h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <h3 className="text-sm font-bold text-[#1E293B]">Department Floor Coverage</h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
                     {activeCompany?.supermarketName ? `${activeCompany.supermarketName} • ` : ''}
                     {departmentsList.length} Selected Coverage Zone{departmentsList.length === 1 ? '' : 's'}
                   </p>
                 </div>
-                <span className="text-xs text-emerald-400 font-mono">Store Open</span>
+                <span className="text-xs text-emerald-700 font-semibold">Store Open</span>
               </div>
 
               <div className="space-y-3">
@@ -1267,18 +1257,18 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   const percent = deptStaff.length ? Math.min(100, Math.round((activeInDept / deptStaff.length) * 100)) : 0;
 
                   return (
-                    <div key={dept} className="p-3 rounded-2xl bg-white/5 border border-white/10">
+                    <div key={dept} className="p-3 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
                       <div className="flex items-center justify-between text-xs mb-1.5">
-                        <span className="font-semibold text-white truncate max-w-[160px]">{dept}</span>
-                        <span className="font-mono text-slate-300">
+                        <span className="font-semibold text-[#1E293B] truncate max-w-[160px]">{dept}</span>
+                        <span className="font-mono text-slate-600 text-[11px]">
                           {activeInDept}/{deptStaff.length} ({percent}%)
                         </span>
                       </div>
                       {/* Fluid progress bar */}
-                      <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                      <div className="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden">
                         <div
-                          className={`h-full rounded-full transition-all duration-700 ${
-                            percent >= 80 ? 'bg-emerald-400' : percent >= 50 ? 'bg-amber-400' : 'bg-rose-500'
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            percent >= 80 ? 'bg-[#2563EB]' : percent >= 40 ? 'bg-amber-500' : 'bg-slate-400'
                           }`}
                           style={{ width: `${percent}%` }}
                         />
@@ -1288,8 +1278,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 })}
               </div>
 
-              <div className="pt-2 text-[11px] text-slate-400 border-t border-white/10 flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <div className="pt-2 text-[11px] text-slate-500 border-t border-[#E2E8F0] flex items-center gap-1.5 font-medium">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Minimum cashier coverage threshold met.</span>
               </div>
             </div>
@@ -1306,23 +1296,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         <div className="space-y-4">
           
           {/* Controls Bar */}
-          <div className="liquid-glass rounded-3xl p-4 flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs flex flex-col md:flex-row items-center justify-between gap-3 text-[#1E293B]">
             <div className="flex items-center gap-2 w-full md:w-auto">
               <div className="relative flex-1 md:w-64">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                 <input
                   type="text"
                   placeholder="Search staff name, ID, role"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-900/80 border border-white/15 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg pl-9 pr-3 py-2 text-xs text-[#1E293B] placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB]"
                 />
               </div>
 
               <select
                 value={selectedDepartmentFilter}
                 onChange={(e) => setSelectedDepartmentFilter(e.target.value)}
-                className="bg-slate-900/80 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 text-xs text-[#1E293B] focus:outline-none focus:ring-1 focus:ring-[#2563EB] cursor-pointer"
               >
                 <option value="ALL">All Departments</option>
                 {departmentsList.map((d) => (
@@ -1335,7 +1325,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               <button
                 id="admin-enroll-new-staff-btn"
                 onClick={handleOpenAddEmp}
-                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-bold text-xs shadow-lg hover:brightness-110 active:scale-95 transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+                className="px-3.5 py-2 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95"
               >
                 <UserPlus className="w-4 h-4" />
                 <span>+ Enroll New Staff</span>
@@ -1346,7 +1336,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   id="admin-clear-staff-btn"
                   onClick={handleClearAllPrompt}
                   title="Clear all enrolled employees to start fresh"
-                  className="px-3 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-semibold text-xs transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer"
+                  className="px-3 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-medium text-xs transition-all flex items-center gap-1 whitespace-nowrap cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Clear Roster</span>
@@ -1356,12 +1346,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           </div>
 
           {/* Employee Directory Table */}
-          <div className="liquid-glass rounded-3xl overflow-hidden border border-white/10">
+          <div className="bg-white rounded-xl overflow-hidden border border-[#E2E8F0] shadow-xs">
             {filteredEmployees.length === 0 ? (
               <div className="py-16 text-center px-4">
-                <Users className="w-12 h-12 text-emerald-500/50 mx-auto mb-3" />
-                <h3 className="text-base font-bold text-white">{activeCompany?.supermarketName || 'Supermarket'} Staff Directory</h3>
-                <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2563EB] mx-auto mb-3">
+                  <Users className="w-6 h-6" />
+                </div>
+                <h3 className="text-base font-bold text-[#1E293B]">{activeCompany?.supermarketName || 'Supermarket'} Staff Directory</h3>
+                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
                   {employees.length === 0
                     ? `No staff members enrolled yet. You are in full control — click "+ Enroll Staff Member" to add your supermarket staff with their real details, biometric face, and 4-digit PIN.`
                     : 'No staff match the current search filter.'}
@@ -1370,7 +1362,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   <button
                     id="admin-enroll-first-staff-btn"
                     onClick={handleOpenAddEmp}
-                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/25 hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+                    className="px-5 py-2.5 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-all cursor-pointer flex items-center gap-2"
                   >
                     <UserPlus className="w-4 h-4" />
                     <span>+ Enroll Staff Member</span>
@@ -1379,20 +1371,20 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
                 {employees.length === 0 && (
                   <div className="mt-8 max-w-xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
-                    <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                      <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold text-xs flex items-center justify-center">1</div>
-                      <h4 className="text-white font-bold text-xs">Verify Shifts</h4>
-                      <p className="text-[11px] text-slate-400 leading-tight">Default shifts are ready or customizable in Shifts tab.</p>
+                    <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-1">
+                      <div className="w-6 h-6 rounded-md bg-blue-50 text-[#2563EB] font-bold text-xs flex items-center justify-center">1</div>
+                      <h4 className="text-[#1E293B] font-semibold text-xs">Verify Shifts</h4>
+                      <p className="text-[11px] text-slate-500 leading-tight">Default shifts are ready or customizable in Shifts tab.</p>
                     </div>
-                    <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                      <div className="w-6 h-6 rounded-lg bg-sky-500/20 text-sky-300 font-bold text-xs flex items-center justify-center">2</div>
-                      <h4 className="text-white font-bold text-xs">Add Staff Member</h4>
-                      <p className="text-[11px] text-slate-400 leading-tight">Enter name, role, department, wage rate, 4-digit PIN, & face photo.</p>
+                    <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-1">
+                      <div className="w-6 h-6 rounded-md bg-blue-50 text-[#2563EB] font-bold text-xs flex items-center justify-center">2</div>
+                      <h4 className="text-[#1E293B] font-semibold text-xs">Add Staff Member</h4>
+                      <p className="text-[11px] text-slate-500 leading-tight">Enter name, role, department, wage rate, 4-digit PIN, & face photo.</p>
                     </div>
-                    <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1">
-                      <div className="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-300 font-bold text-xs flex items-center justify-center">3</div>
-                      <h4 className="text-white font-bold text-xs">Live Auto-Sync</h4>
-                      <p className="text-[11px] text-slate-400 leading-tight">Automatically syncs to Kiosk and Mobile Staff App in real-time.</p>
+                    <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-1">
+                      <div className="w-6 h-6 rounded-md bg-blue-50 text-[#2563EB] font-bold text-xs flex items-center justify-center">3</div>
+                      <h4 className="text-[#1E293B] font-semibold text-xs">Live Auto-Sync</h4>
+                      <p className="text-[11px] text-slate-500 leading-tight">Automatically syncs to Kiosk and Mobile Staff App in real-time.</p>
                     </div>
                   </div>
                 )}
@@ -1400,70 +1392,70 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-white/5 border-b border-white/10 text-slate-400 uppercase tracking-wider text-[10px]">
+                  <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-slate-600 uppercase tracking-wider text-[11px] font-semibold">
                     <tr>
-                      <th className="py-3.5 px-4">Staff Member</th>
-                      <th className="py-3.5 px-4">Department & Role</th>
-                      <th className="py-3.5 px-4">Shift Timings</th>
-                      <th className="py-3.5 px-4">Biometrics & Punch</th>
-                      <th className="py-3.5 px-4">Staff PIN</th>
-                      <th className="py-3.5 px-4">Salary / Wages (₹)</th>
-                      <th className="py-3.5 px-4 text-right">Actions</th>
+                      <th className="py-3 px-4">Staff Member</th>
+                      <th className="py-3 px-4">Department & Role</th>
+                      <th className="py-3 px-4">Shift Timings</th>
+                      <th className="py-3 px-4">Biometrics & Punch</th>
+                      <th className="py-3 px-4">Staff PIN</th>
+                      <th className="py-3 px-4">Salary / Wages (₹)</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/5 text-slate-300">
+                  <tbody className="divide-y divide-[#E2E8F0] text-[#1E293B]">
                     {filteredEmployees.map((emp) => {
                       const shift = shifts.find(s => s.id === emp.shiftId);
                       return (
-                        <tr key={emp.id} className="hover:bg-white/5 transition-colors">
+                        <tr key={emp.id} className="hover:bg-slate-50/75 transition-colors">
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-3">
                               <img
                                 src={emp.avatar}
                                 alt={emp.name}
-                                className="w-9 h-9 rounded-xl object-cover border border-white/20"
+                                className="w-9 h-9 rounded-lg object-cover border border-[#E2E8F0]"
                               />
                               <div>
-                                <span className="font-bold text-white block text-sm">{emp.name}</span>
-                                <span className="font-mono text-[10px] text-sky-400 font-semibold">{emp.id}</span>
+                                <span className="font-semibold text-[#1E293B] block text-sm">{emp.name}</span>
+                                <span className="font-mono text-[10px] text-slate-500 font-semibold">{emp.id}</span>
                               </div>
                             </div>
                           </td>
 
                           <td className="py-3 px-4">
-                            <span className="text-white font-medium block">{emp.role}</span>
-                            <span className="text-[11px] text-slate-400">{emp.department}</span>
+                            <span className="text-[#1E293B] font-medium block">{emp.role}</span>
+                            <span className="text-[11px] text-slate-500">{emp.department}</span>
                           </td>
 
                           <td className="py-3 px-4">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-emerald-300 border border-white/10">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                               {shift?.name}
                             </span>
-                            <span className="block text-[10px] text-slate-400 mt-0.5">{shift?.badge}</span>
+                            <span className="block text-[10px] text-slate-500 mt-0.5">{shift?.badge}</span>
                           </td>
 
                           <td className="py-3 px-4">
-                            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400 font-semibold">
+                            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-medium">
                               <CheckCircle2 className="w-3.5 h-3.5" /> FaceID Active
                             </span>
-                            <span className="block text-[10px] text-slate-400 mt-0.5">
+                            <span className="block text-[10px] text-slate-500 mt-0.5">
                               {emp.allowMobilePunch === false ? (
-                                <span className="text-amber-400 font-medium">Entrance Kiosk Only</span>
+                                <span className="text-amber-700 font-medium">Entrance Kiosk Only</span>
                               ) : (
-                                <span className="text-sky-300">Mobile + Kiosk</span>
+                                <span className="text-blue-700 font-medium">Mobile + Kiosk</span>
                               )}
                             </span>
                           </td>
 
-                          <td className="py-3 px-4 font-mono text-amber-400">
+                          <td className="py-3 px-4 font-mono text-slate-700 font-semibold">
                             {emp.pin}
                           </td>
 
                           <td className="py-3 px-4">
-                            <span className="font-extrabold text-emerald-400 font-mono text-sm block">
+                            <span className="font-bold text-[#1E293B] font-mono text-sm block">
                               {formatSalaryRate(emp.payBasis, emp.wageRate, emp.hourlyRate)}
                             </span>
-                            <span className="text-[10px] text-slate-400">
+                            <span className="text-[10px] text-slate-500">
                               {emp.payBasis === 'DAILY' ? 'Daily Wage' : emp.payBasis === 'WEEKLY' ? 'Weekly Wage' : 'Monthly Salary'}
                             </span>
                           </td>
@@ -1473,7 +1465,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                               <button
                                 onClick={() => handleStartEdit(emp)}
                                 title="Edit employee details"
-                                className="p-1.5 rounded-lg liquid-pill text-slate-300 hover:text-white hover:bg-white/15 transition-all cursor-pointer"
+                                className="p-1.5 rounded-lg border border-[#E2E8F0] text-slate-600 hover:text-[#1E293B] hover:bg-slate-100 transition-all cursor-pointer"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </button>
@@ -1481,7 +1473,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                               <button
                                 onClick={() => handleDeletePrompt(emp)}
                                 title="Delete employee from roster"
-                                className="p-1.5 rounded-lg liquid-pill text-rose-400 hover:text-rose-200 hover:bg-rose-500/20 transition-all cursor-pointer"
+                                className="p-1.5 rounded-lg border border-rose-200 text-rose-600 hover:text-rose-800 hover:bg-rose-50 transition-all cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -1500,7 +1492,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                                   });
                                   soundService.playSuccessChime();
                                 }}
-                                className="px-2 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-[10px] font-bold text-emerald-300 transition-all cursor-pointer"
+                                className="px-2 py-1 rounded-lg bg-blue-50 border border-blue-200 text-[10px] font-semibold text-[#2563EB] hover:bg-blue-100 transition-all cursor-pointer"
                               >
                                 + Punch
                               </button>
@@ -1522,23 +1514,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       {/* TAB 3: SHIFT ROSTER SCHEDULER                                            */}
       {/* ========================================================================= */}
       {adminTab === 'SHIFTS' && (
-        <div className="space-y-6">
+        <div className="space-y-6 text-[#1E293B]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <h3 className="text-base font-bold text-[#1E293B] flex items-center gap-2">
                 <span>Supermarket Shift Schedules</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 font-mono">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-[#2563EB] border border-blue-200 font-mono font-semibold">
                   {shifts.length} active rosters
                 </span>
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Adjusting shift timings automatically broadcasts in-app notifications to all supermarket staff devices.
               </p>
             </div>
 
             {shiftBroadcastAlert && (
-              <div className="px-3.5 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2 animate-fade-in">
-                <Check className="w-4 h-4 text-emerald-400" />
+              <div className="px-3.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2 animate-fade-in">
+                <Check className="w-4 h-4 text-emerald-600" />
                 <span>{shiftBroadcastAlert}</span>
               </div>
             )}
@@ -1548,39 +1540,39 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             {shifts.map((shift) => {
               const assigned = employees.filter(e => e.shiftId === shift.id);
               return (
-                <div key={shift.id} className="liquid-glass rounded-3xl p-5 space-y-3.5 border border-white/10 flex flex-col justify-between">
+                <div key={shift.id} className="bg-white rounded-xl p-5 space-y-3.5 border border-[#E2E8F0] shadow-xs flex flex-col justify-between">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-white/10 text-white border border-white/15">
+                      <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                         {shift.code}
                       </span>
-                      <span className="text-xs font-mono text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                      <span className="text-xs font-mono text-[#2563EB] font-bold bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100">
                         {shift.badge}
                       </span>
                     </div>
 
                     <div>
-                      <h3 className="text-base font-bold text-white">{shift.name}</h3>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Grace period: <strong className="text-slate-200">{shift.gracePeriodMins} mins</strong> before marked late
+                      <h3 className="text-base font-bold text-[#1E293B]">{shift.name}</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Grace period: <strong className="text-slate-800 font-medium">{shift.gracePeriodMins} mins</strong> before marked late
                       </p>
                     </div>
 
-                    <div className="pt-2 border-t border-white/10">
-                      <div className="flex items-center justify-between text-xs text-slate-400 mb-2 font-medium">
+                    <div className="pt-2 border-t border-[#E2E8F0]">
+                      <div className="flex items-center justify-between text-xs text-slate-500 mb-2 font-medium">
                         <span>Assigned Crew:</span>
-                        <span className="text-white font-bold">{assigned.length} staff</span>
+                        <span className="text-[#1E293B] font-semibold">{assigned.length} staff</span>
                       </div>
                       {assigned.length === 0 ? (
-                        <span className="text-[11px] text-slate-500 italic block py-2">
+                        <span className="text-[11px] text-slate-400 italic block py-2">
                           No staff assigned to this shift yet.
                         </span>
                       ) : (
                         <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                           {assigned.map(emp => (
-                            <div key={emp.id} className="flex items-center justify-between text-xs p-1.5 rounded-xl bg-white/5 border border-white/5">
-                              <span className="font-semibold text-white truncate mr-2">{emp.name}</span>
-                              <span className="text-[10px] text-slate-400 shrink-0">{emp.department.split('&')[0]}</span>
+                            <div key={emp.id} className="flex items-center justify-between text-xs p-1.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
+                              <span className="font-medium text-[#1E293B] truncate mr-2">{emp.name}</span>
+                              <span className="text-[10px] text-slate-500 shrink-0">{emp.department.split('&')[0]}</span>
                             </div>
                           ))}
                         </div>
@@ -1589,10 +1581,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   </div>
 
                   {onUpdateShift && (
-                    <div className="pt-3 border-t border-white/10">
+                    <div className="pt-3 border-t border-[#E2E8F0]">
                       <button
                         onClick={() => handleStartEditShift(shift)}
-                        className="w-full py-2 px-3 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all border border-sky-500/20 cursor-pointer"
+                        className="w-full py-2 px-3 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#2563EB] font-semibold text-xs flex items-center justify-center gap-1.5 transition-all border border-blue-200 cursor-pointer"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                         <span>Edit Timing & Notify Staff</span>
@@ -1606,33 +1598,33 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
           {/* Broadcasts & Notification Center Feed in Admin */}
           {notifications && notifications.length > 0 && (
-            <div className="liquid-glass rounded-3xl p-5 border border-white/10 space-y-3">
+            <div className="bg-white rounded-xl p-5 border border-[#E2E8F0] shadow-xs space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-sky-400" />
+                <h4 className="text-sm font-bold text-[#1E293B] flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-[#2563EB]" />
                   <span>Recent Staff In-App Notification Alerts ({notifications.length})</span>
                 </h4>
-                <span className="text-[10px] text-slate-400">Synchronized via Firestore real-time</span>
+                <span className="text-[10px] text-slate-400 font-mono">Synchronized via Firestore real-time</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
                 {notifications.slice(0, 6).map((notif) => (
-                  <div key={notif.id} className="p-3 rounded-2xl bg-white/5 border border-white/5 text-xs space-y-1.5">
+                  <div key={notif.id} className="p-3 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-xs space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
                         notif.type === 'LEAVE_STATUS'
-                          ? notif.leaveStatus === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
-                          : 'bg-sky-500/20 text-sky-300'
+                          ? notif.leaveStatus === 'APPROVED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                          : 'bg-blue-50 text-[#2563EB] border border-blue-200'
                       }`}>
                         {notif.type === 'LEAVE_STATUS' ? `LEAVE ${notif.leaveStatus || 'UPDATE'}` : 'SHIFT ROSTER'}
                       </span>
                       <span className="text-[10px] text-slate-400 font-mono">{notif.timeFormatted}</span>
                     </div>
-                    <h5 className="font-semibold text-white text-xs">{notif.title}</h5>
-                    <p className="text-[11px] text-slate-300 line-clamp-2 leading-relaxed">{notif.message}</p>
-                    <div className="text-[10px] text-slate-400 pt-1 flex items-center justify-between">
-                      <span>Target: <strong className="text-slate-200">{notif.employeeName || notif.employeeId}</strong></span>
-                      <span className={notif.read ? 'text-slate-500' : 'text-amber-400 font-semibold'}>
+                    <h5 className="font-semibold text-[#1E293B] text-xs">{notif.title}</h5>
+                    <p className="text-[11px] text-slate-600 line-clamp-2 leading-relaxed">{notif.message}</p>
+                    <div className="text-[10px] text-slate-500 pt-1 flex items-center justify-between">
+                      <span>Target: <strong className="text-slate-800">{notif.employeeName || notif.employeeId}</strong></span>
+                      <span className={notif.read ? 'text-slate-400' : 'text-amber-700 font-semibold'}>
                         {notif.read ? 'Seen' : 'Unread'}
                       </span>
                     </div>
@@ -1646,21 +1638,21 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
       {/* Edit Shift Schedule Modal */}
       {editingShift && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="w-full max-w-md liquid-glass rounded-3xl p-6 border border-white/20 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fade-in">
+          <div className="w-full max-w-md bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-xl space-y-5 text-[#1E293B]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-sky-500/20 text-sky-400">
+                <div className="p-2 rounded-lg bg-blue-50 text-[#2563EB] border border-blue-100">
                   <Clock className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">Edit Shift Schedule</h3>
-                  <p className="text-xs text-slate-400">{editingShift.code} • {editingShift.name}</p>
+                  <h3 className="text-base font-bold text-[#1E293B]">Edit Shift Schedule</h3>
+                  <p className="text-xs text-slate-500">{editingShift.code} • {editingShift.name}</p>
                 </div>
               </div>
               <button
                 onClick={() => setEditingShift(null)}
-                className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer"
+                className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1668,77 +1660,77 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
             <div className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Shift Name</label>
+                <label className="block text-slate-700 font-semibold mb-1">Shift Name</label>
                 <input
                   type="text"
                   value={shiftEditName}
                   onChange={(e) => setShiftEditName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/15 text-white font-medium focus:outline-none focus:border-sky-400"
+                  className="w-full px-3 py-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E293B] font-medium focus:outline-none focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Start Time (24H)</label>
+                  <label className="block text-slate-700 font-semibold mb-1">Start Time (24H)</label>
                   <input
                     type="time"
                     value={shiftEditStart}
                     onChange={(e) => setShiftEditStart(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/15 text-white font-mono focus:outline-none focus:border-sky-400"
+                    className="w-full px-3 py-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E293B] font-mono focus:outline-none focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB]"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">End Time (24H)</label>
+                  <label className="block text-slate-700 font-semibold mb-1">End Time (24H)</label>
                   <input
                     type="time"
                     value={shiftEditEnd}
                     onChange={(e) => setShiftEditEnd(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/15 text-white font-mono focus:outline-none focus:border-sky-400"
+                    className="w-full px-3 py-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E293B] font-mono focus:outline-none focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Grace Period (Minutes)</label>
+                <label className="block text-slate-700 font-semibold mb-1">Grace Period (Minutes)</label>
                 <input
                   type="number"
                   min="0"
                   max="60"
                   value={shiftEditGrace}
                   onChange={(e) => setShiftEditGrace(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/15 text-white font-mono focus:outline-none focus:border-sky-400"
+                  className="w-full px-3 py-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-[#1E293B] font-mono focus:outline-none focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB]"
                 />
-                <span className="text-[11px] text-slate-400 mt-1 block">
+                <span className="text-[11px] text-slate-500 mt-1 block">
                   Staff punches within this window are logged as ON_TIME.
                 </span>
               </div>
 
               {/* Live Preview */}
-              <div className="p-3 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-slate-300 space-y-1">
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-100 text-slate-700 space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Roster Badge Preview:</span>
-                  <span className="text-xs font-mono font-bold text-emerald-400">
+                  <span className="text-slate-600 font-medium">Roster Badge Preview:</span>
+                  <span className="text-xs font-mono font-bold text-[#2563EB]">
                     {formatShiftBadge(shiftEditStart, shiftEditEnd)}
                   </span>
                 </div>
-                <p className="text-[11px] text-sky-200/90 pt-1">
+                <p className="text-[11px] text-slate-600 pt-1">
                   📢 <strong>In-App Alert:</strong> Saving will immediately dispatch a high-priority in-app notification to all staff informing them of this roster schedule change.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/10">
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E2E8F0]">
               <button
                 type="button"
                 onClick={() => setEditingShift(null)}
-                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 font-semibold text-xs cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSaveShiftEdit}
-                className="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-sky-500/25 cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
               >
                 <Bell className="w-3.5 h-3.5" />
                 <span>Save & Broadcast to Staff</span>
@@ -1752,29 +1744,29 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       {/* TAB 4: LEAVE REQUEST APPROVALS                                           */}
       {/* ========================================================================= */}
       {adminTab === 'LEAVES' && (
-        <div className="space-y-4">
+        <div className="space-y-4 text-[#1E293B]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <h3 className="text-base font-bold text-[#1E293B] flex items-center gap-2">
                 <span>Staff Leave Applications</span>
                 {pendingLeavesCount > 0 ? (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold">
                     {pendingLeavesCount} pending review
                   </span>
                 ) : (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-500/20 text-slate-300 font-mono">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-mono">
                     All reviewed
                   </span>
                 )}
               </h3>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-slate-500">
                 {leaveRequests.length} total application{leaveRequests.length === 1 ? '' : 's'} • Approving or rejecting instantly sends an in-app notification to the employee's phone.
               </span>
             </div>
 
             {leaveActionFeedback && (
-              <div className="px-3.5 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2 animate-fade-in">
-                <Bell className="w-4 h-4 text-emerald-400" />
+              <div className="px-3.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2 animate-fade-in">
+                <Bell className="w-4 h-4 text-emerald-600" />
                 <span>{leaveActionFeedback}</span>
               </div>
             )}
@@ -1794,7 +1786,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     },
                   });
                 }}
-                className="px-3.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 border border-rose-500/20 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer self-start sm:self-auto"
+                className="px-3.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer self-start sm:self-auto"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Clear All Leave Records</span>
@@ -1804,14 +1796,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
           {/* Orphaned leaves warning banner (e.g. staff was deleted) */}
           {orphanedLeaves.length > 0 && (
-            <div className="rounded-2xl p-4 bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-200 text-xs">
+            <div className="rounded-xl p-4 bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 text-xs">
               <div className="flex items-start gap-2.5">
-                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-bold text-white text-sm">
+                  <p className="font-bold text-slate-900 text-sm">
                     {orphanedLeaves.length} Leave Application{orphanedLeaves.length === 1 ? '' : 's'} from Removed Staff
                   </p>
-                  <p className="text-amber-300/80 mt-0.5">
+                  <p className="text-amber-800 mt-0.5">
                     Staff ({orphanedLeaves.map((l) => l.employeeName).join(', ')}) was removed from the staff directory, but their previous leave application remains in history.
                   </p>
                 </div>
@@ -1820,7 +1812,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 {onClearOrphanedLeaves && (
                   <button
                     onClick={onClearOrphanedLeaves}
-                    className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-lg shadow-amber-500/20"
+                    className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Delete Removed Staff Leaves</span>
@@ -1831,10 +1823,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           )}
 
           {leaveRequests.length === 0 ? (
-            <div className="py-12 px-4 rounded-2xl bg-white/5 border border-white/10 text-center">
-              <Calendar className="w-10 h-10 text-slate-600 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-white">No leave requests submitted yet</p>
-              <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+            <div className="py-12 px-4 rounded-xl bg-white border border-[#E2E8F0] shadow-xs text-center">
+              <Calendar className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-[#1E293B]">No leave requests submitted yet</p>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
                 When your {activeCompany?.supermarketName || 'supermarket'} employees submit leave requests via their Staff Mobile App, they will appear here for manager review and approval.
               </p>
             </div>
@@ -1846,24 +1838,24 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 );
 
                 return (
-                  <div key={leave.id} className="liquid-glass-card rounded-3xl p-5 space-y-3 relative group">
+                  <div key={leave.id} className="bg-white rounded-xl p-5 space-y-3 border border-[#E2E8F0] shadow-xs relative group">
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="text-base font-bold text-white">{leave.employeeName}</h4>
+                          <h4 className="text-base font-bold text-[#1E293B]">{leave.employeeName}</h4>
                           {isOrphaned && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-300 border border-rose-500/20 font-medium">
+                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 font-medium">
                               Removed Staff
                             </span>
                           )}
                         </div>
-                        <span className="text-xs text-slate-400">{leave.department}</span>
+                        <span className="text-xs text-slate-500">{leave.department}</span>
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
-                          leave.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-300' :
-                          leave.status === 'REJECTED' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'
+                        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${
+                          leave.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                          leave.status === 'REJECTED' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
                         }`}>
                           {leave.status}
                         </span>
@@ -1871,7 +1863,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                           <button
                             onClick={() => onDeleteLeave(leave.id)}
                             title="Delete this leave application"
-                            className="p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg border border-[#E2E8F0] hover:bg-rose-50 text-slate-500 hover:text-rose-700 transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1879,16 +1871,16 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       </div>
                     </div>
 
-                    <div className="bg-white/5 rounded-2xl p-3 text-xs space-y-1 border border-white/10">
-                      <div className="flex items-center justify-between text-slate-400">
+                    <div className="bg-[#F8FAFC] rounded-lg p-3 text-xs space-y-1 border border-[#E2E8F0]">
+                      <div className="flex items-center justify-between text-slate-600">
                         <span>Leave Type:</span>
-                        <strong className="text-white">{leave.type} LEAVE</strong>
+                        <strong className="text-[#1E293B] font-semibold">{leave.type} LEAVE</strong>
                       </div>
-                      <div className="flex items-center justify-between text-slate-400">
+                      <div className="flex items-center justify-between text-slate-600">
                         <span>Period:</span>
-                        <strong className="text-white">{leave.startDate} → {leave.endDate}</strong>
+                        <strong className="text-[#1E293B] font-semibold">{leave.startDate} → {leave.endDate}</strong>
                       </div>
-                      <div className="pt-2 text-slate-300 text-xs border-t border-white/5">
+                      <div className="pt-2 text-slate-700 text-xs border-t border-[#E2E8F0]">
                         "{leave.reason}"
                       </div>
                     </div>
@@ -1901,7 +1893,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             setLeaveActionFeedback(`Approved leave for ${leave.employeeName}. In-app alert sent to staff!`);
                             setTimeout(() => setLeaveActionFeedback(null), 3500);
                           }}
-                          className="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg cursor-pointer"
+                          className="flex-1 py-2 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-95 transition-all"
                         >
                           <CheckCircle2 className="w-4 h-4" /> Approve
                         </button>
@@ -1911,23 +1903,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             setLeaveActionFeedback(`Rejected leave for ${leave.employeeName}. In-app alert sent to staff!`);
                             setTimeout(() => setLeaveActionFeedback(null), 3500);
                           }}
-                          className="flex-1 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-semibold text-xs flex items-center justify-center gap-1.5 border border-rose-500/30 cursor-pointer"
+                          className="flex-1 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-semibold text-xs flex items-center justify-center gap-1.5 border border-rose-200 cursor-pointer transition-all"
                         >
                           <XCircle className="w-4 h-4" /> Reject
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400 border-t border-white/5">
+                      <div className="flex items-center justify-between pt-1 text-[11px] text-slate-500 border-t border-[#E2E8F0]">
                         <span className="flex items-center gap-1.5">
                           <span>Decision:</span>
-                          <strong className={leave.status === 'APPROVED' ? 'text-emerald-400' : 'text-rose-400'}>
+                          <strong className={leave.status === 'APPROVED' ? 'text-emerald-700' : 'text-rose-700'}>
                             {leave.status}
                           </strong>
                         </span>
                         {onDeleteLeave && (
                           <button
                             onClick={() => onDeleteLeave(leave.id)}
-                            className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                            className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-medium text-xs flex items-center gap-1 transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3 h-3" />
                             <span>Delete Record</span>
@@ -1947,11 +1939,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       {/* TAB 5: PAYROLL & TIMESHEET EXPORT                                        */}
       {/* ========================================================================= */}
       {adminTab === 'PAYROLL' && (
-        <div className="space-y-4">
-          <div className="liquid-glass rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="space-y-4 text-[#1E293B]">
+          <div className="bg-white rounded-xl p-6 border border-[#E2E8F0] shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold text-white">Payroll & Timesheet Generation</h3>
-              <p className="text-xs text-slate-400 mt-1">
+              <h3 className="text-lg font-bold text-[#1E293B]">Payroll & Timesheet Generation</h3>
+              <p className="text-xs text-slate-500 mt-1">
                 Compile shifts, hourly compensation, late deductions, and overtime across all supermarket departments.
               </p>
             </div>
@@ -1959,34 +1951,34 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             <button
               id="admin-export-csv-btn"
               onClick={exportAttendanceCSV}
-              className="px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-xl flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
+              className="px-5 py-2.5 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-xs shadow-xs flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
             >
               <Download className="w-4 h-4" />
               <span>Export Timesheet (CSV / Excel)</span>
             </button>
           </div>
 
-          <div className="liquid-glass rounded-3xl p-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-white/10">
+          <div className="bg-white rounded-xl p-5 border border-[#E2E8F0] shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-[#E2E8F0]">
               <div>
-                <h4 className="text-sm font-bold text-white">Estimated Monthly Payroll Breakdown</h4>
-                <p className="text-xs text-slate-400">Calculated according to each staff member's Daily Wage, Weekly Wage, or Monthly Salary</p>
+                <h4 className="text-sm font-bold text-[#1E293B]">Estimated Monthly Payroll Breakdown</h4>
+                <p className="text-xs text-slate-500">Calculated according to each staff member's Daily Wage, Weekly Wage, or Monthly Salary</p>
               </div>
-              <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-xs self-start sm:self-auto">
+              <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-semibold text-xs border border-slate-200 self-start sm:self-auto">
                 Currency: Indian Rupee (₹)
               </span>
             </div>
 
             {employees.length === 0 ? (
-              <div className="py-12 px-4 rounded-2xl bg-white/5 border border-white/10 text-center">
-                <Users className="w-10 h-10 text-slate-600 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-white">No employees on payroll roster yet</p>
-                <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+              <div className="py-12 px-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-center">
+                <Users className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-[#1E293B]">No employees on payroll roster yet</p>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
                   Add your employees with their daily or weekly wage in the Staff Directory tab to generate payroll breakdowns.
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-white/5 text-xs">
+              <div className="divide-y divide-[#E2E8F0] text-xs">
                 {employees.map((emp) => {
                   const payBasis = emp.payBasis || 'DAILY';
                   let basePay = 0;
@@ -2017,30 +2009,30 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   return (
                     <div key={emp.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5">
-                        <img src={emp.avatar} alt="" className="w-9 h-9 rounded-xl object-cover border border-white/15" />
+                        <img src={emp.avatar} alt="" className="w-9 h-9 rounded-lg object-cover border border-[#E2E8F0]" />
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-white block">{emp.name}</span>
-                            <span className="text-[10px] px-2 py-0.5 rounded bg-white/10 text-emerald-300 font-mono">
+                            <span className="font-semibold text-[#1E293B] block">{emp.name}</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono border border-slate-200">
                               {formatSalaryRate(emp.payBasis, emp.wageRate, emp.hourlyRate)}
                             </span>
                           </div>
-                          <span className="text-[11px] text-slate-400">{emp.department} • {emp.role}</span>
+                          <span className="text-[11px] text-slate-500">{emp.department} • {emp.role}</span>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-4 sm:gap-6 text-right font-mono justify-end">
                         <div>
-                          <span className="text-[10px] text-slate-400 block">{baseLabel}</span>
-                          <span className="text-white font-bold">{formatCurrencyINR(basePay)}</span>
+                          <span className="text-[10px] text-slate-500 block">{baseLabel}</span>
+                          <span className="text-[#1E293B] font-semibold">{formatCurrencyINR(basePay)}</span>
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-400 block">OT (+{otHours}h)</span>
-                          <span className="text-amber-400 font-bold">+{formatCurrencyINR(otPay)}</span>
+                          <span className="text-[10px] text-slate-500 block">OT (+{otHours}h)</span>
+                          <span className="text-amber-700 font-semibold">+{formatCurrencyINR(otPay)}</span>
                         </div>
                         <div>
-                          <span className="text-[10px] text-slate-400 block">EST. GROSS</span>
-                          <span className="text-emerald-400 font-extrabold text-sm">{formatCurrencyINR(totalGross)}</span>
+                          <span className="text-[10px] text-slate-500 block">EST. GROSS</span>
+                          <span className="text-[#2563EB] font-bold text-sm">{formatCurrencyINR(totalGross)}</span>
                         </div>
                       </div>
                     </div>
@@ -2056,26 +2048,24 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       {/* TAB 6: SECURITY & ENTRANCE KIOSK SURVEILLANCE                            */}
       {/* ========================================================================= */}
       {adminTab === 'SECURITY' && (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6 text-[#1E293B] animate-fade-in">
           
           {/* Header Security Status Command Card */}
-          <div className="liquid-glass rounded-3xl p-6 border border-red-500/30 bg-gradient-to-r from-red-950/40 via-slate-900/60 to-slate-950/80 shadow-2xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
+          <div className="bg-white rounded-xl p-6 border border-[#E2E8F0] shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-600 to-rose-700 p-0.5 shadow-xl shadow-red-600/30 shrink-0 animate-pulse">
-                <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-red-400">
-                  <ShieldAlert className="w-8 h-8" />
-                </div>
+              <div className="w-12 h-12 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shrink-0">
+                <ShieldAlert className="w-6 h-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-xl font-extrabold text-white tracking-tight">
+                  <h3 className="text-lg font-bold text-[#1E293B] tracking-tight">
                     Entrance Kiosk Security &amp; Biometric Protection
                   </h3>
-                  <span className="px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/40 font-mono text-[10px] font-black uppercase">
+                  <span className="px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 font-mono text-[10px] font-bold uppercase">
                     NON-STAFF ACCESS DENIED
                   </span>
                 </div>
-                <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
                   Real-time perimeter surveillance for <strong>{activeCompany?.supermarketName || 'Supermarket'}</strong>. 
                   When non-staff or strangers attempt face verification, the Entrance Kiosk denies access, captures a high-resolution photo, and immediately pushes an alert here.
                 </p>
@@ -2096,9 +2086,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     });
                     soundService.playSuccessChime();
                   }}
-                  className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all border border-white/10"
+                  className="px-3.5 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#2563EB] text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all border border-blue-200"
                 >
-                  <CheckCheck className="w-4 h-4 text-emerald-400" />
+                  <CheckCheck className="w-4 h-4 text-[#2563EB]" />
                   <span>Mark All Reviewed</span>
                 </button>
               )}
@@ -2119,7 +2109,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       },
                     });
                   }}
-                  className="px-3.5 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all border border-red-500/30"
+                  className="px-3.5 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-medium flex items-center gap-1.5 cursor-pointer transition-all border border-rose-200"
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>Clear Logs</span>
@@ -2130,64 +2120,64 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
           {/* Key Security Surveillance Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="liquid-glass-card rounded-2xl p-4 border border-emerald-500/30 space-y-1">
-              <div className="flex items-center justify-between text-xs text-slate-400">
+            <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-xs text-slate-500">
                 <span>Kiosk Gate Status</span>
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
               </div>
-              <p className="text-lg font-black text-emerald-400">ARMED &amp; ONLINE</p>
-              <p className="text-[11px] text-slate-400 truncate">{activeCompany?.supermarketName || 'Store'} Entrance Terminal</p>
+              <p className="text-lg font-bold text-emerald-700">ARMED &amp; ONLINE</p>
+              <p className="text-[11px] text-slate-500 truncate">{activeCompany?.supermarketName || 'Store'} Entrance Terminal</p>
             </div>
 
-            <div className="liquid-glass-card rounded-2xl p-4 border border-rose-500/30 space-y-1">
-              <div className="flex items-center justify-between text-xs text-slate-400">
+            <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-xs text-slate-500">
                 <span>Unrecognizable Faces Blocked</span>
-                <ShieldAlert className="w-4 h-4 text-rose-400" />
+                <ShieldAlert className="w-4 h-4 text-rose-600" />
               </div>
-              <p className="text-lg font-black text-rose-400">
-                {securityAlertNotifications.length} <span className="text-xs text-slate-400 font-normal">incidents</span>
+              <p className="text-lg font-bold text-rose-700">
+                {securityAlertNotifications.length} <span className="text-xs text-slate-500 font-normal">incidents</span>
               </p>
-              <p className="text-[11px] text-rose-300 font-semibold">
+              <p className="text-[11px] text-rose-600 font-medium">
                 {unreadSecurityAlertsCount > 0 ? `${unreadSecurityAlertsCount} pending manager review` : 'All incidents reviewed'}
               </p>
             </div>
 
-            <div className="liquid-glass-card rounded-2xl p-4 border border-sky-500/30 space-y-1">
-              <div className="flex items-center justify-between text-xs text-slate-400">
+            <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-xs text-slate-500">
                 <span>Biometric Staff Vault</span>
-                <Users className="w-4 h-4 text-sky-400" />
+                <Users className="w-4 h-4 text-[#2563EB]" />
               </div>
-              <p className="text-lg font-black text-white">{employees.length} Enrolled</p>
-              <p className="text-[11px] text-slate-400">Authorized for entrance access</p>
+              <p className="text-lg font-bold text-[#1E293B]">{employees.length} Enrolled</p>
+              <p className="text-[11px] text-slate-500">Authorized for entrance access</p>
             </div>
 
-            <div className="liquid-glass-card rounded-2xl p-4 border border-purple-500/30 space-y-1">
-              <div className="flex items-center justify-between text-xs text-slate-400">
+            <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-xs text-slate-500">
                 <span>Intruder Policy</span>
-                <Lock className="w-4 h-4 text-purple-400" />
+                <Lock className="w-4 h-4 text-purple-600" />
               </div>
-              <p className="text-lg font-black text-purple-300">ZERO TOLERANCE</p>
-              <p className="text-[11px] text-slate-400">Photo captured upon non-staff verification</p>
+              <p className="text-lg font-bold text-purple-700">ZERO TOLERANCE</p>
+              <p className="text-[11px] text-slate-500">Photo captured upon non-staff verification</p>
             </div>
           </div>
 
           {/* Security Alert Feed */}
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
-              <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                <Bell className="w-4 h-4 text-rose-400" />
+              <h4 className="text-sm font-bold text-[#1E293B] flex items-center gap-2">
+                <Bell className="w-4 h-4 text-rose-600" />
                 <span>Security Incident Feed &bull; Photo Evidence Log ({securityAlertNotifications.length})</span>
               </h4>
-              <span className="text-xs text-slate-400">Click any photo to view full-resolution surveillance capture</span>
+              <span className="text-xs text-slate-500">Click any photo to view full-resolution surveillance capture</span>
             </div>
 
             {securityAlertNotifications.length === 0 ? (
-              <div className="liquid-glass-card rounded-3xl p-10 text-center border border-white/10 flex flex-col items-center justify-center space-y-3">
-                <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-xl">
-                  <ShieldCheck className="w-8 h-8" />
+              <div className="bg-white rounded-xl p-10 text-center border border-[#E2E8F0] shadow-xs flex flex-col items-center justify-center space-y-3">
+                <div className="w-14 h-14 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+                  <ShieldCheck className="w-7 h-7" />
                 </div>
-                <h4 className="text-base font-bold text-white">No Security Breaches Detected</h4>
-                <p className="text-xs text-slate-400 max-w-md">
+                <h4 className="text-base font-bold text-[#1E293B]">No Security Breaches Detected</h4>
+                <p className="text-xs text-slate-500 max-w-md">
                   All face scans at the Entrance Kiosk have belonged to enrolled supermarket staff members. 
                   If an unauthorized non-staff individual attempts to scan their face, their photo and alert will appear here immediately.
                 </p>
@@ -2200,10 +2190,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   return (
                     <div
                       key={alert.id}
-                      className={`liquid-glass-card rounded-3xl p-4 sm:p-5 border transition-all ${
+                      className={`rounded-xl p-4 sm:p-5 border transition-all ${
                         isUnread
-                          ? 'border-red-500/60 bg-red-950/40 shadow-xl shadow-red-950/40'
-                          : 'border-white/10 bg-slate-900/60'
+                          ? 'border-rose-300 bg-rose-50/50 shadow-xs'
+                          : 'border-[#E2E8F0] bg-white shadow-xs'
                       }`}
                     >
                       <div className="flex items-start gap-4">
@@ -2212,23 +2202,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                           {photo ? (
                             <div 
                               onClick={() => setInspectingAlertPhoto(alert)}
-                              className="relative cursor-pointer overflow-hidden rounded-2xl border-2 border-red-500 shadow-lg group-hover:scale-105 transition-all"
+                              className="relative cursor-pointer overflow-hidden rounded-xl border border-rose-300 shadow-xs group-hover:scale-105 transition-all"
                             >
                               <img
                                 src={photo}
                                 alt="Captured Unrecognized Individual"
-                                className="w-24 h-24 sm:w-28 sm:h-28 object-cover bg-black"
+                                className="w-24 h-24 sm:w-28 sm:h-28 object-cover bg-slate-100"
                               />
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                              <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
                                 <ZoomIn className="w-6 h-6" />
                               </div>
-                              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-red-600/90 text-white font-mono text-[8px] font-black uppercase">
+                              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-rose-600 text-white font-mono text-[8px] font-bold uppercase">
                                 EVIDENCE
                               </span>
                             </div>
                           ) : (
-                            <div className="w-24 h-24 rounded-2xl bg-red-900/40 border-2 border-red-500 flex flex-col items-center justify-center text-red-400">
-                              <ShieldAlert className="w-8 h-8" />
+                            <div className="w-24 h-24 rounded-xl bg-rose-50 border border-rose-200 flex flex-col items-center justify-center text-rose-600">
+                              <ShieldAlert className="w-7 h-7" />
                               <span className="text-[9px] font-bold mt-1">NO PHOTO</span>
                             </div>
                           )}
@@ -2237,27 +2227,27 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         {/* Incident Metadata & Details */}
                         <div className="flex-1 min-w-0 space-y-1.5">
                           <div className="flex items-center justify-between gap-1 flex-wrap">
-                            <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 font-mono text-[10px] font-black border border-red-500/40">
+                            <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-mono text-[10px] font-bold border border-rose-200">
                               UNRECOGNIZABLE FACE
                             </span>
-                            <span className="text-[11px] text-slate-400 font-mono">
+                            <span className="text-[11px] text-slate-500 font-mono">
                               {alert.timeFormatted || new Date(alert.timestamp).toLocaleTimeString()}
                             </span>
                           </div>
 
-                          <h5 className="font-bold text-white text-sm leading-snug">
+                          <h5 className="font-bold text-[#1E293B] text-sm leading-snug">
                             {alert.title}
                           </h5>
 
-                          <p className="text-xs text-slate-300 leading-relaxed line-clamp-2">
+                          <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
                             {alert.message}
                           </p>
 
-                          <div className="pt-1 text-[11px] text-slate-400 flex flex-col gap-0.5">
+                          <div className="pt-1 text-[11px] text-slate-500 flex flex-col gap-0.5">
                             <span className="truncate">
-                              Location: <strong className="text-slate-200">{alert.meta?.kioskLocation || `${activeCompany?.supermarketName || 'Store'} Entrance Terminal`}</strong>
+                              Location: <strong className="text-slate-800">{alert.meta?.kioskLocation || `${activeCompany?.supermarketName || 'Store'} Entrance Terminal`}</strong>
                             </span>
-                            <span className="text-rose-400 font-semibold font-mono">
+                            <span className="text-rose-700 font-semibold font-mono">
                               Biometric Score: 0.0% Match (No enrolled staff match)
                             </span>
                           </div>
@@ -2268,10 +2258,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setInspectingAlertPhoto(alert)}
-                                className="px-2.5 py-1 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all border border-red-500/30"
+                                className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-900 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all border border-rose-200"
                               >
                                 <Eye className="w-3.5 h-3.5" />
-                                <span>Inspect Full Photo</span>
+                                <span>Inspect Photo</span>
                               </button>
                             )}
 
@@ -2282,9 +2272,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                                   onMarkNotificationAsRead(alert.id);
                                   soundService.playSuccessChime();
                                 }}
-                                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all"
+                                className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#2563EB] text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all border border-blue-200"
                               >
-                                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                <Check className="w-3.5 h-3.5" />
                                 <span>Mark Reviewed</span>
                               </button>
                             )}
@@ -2296,7 +2286,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                                   onDeleteNotification(alert.id);
                                   soundService.playNotificationTone();
                                 }}
-                                className="p-1 rounded-lg text-slate-500 hover:text-rose-400 ml-auto cursor-pointer transition-all"
+                                className="p-1 rounded-lg text-slate-400 hover:text-rose-600 ml-auto cursor-pointer transition-all"
                                 title="Delete incident record"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -2317,18 +2307,18 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
       {/* FULL-SCREEN PHOTO EVIDENCE INSPECTION MODAL */}
       {inspectingAlertPhoto && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-2xl flex items-center justify-center p-3 sm:p-5 animate-fade-in">
-          <div className="w-full max-w-lg liquid-glass-card rounded-[32px] border-2 border-red-500/60 bg-slate-950 shadow-2xl animate-scale-in flex flex-col overflow-hidden max-h-[92vh]">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-fade-in text-[#1E293B]">
+          <div className="w-full max-w-lg bg-white rounded-2xl border border-[#E2E8F0] shadow-2xl animate-scale-in flex flex-col overflow-hidden max-h-[92vh]">
             
             {/* Modal Header */}
-            <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-red-950/40 shrink-0">
+            <div className="p-4 sm:p-5 border-b border-[#E2E8F0] flex items-center justify-between bg-[#F8FAFC] shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center border border-red-500/40">
+                <div className="w-9 h-9 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-200">
                   <ShieldAlert className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-white">Security Photo Inspection</h3>
-                  <p className="text-[11px] text-red-300/80 font-mono">
+                  <h3 className="text-base font-bold text-[#1E293B]">Security Photo Inspection</h3>
+                  <p className="text-[11px] text-slate-500 font-mono">
                     Incident ID: {inspectingAlertPhoto.id}
                   </p>
                 </div>
@@ -2336,7 +2326,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               <button
                 type="button"
                 onClick={() => setInspectingAlertPhoto(null)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center cursor-pointer transition-all shrink-0"
+                className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer transition-all shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -2345,7 +2335,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             {/* Modal Body */}
             <div className="p-5 overflow-y-auto space-y-4 flex flex-col items-center">
               {/* Photo Display */}
-              <div className="relative w-full max-w-sm rounded-2xl overflow-hidden border-2 border-red-500 shadow-2xl bg-black">
+              <div className="relative w-full max-w-sm rounded-xl overflow-hidden border border-[#E2E8F0] shadow-sm bg-slate-100">
                 {inspectingAlertPhoto.photoUrl || inspectingAlertPhoto.meta?.capturedPhoto ? (
                   <img
                     src={inspectingAlertPhoto.photoUrl || inspectingAlertPhoto.meta?.capturedPhoto}
@@ -2354,39 +2344,39 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   />
                 ) : (
                   <div className="w-full h-64 flex flex-col items-center justify-center text-slate-400">
-                    <Camera className="w-12 h-12 text-slate-600 mb-2" />
+                    <Camera className="w-12 h-12 text-slate-400 mb-2" />
                     <span>No snapshot data attached</span>
                   </div>
                 )}
               </div>
 
               {/* Forensic Details Breakdown */}
-              <div className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 space-y-2 text-xs">
-                <div className="flex items-center justify-between py-1 border-b border-white/10">
-                  <span className="text-slate-400 font-semibold">Incident Type:</span>
-                  <span className="text-red-400 font-mono font-bold">UNRECOGNIZED_FACE (Access Denied)</span>
+              <div className="w-full p-4 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2 text-xs">
+                <div className="flex items-center justify-between py-1 border-b border-[#E2E8F0]">
+                  <span className="text-slate-500 font-medium">Incident Type:</span>
+                  <span className="text-rose-700 font-mono font-bold">UNRECOGNIZED_FACE (Access Denied)</span>
                 </div>
-                <div className="flex items-center justify-between py-1 border-b border-white/10">
-                  <span className="text-slate-400 font-semibold">Detection Timestamp:</span>
-                  <span className="text-white font-mono">{inspectingAlertPhoto.timeFormatted} ({new Date(inspectingAlertPhoto.timestamp).toLocaleDateString()})</span>
+                <div className="flex items-center justify-between py-1 border-b border-[#E2E8F0]">
+                  <span className="text-slate-500 font-medium">Detection Timestamp:</span>
+                  <span className="text-[#1E293B] font-mono">{inspectingAlertPhoto.timeFormatted} ({new Date(inspectingAlertPhoto.timestamp).toLocaleDateString()})</span>
                 </div>
-                <div className="flex items-center justify-between py-1 border-b border-white/10">
-                  <span className="text-slate-400 font-semibold">Terminal Location:</span>
-                  <span className="text-slate-200">{inspectingAlertPhoto.meta?.kioskLocation || `${activeCompany?.supermarketName || 'Store'} Entrance Terminal`}</span>
+                <div className="flex items-center justify-between py-1 border-b border-[#E2E8F0]">
+                  <span className="text-slate-500 font-medium">Terminal Location:</span>
+                  <span className="text-slate-800">{inspectingAlertPhoto.meta?.kioskLocation || `${activeCompany?.supermarketName || 'Store'} Entrance Terminal`}</span>
                 </div>
-                <div className="flex items-center justify-between py-1 border-b border-white/10">
-                  <span className="text-slate-400 font-semibold">Biometric Similarity:</span>
-                  <span className="text-red-400 font-bold font-mono">0.0% (No enrolled staff match found)</span>
+                <div className="flex items-center justify-between py-1 border-b border-[#E2E8F0]">
+                  <span className="text-slate-500 font-medium">Biometric Similarity:</span>
+                  <span className="text-rose-700 font-bold font-mono">0.0% (No enrolled staff match found)</span>
                 </div>
                 <div className="flex items-center justify-between py-1">
-                  <span className="text-slate-400 font-semibold">Security Action Taken:</span>
-                  <span className="text-emerald-400 font-bold">DOOR LOCKED &bull; PHOTO TRANSMITTED</span>
+                  <span className="text-slate-500 font-medium">Security Action Taken:</span>
+                  <span className="text-emerald-700 font-semibold">DOOR LOCKED &bull; PHOTO TRANSMITTED</span>
                 </div>
               </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-white/10 bg-slate-900/60 flex items-center justify-between gap-3 shrink-0">
+            <div className="p-4 border-t border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-between gap-3 shrink-0">
               <button
                 type="button"
                 onClick={() => {
@@ -2400,7 +2390,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     document.body.removeChild(link);
                   }
                 }}
-                className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                className="px-3.5 py-2 rounded-lg bg-white border border-[#E2E8F0] hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all shadow-xs"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Save Evidence (.jpg)</span>
@@ -2415,7 +2405,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       setInspectingAlertPhoto((prev) => prev ? { ...prev, read: true } : null);
                       soundService.playSuccessChime();
                     }}
-                    className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all shadow"
+                    className="px-3.5 py-2 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-all shadow-xs active:scale-95"
                   >
                     <Check className="w-3.5 h-3.5" />
                     <span>Mark as Reviewed</span>
@@ -2424,7 +2414,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 <button
                   type="button"
                   onClick={() => setInspectingAlertPhoto(null)}
-                  className="px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs cursor-pointer transition-all"
+                  className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs cursor-pointer transition-all"
                 >
                   Close
                 </button>
@@ -2437,23 +2427,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
       {/* ENROLL EMPLOYEE MODAL */}
       {showAddEmpModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4">
-          <div className="w-full max-w-lg liquid-glass-card rounded-[28px] border border-white/20 shadow-2xl animate-scale-in flex flex-col max-h-[92vh] overflow-hidden bg-slate-950/95">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 text-[#1E293B]">
+          <div className="w-full max-w-lg bg-white rounded-2xl border border-[#E2E8F0] shadow-2xl animate-scale-in flex flex-col max-h-[92vh] overflow-hidden">
             {/* Pinned Modal Header */}
-            <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between shrink-0 bg-slate-900/60">
+            <div className="p-4 sm:p-5 border-b border-[#E2E8F0] flex items-center justify-between shrink-0 bg-[#F8FAFC]">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base sm:text-lg font-bold text-white">Enroll {activeCompany?.supermarketName || 'Store'} Staff</h3>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono font-bold">
+                  <h3 className="text-base sm:text-lg font-bold text-[#1E293B]">Enroll {activeCompany?.supermarketName || 'Store'} Staff</h3>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-[#2563EB] border border-blue-200 font-mono font-semibold">
                     BIOMETRICS READY
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">Add staff details, assign shift, and enroll face signature for {activeCompany?.supermarketName || 'store'}</p>
+                <p className="text-xs text-slate-500 mt-0.5">Add staff details, assign shift, and enroll face signature for {activeCompany?.supermarketName || 'store'}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAddEmpModal(false)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center cursor-pointer transition-all shrink-0"
+                className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer transition-all shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -2464,25 +2454,25 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 pr-3">
                 {/* Validation Error Banner */}
                 {enrollError && (
-                  <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2 animate-shake">
-                    <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 animate-shake">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
                     <span className="font-semibold">{enrollError}</span>
                   </div>
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">Employee ID (Optional)</label>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Employee ID (Optional)</label>
                     <input
                       type="text"
                       placeholder="Employee ID"
                       value={newEmpId}
                       onChange={(e) => setNewEmpId(e.target.value)}
-                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white font-mono focus:border-emerald-400 outline-none"
+                      className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 text-xs text-[#1E293B] font-mono focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB] outline-none"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">Full Name *</label>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Full Name *</label>
                     <input
                       id="enroll-staff-name-input"
                       type="text"
@@ -2492,15 +2482,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         setNewEmpName(e.target.value);
                         if (enrollError) setEnrollError(null);
                       }}
-                      className={`w-full bg-slate-900 border rounded-xl px-3 py-2 text-xs text-white outline-none ${
-                        enrollError && !newEmpName.trim() ? 'border-rose-500 ring-2 ring-rose-500/30' : 'border-white/15 focus:border-emerald-400'
+                      className={`w-full bg-[#F8FAFC] border rounded-lg px-3 py-2 text-xs text-[#1E293B] outline-none ${
+                        enrollError && !newEmpName.trim() ? 'border-rose-500 ring-1 ring-rose-500' : 'border-[#E2E8F0] focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB]'
                       }`}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">Job Designation *</label>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Job Designation *</label>
                   <input
                     type="text"
                     placeholder="Job designation / role"
@@ -2509,33 +2499,33 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       setNewEmpRole(e.target.value);
                       if (enrollError) setEnrollError(null);
                     }}
-                    className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-400 outline-none"
+                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 text-xs text-[#1E293B] focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB] outline-none"
                   />
                 </div>
 
                 {/* Compensation Type: Daily or Weekly Wages or Monthly Salary */}
-                <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2.5">
+                <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <label className="text-xs font-bold text-[#1E293B] flex items-center gap-1.5">
                       <span>Salary / Wage Scheme *</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-semibold">
                         Indian Rupee (₹ INR)
                       </span>
                     </label>
                   </div>
 
                   {/* Segmented Daily / Weekly / Monthly Switch */}
-                  <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-slate-900 border border-white/10 text-xs">
+                  <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-slate-100 border border-slate-200 text-xs">
                     <button
                       type="button"
                       onClick={() => {
                         setNewEmpPayBasis('DAILY');
                         if (newEmpWageRate === 4200 || newEmpWageRate === 18000) setNewEmpWageRate(650);
                       }}
-                      className={`py-2 px-2 rounded-lg font-semibold transition-all text-center cursor-pointer ${
+                      className={`py-1.5 px-2 rounded-md font-semibold transition-all text-center cursor-pointer ${
                         newEmpPayBasis === 'DAILY'
-                          ? 'bg-emerald-500 text-slate-950 font-bold shadow'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'bg-[#2563EB] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       Daily Wage
@@ -2546,10 +2536,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         setNewEmpPayBasis('WEEKLY');
                         if (newEmpWageRate === 650 || newEmpWageRate === 18000) setNewEmpWageRate(4200);
                       }}
-                      className={`py-2 px-2 rounded-lg font-semibold transition-all text-center cursor-pointer ${
+                      className={`py-1.5 px-2 rounded-md font-semibold transition-all text-center cursor-pointer ${
                         newEmpPayBasis === 'WEEKLY'
-                          ? 'bg-emerald-500 text-slate-950 font-bold shadow'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'bg-[#2563EB] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       Weekly Wage
@@ -2560,10 +2550,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         setNewEmpPayBasis('MONTHLY');
                         if (newEmpWageRate === 650 || newEmpWageRate === 4200) setNewEmpWageRate(18000);
                       }}
-                      className={`py-2 px-2 rounded-lg font-semibold transition-all text-center cursor-pointer ${
+                      className={`py-1.5 px-2 rounded-md font-semibold transition-all text-center cursor-pointer ${
                         newEmpPayBasis === 'MONTHLY'
-                          ? 'bg-emerald-500 text-slate-950 font-bold shadow'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'bg-[#2563EB] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       Monthly Salary
@@ -2572,7 +2562,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     <div>
-                      <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      <label className="text-xs font-semibold text-slate-700 block mb-1">
                         {newEmpPayBasis === 'DAILY'
                           ? 'Daily Wage Rate (₹ / Day)'
                           : newEmpPayBasis === 'WEEKLY'
@@ -2580,22 +2570,22 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                           : 'Monthly Salary (₹ / Month)'}
                       </label>
                       <div className="relative flex items-center">
-                        <span className="absolute left-3 font-bold text-emerald-400 text-sm">₹</span>
+                        <span className="absolute left-3 font-bold text-slate-600 text-sm">₹</span>
                         <input
                           type="number"
                           min="0"
                           step="10"
                           value={newEmpWageRate}
                           onChange={(e) => setNewEmpWageRate(parseFloat(e.target.value) || 0)}
-                          className="w-full bg-slate-900 border border-white/15 rounded-xl pl-8 pr-3 py-2 text-xs text-white font-mono font-bold focus:border-emerald-400 outline-none"
+                          className="w-full bg-white border border-[#E2E8F0] rounded-lg pl-8 pr-3 py-2 text-xs text-[#1E293B] font-mono font-bold focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB] outline-none"
                           placeholder="Enter rate amount"
                         />
                       </div>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-slate-900/70 border border-white/5 flex flex-col justify-center text-[11px] text-slate-300">
-                      <span className="text-slate-400 text-[10px]">Monthly Projection:</span>
-                      <span className="font-bold text-emerald-300 mt-0.5">
+                    <div className="p-2.5 rounded-lg bg-white border border-[#E2E8F0] flex flex-col justify-center text-[11px] text-slate-700">
+                      <span className="text-slate-500 text-[10px]">Monthly Projection:</span>
+                      <span className="font-bold text-[#2563EB] mt-0.5">
                         {newEmpPayBasis === 'DAILY'
                           ? `≈ ₹${(newEmpWageRate * 26).toLocaleString('en-IN')} / month (26 days)`
                           : newEmpPayBasis === 'WEEKLY'
@@ -2607,31 +2597,31 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </div>
 
                 {/* Mobile Punch Authorization Option */}
-                <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <Smartphone className="w-3.5 h-3.5 text-sky-400" />
+                    <label className="text-xs font-bold text-[#1E293B] flex items-center gap-1.5">
+                      <Smartphone className="w-3.5 h-3.5 text-[#2563EB]" />
                       <span>Punch In Mode (Staff Mobile App)</span>
                     </label>
                   </div>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-slate-500">
                     Control whether this staff member can clock in from their personal smartphone or must use the supermarket entrance kiosk tablet.
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
                     <button
                       type="button"
                       onClick={() => setNewEmpAllowMobilePunch(true)}
-                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                      className={`p-2.5 rounded-lg border text-left cursor-pointer transition-all ${
                         newEmpAllowMobilePunch
-                          ? 'bg-sky-500/20 border-sky-500/50 text-white'
-                          : 'bg-slate-900 border-white/10 text-slate-400 hover:text-slate-200'
+                          ? 'bg-blue-50 border-blue-200 text-[#1E293B]'
+                          : 'bg-white border-[#E2E8F0] text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       <div className="flex items-center gap-2 font-bold text-xs">
-                        <Check className={`w-3.5 h-3.5 ${newEmpAllowMobilePunch ? 'text-sky-400' : 'opacity-0'}`} />
+                        <Check className={`w-3.5 h-3.5 ${newEmpAllowMobilePunch ? 'text-[#2563EB]' : 'opacity-0'}`} />
                         <span>Allow Mobile Punch</span>
                       </div>
-                      <span className="text-[10px] text-slate-400 block mt-1 pl-5.5">
+                      <span className="text-[10px] text-slate-500 block mt-1 pl-5.5">
                         For floor restockers, grocery staff & delivery crew
                       </span>
                     </button>
@@ -2639,17 +2629,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     <button
                       type="button"
                       onClick={() => setNewEmpAllowMobilePunch(false)}
-                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                      className={`p-2.5 rounded-lg border text-left cursor-pointer transition-all ${
                         !newEmpAllowMobilePunch
-                          ? 'bg-amber-500/20 border-amber-500/50 text-white'
-                          : 'bg-slate-900 border-white/10 text-slate-400 hover:text-slate-200'
+                          ? 'bg-amber-50 border-amber-200 text-[#1E293B]'
+                          : 'bg-white border-[#E2E8F0] text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       <div className="flex items-center gap-2 font-bold text-xs">
-                        <Check className={`w-3.5 h-3.5 ${!newEmpAllowMobilePunch ? 'text-amber-400' : 'opacity-0'}`} />
+                        <Check className={`w-3.5 h-3.5 ${!newEmpAllowMobilePunch ? 'text-amber-600' : 'opacity-0'}`} />
                         <span>Entrance Kiosk Only</span>
                       </div>
-                      <span className="text-[10px] text-slate-400 block mt-1 pl-5.5">
+                      <span className="text-[10px] text-slate-500 block mt-1 pl-5.5">
                         Staff must punch in at physical supermarket kiosk tablet
                       </span>
                     </button>
@@ -2657,51 +2647,51 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">Department</label>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Department</label>
                   <select
                     value={newEmpDept}
                     onChange={(e) => setNewEmpDept(e.target.value as Department)}
-                    className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white cursor-pointer focus:border-emerald-400 outline-none"
+                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 text-xs text-[#1E293B] cursor-pointer focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB] outline-none"
                   >
                     {departmentsList.map(d => (
-                      <option key={d} value={d} className="bg-slate-900 text-white">{d}</option>
+                      <option key={d} value={d}>{d}</option>
                     ))}
                   </select>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">Assigned Shift</label>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Assigned Shift</label>
                     <select
                       value={newEmpShift}
                       onChange={(e) => setNewEmpShift(e.target.value as Shift['id'])}
-                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white cursor-pointer focus:border-emerald-400 outline-none"
+                      className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 text-xs text-[#1E293B] cursor-pointer focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB] outline-none"
                     >
                       {shifts.map(s => (
-                        <option key={s.id} value={s.id} className="bg-slate-900 text-white">{s.name}</option>
+                        <option key={s.id} value={s.id}>{s.name}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">Staff PIN (4-Digits)</label>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Staff PIN (4-Digits)</label>
                     <input
                       type="password"
                       maxLength={4}
                       placeholder="e.g. 5821"
                       value={newEmpPin}
                       onChange={(e) => setNewEmpPin(e.target.value.replace(/\D/g, ''))}
-                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white font-mono text-center tracking-widest focus:border-emerald-400 outline-none placeholder:text-slate-600"
+                      className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 text-xs text-[#1E293B] font-mono text-center tracking-widest focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB] outline-none placeholder:text-slate-400"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">Phone Number</label>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Phone Number</label>
                   <input
                     type="tel"
                     value={newEmpPhone}
                     onChange={(e) => setNewEmpPhone(e.target.value)}
-                    className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white font-mono focus:border-emerald-400 outline-none placeholder:text-slate-600"
+                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 text-xs text-[#1E293B] font-mono focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB] outline-none placeholder:text-slate-400"
                     placeholder="e.g. +91 98765 43210"
                   />
                 </div>
@@ -2720,14 +2710,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </div>
 
               {/* Pinned Sticky Footer - ALWAYS VISIBLE! */}
-              <div className="p-4 border-t border-white/10 bg-slate-950 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-                <div className="text-[11px] text-slate-400 hidden sm:block">
+              <div className="p-4 border-t border-[#E2E8F0] bg-[#F8FAFC] flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+                <div className="text-[11px] text-slate-500 hidden sm:block">
                   {newEmpAvatar ? (
-                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                    <span className="text-emerald-700 font-semibold flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5" /> Face biometrics registered
                     </span>
                   ) : (
-                    <span className="text-slate-400">
+                    <span className="text-slate-500">
                       Face photo optional (auto-generates badge if skipped)
                     </span>
                   )}
@@ -2737,7 +2727,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowAddEmpModal(false)}
-                    className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl liquid-pill text-xs font-semibold text-slate-400 hover:text-white cursor-pointer transition-all"
+                    className="flex-1 sm:flex-none px-4 py-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 cursor-pointer transition-all"
                   >
                     Cancel
                   </button>
@@ -2745,7 +2735,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     id="confirm-and-enroll-button"
                     type="button"
                     onClick={() => handleEnrollEmployee()}
-                    className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:brightness-110 active:scale-95 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/25 cursor-pointer flex items-center justify-center gap-2 transition-all"
+                    className="flex-1 sm:flex-none px-6 py-2.5 rounded-lg bg-[#2563EB] hover:bg-blue-700 active:scale-95 text-white font-semibold text-xs shadow-xs cursor-pointer flex items-center justify-center gap-2 transition-all"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Confirm & Enroll</span>
@@ -2759,13 +2749,13 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
       {/* EDIT EMPLOYEE MODAL */}
       {showEditEmpModal && editingEmp && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-3 sm:p-4">
-          <div className="w-full max-w-lg liquid-glass-card rounded-[28px] border border-white/20 shadow-2xl animate-scale-in flex flex-col max-h-[92vh] overflow-hidden bg-slate-950/95">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 text-[#1E293B]">
+          <div className="w-full max-w-lg bg-white rounded-2xl border border-[#E2E8F0] shadow-2xl animate-scale-in flex flex-col max-h-[92vh] overflow-hidden">
             {/* Pinned Modal Header */}
-            <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between shrink-0 bg-slate-900/60">
+            <div className="p-4 sm:p-5 border-b border-[#E2E8F0] flex items-center justify-between shrink-0 bg-[#F8FAFC]">
               <div>
-                <h3 className="text-base sm:text-lg font-bold text-white">Edit Employee Profile</h3>
-                <p className="text-xs text-slate-400 mt-0.5">Update employee details, shift, and biometric signature</p>
+                <h3 className="text-base sm:text-lg font-bold text-[#1E293B]">Edit Employee Profile</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Update employee details, shift, and biometric signature</p>
               </div>
               <button
                 type="button"
@@ -2773,7 +2763,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   setShowEditEmpModal(false);
                   setEditingEmp(null);
                 }}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 flex items-center justify-center cursor-pointer transition-all shrink-0"
+                className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer transition-all shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -2783,56 +2773,56 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 pr-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">Employee ID</label>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Employee ID</label>
                     <input
                       type="text"
                       disabled
                       value={editingEmp.id}
-                      className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-400 font-mono"
+                      className="w-full bg-slate-100 border border-[#E2E8F0] rounded-lg px-3 py-2 text-xs text-slate-600 font-mono"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">Full Name *</label>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Full Name *</label>
                     <input
                       type="text"
                       required
                       value={editingEmp.name}
                       onChange={(e) => setEditingEmp({ ...editingEmp, name: e.target.value })}
-                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white"
+                      className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 text-xs text-[#1E293B] focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB] outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">Job Designation *</label>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Job Designation *</label>
                   <input
                     type="text"
                     required
                     value={editingEmp.role}
                     onChange={(e) => setEditingEmp({ ...editingEmp, role: e.target.value })}
-                    className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white"
+                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 text-xs text-[#1E293B] focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB] outline-none"
                   />
                 </div>
 
                 {/* Edit Compensation Type: Daily / Weekly Wages or Monthly Salary */}
-                <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2.5">
+                <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <label className="text-xs font-bold text-[#1E293B] flex items-center gap-1.5">
                       <span>Salary / Wage Scheme *</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-semibold">
                         Indian Rupee (₹ INR)
                       </span>
                     </label>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-slate-900 border border-white/10 text-xs">
+                  <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-slate-100 border border-slate-200 text-xs">
                     <button
                       type="button"
                       onClick={() => setEditingEmp({ ...editingEmp, payBasis: 'DAILY' })}
-                      className={`py-2 px-2 rounded-lg font-semibold transition-all text-center cursor-pointer ${
+                      className={`py-1.5 px-2 rounded-md font-semibold transition-all text-center cursor-pointer ${
                         (editingEmp.payBasis || 'DAILY') === 'DAILY'
-                          ? 'bg-emerald-500 text-slate-950 font-bold shadow'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'bg-[#2563EB] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       Daily Wage
@@ -2840,10 +2830,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     <button
                       type="button"
                       onClick={() => setEditingEmp({ ...editingEmp, payBasis: 'WEEKLY' })}
-                      className={`py-2 px-2 rounded-lg font-semibold transition-all text-center cursor-pointer ${
+                      className={`py-1.5 px-2 rounded-md font-semibold transition-all text-center cursor-pointer ${
                         editingEmp.payBasis === 'WEEKLY'
-                          ? 'bg-emerald-500 text-slate-950 font-bold shadow'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'bg-[#2563EB] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       Weekly Wage
@@ -2851,10 +2841,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     <button
                       type="button"
                       onClick={() => setEditingEmp({ ...editingEmp, payBasis: 'MONTHLY' })}
-                      className={`py-2 px-2 rounded-lg font-semibold transition-all text-center cursor-pointer ${
+                      className={`py-1.5 px-2 rounded-md font-semibold transition-all text-center cursor-pointer ${
                         editingEmp.payBasis === 'MONTHLY'
-                          ? 'bg-emerald-500 text-slate-950 font-bold shadow'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'bg-[#2563EB] text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       Monthly Salary
@@ -2863,7 +2853,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     <div>
-                      <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      <label className="text-xs font-semibold text-slate-700 block mb-1">
                         {editingEmp.payBasis === 'DAILY'
                           ? 'Daily Wage Rate (₹ / Day)'
                           : editingEmp.payBasis === 'WEEKLY'
@@ -2871,7 +2861,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                           : 'Monthly Salary (₹ / Month)'}
                       </label>
                       <div className="relative flex items-center">
-                        <span className="absolute left-3 font-bold text-emerald-400 text-sm">₹</span>
+                        <span className="absolute left-3 font-bold text-slate-600 text-sm">₹</span>
                         <input
                           type="number"
                           min="0"
@@ -2887,14 +2877,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                               hourlyRate: computedHourly,
                             });
                           }}
-                          className="w-full bg-slate-900 border border-white/15 rounded-xl pl-8 pr-3 py-2 text-xs text-white font-mono font-bold focus:border-emerald-400 outline-none"
+                          className="w-full bg-white border border-[#E2E8F0] rounded-lg pl-8 pr-3 py-2 text-xs text-[#1E293B] font-mono font-bold focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB] outline-none"
                         />
                       </div>
                     </div>
 
-                    <div className="p-2.5 rounded-xl bg-slate-900/70 border border-white/5 flex flex-col justify-center text-[11px] text-slate-300">
-                      <span className="text-slate-400 text-[10px]">Monthly Projection:</span>
-                      <span className="font-bold text-emerald-300 mt-0.5">
+                    <div className="p-2.5 rounded-lg bg-white border border-[#E2E8F0] flex flex-col justify-center text-[11px] text-slate-700">
+                      <span className="text-slate-500 text-[10px]">Monthly Projection:</span>
+                      <span className="font-bold text-[#2563EB] mt-0.5">
                         {editingEmp.payBasis === 'DAILY'
                           ? `≈ ₹${((editingEmp.wageRate || 650) * 26).toLocaleString('en-IN')} / month`
                           : editingEmp.payBasis === 'WEEKLY'
@@ -2906,10 +2896,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </div>
 
                 {/* Edit Mobile Punch Authorization */}
-                <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <Smartphone className="w-3.5 h-3.5 text-sky-400" />
+                    <label className="text-xs font-bold text-[#1E293B] flex items-center gap-1.5">
+                      <Smartphone className="w-3.5 h-3.5 text-[#2563EB]" />
                       <span>Punch In Mode (Staff Mobile App)</span>
                     </label>
                   </div>
@@ -2917,17 +2907,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     <button
                       type="button"
                       onClick={() => setEditingEmp({ ...editingEmp, allowMobilePunch: true })}
-                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                      className={`p-2.5 rounded-lg border text-left cursor-pointer transition-all ${
                         editingEmp.allowMobilePunch !== false
-                          ? 'bg-sky-500/20 border-sky-500/50 text-white'
-                          : 'bg-slate-900 border-white/10 text-slate-400 hover:text-slate-200'
+                          ? 'bg-blue-50 border-blue-200 text-[#1E293B]'
+                          : 'bg-white border-[#E2E8F0] text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       <div className="flex items-center gap-2 font-bold text-xs">
-                        <Check className={`w-3.5 h-3.5 ${editingEmp.allowMobilePunch !== false ? 'text-sky-400' : 'opacity-0'}`} />
+                        <Check className={`w-3.5 h-3.5 ${editingEmp.allowMobilePunch !== false ? 'text-[#2563EB]' : 'opacity-0'}`} />
                         <span>Allow Mobile Punch</span>
                       </div>
-                      <span className="text-[10px] text-slate-400 block mt-1 pl-5.5">
+                      <span className="text-[10px] text-slate-500 block mt-1 pl-5.5">
                         Face ID + GPS punch active on mobile
                       </span>
                     </button>
@@ -2935,17 +2925,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     <button
                       type="button"
                       onClick={() => setEditingEmp({ ...editingEmp, allowMobilePunch: false })}
-                      className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                      className={`p-2.5 rounded-lg border text-left cursor-pointer transition-all ${
                         editingEmp.allowMobilePunch === false
-                          ? 'bg-amber-500/20 border-amber-500/50 text-white'
-                          : 'bg-slate-900 border-white/10 text-slate-400 hover:text-slate-200'
+                          ? 'bg-amber-50 border-amber-200 text-[#1E293B]'
+                          : 'bg-white border-[#E2E8F0] text-slate-600 hover:text-slate-900'
                       }`}
                     >
                       <div className="flex items-center gap-2 font-bold text-xs">
-                        <Check className={`w-3.5 h-3.5 ${editingEmp.allowMobilePunch === false ? 'text-amber-400' : 'opacity-0'}`} />
+                        <Check className={`w-3.5 h-3.5 ${editingEmp.allowMobilePunch === false ? 'text-amber-600' : 'opacity-0'}`} />
                         <span>Entrance Kiosk Only</span>
                       </div>
-                      <span className="text-[10px] text-slate-400 block mt-1 pl-5.5">
+                      <span className="text-[10px] text-slate-500 block mt-1 pl-5.5">
                         Restricted to supermarket entrance tablet
                       </span>
                     </button>
@@ -2953,55 +2943,55 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">Department</label>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Department</label>
                   <select
                     value={editingEmp.department}
                     onChange={(e) => setEditingEmp({ ...editingEmp, department: e.target.value as Department })}
-                    className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white"
+                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 text-xs text-[#1E293B] focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB] outline-none"
                   >
                     {!departmentsList.includes(editingEmp.department) && (
-                      <option value={editingEmp.department} className="bg-slate-900 text-white">
+                      <option value={editingEmp.department}>
                         {editingEmp.department} (Current)
                       </option>
                     )}
                     {departmentsList.map(d => (
-                      <option key={d} value={d} className="bg-slate-900 text-white">{d}</option>
+                      <option key={d} value={d}>{d}</option>
                     ))}
                   </select>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">Assigned Shift</label>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Assigned Shift</label>
                     <select
                       value={editingEmp.shiftId}
                       onChange={(e) => setEditingEmp({ ...editingEmp, shiftId: e.target.value as Shift['id'] })}
-                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white"
+                      className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 text-xs text-[#1E293B] focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB] outline-none"
                     >
                       {shifts.map(s => (
-                        <option key={s.id} value={s.id} className="bg-slate-900 text-white">{s.name}</option>
+                        <option key={s.id} value={s.id}>{s.name}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">Staff PIN (4-Digits)</label>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Staff PIN (4-Digits)</label>
                     <input
                       type="text"
                       maxLength={4}
                       value={editingEmp.pin}
                       onChange={(e) => setEditingEmp({ ...editingEmp, pin: e.target.value })}
-                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white font-mono text-center tracking-widest"
+                      className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 text-xs text-[#1E293B] font-mono text-center tracking-widest focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB] outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">Phone Number</label>
+                  <label className="text-xs font-semibold text-slate-700 block mb-1">Phone Number</label>
                   <input
                     type="text"
                     value={editingEmp.phone}
                     onChange={(e) => setEditingEmp({ ...editingEmp, phone: e.target.value })}
-                    className="w-full bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-white font-mono"
+                    className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 text-xs text-[#1E293B] font-mono focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB] outline-none"
                   />
                 </div>
 
@@ -3016,20 +3006,20 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </div>
 
               {/* Pinned Sticky Footer */}
-              <div className="p-4 border-t border-white/10 bg-slate-950 flex items-center justify-end gap-2.5 shrink-0">
+              <div className="p-4 border-t border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-end gap-2.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
                     setShowEditEmpModal(false);
                     setEditingEmp(null);
                   }}
-                  className="px-4 py-2.5 rounded-xl liquid-pill text-xs font-semibold text-slate-400 hover:text-white cursor-pointer transition-all"
+                  className="px-4 py-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 cursor-pointer transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs shadow-lg cursor-pointer transition-all"
+                  className="px-6 py-2.5 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-xs shadow-xs cursor-pointer transition-all active:scale-95"
                 >
                   Save Changes
                 </button>
@@ -3041,22 +3031,22 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
       {/* Safe In-App Confirmation Modal (Zero window.confirm) */}
       {confirmModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-slate-900 border border-white/20 rounded-2xl p-6 max-w-md w-full shadow-2xl animate-scale-in text-white">
-            <h3 className="text-lg font-bold text-white mb-2">{confirmModal.title}</h3>
-            <p className="text-sm text-slate-300 mb-6 leading-relaxed">{confirmModal.message}</p>
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-[#1E293B]">
+          <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 max-w-md w-full shadow-2xl animate-scale-in">
+            <h3 className="text-lg font-bold text-[#1E293B] mb-2">{confirmModal.title}</h3>
+            <p className="text-sm text-slate-600 mb-6 leading-relaxed">{confirmModal.message}</p>
             <div className="flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setConfirmModal(null)}
-                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold text-slate-300 hover:text-white transition-all cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 transition-all cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={confirmModal.onConfirm}
-                className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-xs font-bold text-white transition-all shadow-lg cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white transition-all shadow-xs cursor-pointer active:scale-95"
               >
                 {confirmModal.confirmText}
               </button>

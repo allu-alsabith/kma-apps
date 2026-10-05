@@ -566,37 +566,32 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   // =========================================================================
   if (!isKioskLoggedIn) {
     return (
-      <div className="w-full max-w-lg mx-auto px-4 py-8 sm:py-16 select-none animate-scale-in">
-        <div className="liquid-glass-card rounded-[36px] p-6 sm:p-8 border border-white/20 shadow-2xl space-y-6 relative overflow-hidden">
-          {/* Ambient Glow */}
-          <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -z-10"></div>
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl pointer-events-none -z-10"></div>
-
+      <div className="w-full max-w-lg mx-auto px-4 py-8 sm:py-16 select-none animate-scale-in text-[#1E293B]">
+        <div className="bg-white rounded-xl p-6 sm:p-8 border border-[#E2E8F0] shadow-sm space-y-6">
+          
           {/* Identity Header */}
           <div className="flex items-center gap-3.5">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-0.5 shadow-lg shadow-emerald-500/20 shrink-0">
-              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-emerald-400">
-                <ScanFace className="w-7 h-7" />
-              </div>
+            <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2563EB] shrink-0">
+              <ScanFace className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                <h1 className="text-xl sm:text-2xl font-bold text-[#1E293B] tracking-tight">
                   Kiosk Terminal Login
                 </h1>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
+                <span className="px-2 py-0.5 rounded-full bg-blue-50 text-[#2563EB] text-[10px] font-semibold border border-blue-200">
                   DOOR TABLET
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Biometric Staff Entrance Terminal &amp; Attendance Station
               </p>
             </div>
           </div>
 
           {/* Informational Guidance */}
-          <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-xs text-slate-300 flex items-start gap-2.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+          <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-[#E2E8F0] text-xs text-slate-600 flex items-start gap-2.5">
+            <ShieldCheck className="w-4 h-4 text-[#2563EB] shrink-0 mt-0.5" />
             <p className="leading-relaxed">
               Pair and activate this tablet for your supermarket store entrance. Once paired, staff can walk up and scan their face to clock in and out.
             </p>
@@ -605,16 +600,16 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           {/* Login Form */}
           <form onSubmit={handleKioskLogin} className="space-y-4">
             {kioskLoginError && (
-              <div className="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+              <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
                 <span>{kioskLoginError}</span>
               </div>
             )}
 
             {/* Empty Companies Notice */}
             {(!companies || companies.length === 0) && (
-              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs flex items-start gap-2.5">
-                <Info className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+              <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-start gap-2.5">
+                <Info className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
                 <p className="leading-relaxed">
                   No company has been registered yet. Please launch the business setup screen or Store Admin Console to register your store first.
                 </p>
@@ -624,7 +619,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
             {/* Company Name & Code */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+                <label className="text-[11px] font-semibold text-slate-700 block mb-1">
                   Supermarket Name
                 </label>
                 <input
@@ -632,12 +627,12 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                   placeholder="Enter supermarket name"
                   value={kioskCompanyName}
                   onChange={(e) => setKioskCompanyName(e.target.value)}
-                  className="w-full bg-slate-900 border border-white/15 rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400"
+                  className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3.5 py-2.5 text-xs text-[#1E293B] placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB]"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+                <label className="text-[11px] font-semibold text-slate-700 block mb-1">
                   Store Code
                 </label>
                 <input
@@ -646,14 +641,14 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                   placeholder="Enter company code"
                   value={kioskCompanyCode}
                   onChange={(e) => setKioskCompanyCode(e.target.value.toUpperCase())}
-                  className="w-full bg-slate-900 border border-white/15 rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 font-mono uppercase"
+                  className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3.5 py-2.5 text-xs text-[#1E293B] placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB] font-mono uppercase"
                 />
               </div>
             </div>
 
             {/* Password */}
             <div>
-              <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+              <label className="text-[11px] font-semibold text-slate-700 block mb-1">
                 Company Password / Terminal Manager PIN
               </label>
               <div className="relative">
@@ -663,12 +658,12 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                   placeholder="Enter store password or manager PIN"
                   value={kioskCompanyPassword}
                   onChange={(e) => setKioskCompanyPassword(e.target.value)}
-                  className="w-full bg-slate-900 border border-white/15 rounded-2xl pl-3.5 pr-10 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400 font-mono"
+                  className="w-full bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg pl-3.5 pr-10 py-2.5 text-xs text-[#1E293B] placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#2563EB] focus:border-[#2563EB] font-mono"
                 />
                 <button
                   type="button"
                   onClick={() => setShowKioskPassword(!showKioskPassword)}
-                  className="absolute right-3 top-2.5 text-slate-400 hover:text-white"
+                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 cursor-pointer"
                 >
                   {showKioskPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -679,21 +674,21 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
             <button
               id="btn-kiosk-login-submit"
               type="submit"
-              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-sm shadow-xl shadow-emerald-500/25 cursor-pointer transition-all active:scale-[0.99] flex items-center justify-center gap-2 mt-2"
+              className="w-full py-3 px-4 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-sm shadow-xs cursor-pointer transition-all active:scale-[0.99] flex items-center justify-center gap-2 mt-2"
             >
-              <ScanFace className="w-4 h-4 text-slate-950" />
+              <ScanFace className="w-4 h-4" />
               <span>Pair &amp; Activate Kiosk Terminal</span>
             </button>
           </form>
 
           {/* Account Help Link */}
-          <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+          <div className="pt-3 border-t border-[#E2E8F0] flex items-center justify-between text-xs text-slate-500">
             <span>Can&apos;t pair or forgot credentials?</span>
             <button
               type="button"
               id="btn-kiosk-account-help"
               onClick={() => setShowAccountHelpModal(true)}
-              className="text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1.5 cursor-pointer transition-all hover:underline"
+              className="text-[#2563EB] hover:text-blue-800 font-semibold flex items-center gap-1.5 cursor-pointer transition-all hover:underline"
             >
               <LifeBuoy className="w-3.5 h-3.5" />
               <span>Account Help</span>

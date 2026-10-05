@@ -1100,13 +1100,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#05070D] text-slate-100 flex flex-col relative selection:bg-emerald-500 selection:text-black">
-      
-      {/* Background Lighting Meshes for Liquid Glass Refraction */}
-      <div className="fixed top-0 left-1/4 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none -z-10 animate-fluid-orb"></div>
-      <div className="fixed bottom-0 right-1/4 w-[600px] h-[600px] bg-sky-500/10 rounded-full blur-[140px] pointer-events-none -z-10 animate-fluid-orb" style={{ animationDelay: '4s' }}></div>
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-purple-500/5 rounded-full blur-[160px] pointer-events-none -z-10"></div>
-
+    <div className="min-h-screen bg-[#F8FAFC] text-[#1E293B] flex flex-col relative selection:bg-[#2563EB] selection:text-white">
       {/* Main Active Portal Render */}
       <main className="flex-1 flex flex-col items-center justify-start pb-12 w-full">
         {currentPortal === 'ADMIN_PORTAL' && (
