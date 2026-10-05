@@ -373,6 +373,9 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
     kioskBackupPin: boolean;
     adminPayrollEnabled: boolean;
     adminLiveSplitEnabled: boolean;
+    managerSelfRegisterEnabled: boolean;
+    managerPinRequired: boolean;
+    managerCloudSyncAuditEnabled: boolean;
   }>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('attendo_app_access_toggles');
@@ -393,6 +396,9 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
       kioskBackupPin: true,
       adminPayrollEnabled: true,
       adminLiveSplitEnabled: true,
+      managerSelfRegisterEnabled: true,
+      managerPinRequired: true,
+      managerCloudSyncAuditEnabled: true,
     };
   });
 
@@ -662,7 +668,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
   };
 
   // Generate QR Code for an App
-  const openQrModalForApp = (name: string, portalSlug: 'admin' | 'kiosk' | 'staff') => {
+  const openQrModalForApp = (name: string, portalSlug: 'admin' | 'kiosk' | 'staff' | 'manager') => {
     const compCode = authenticatedCompany?.code || activeCompany?.code || '';
     const appUrl = getAppLaunchUrl(portalSlug, compCode);
     setQrModalApp({ name, url: appUrl, target: portalSlug });
@@ -818,7 +824,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
         <div className="flex items-center gap-1 p-1 bg-black/40 rounded-2xl border border-white/10 overflow-x-auto w-full lg:w-auto">
           {[
             { id: 'COMPANIES', label: `Companies (${companies.length})`, icon: Building2 },
-            { id: 'APPS', label: '3 Apps & Access', icon: Layers },
+            { id: 'APPS', label: '4 Apps & Access', icon: Layers },
             { id: 'DEPLOYMENT', label: 'Fast Store Setup', icon: Share2 },
             { 
               id: 'SUPPORT_REQUESTS', 
@@ -1149,7 +1155,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: 3 APPS & ACCESS MANAGEMENT                                         */}
+      {/* TAB 2: 4 APPS & ACCESS MANAGEMENT                                         */}
       {/* ========================================================================= */}
       {managerTab === 'APPS' && (
         <div className="space-y-6 animate-scale-in">
@@ -1157,10 +1163,10 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
             <div>
               <h2 className="text-base font-bold text-white flex items-center gap-2">
                 <Layers className="w-4 h-4 text-amber-400" />
-                <span>Connected Workforce Apps for {authenticatedCompany?.supermarketName || 'Store'} Supermarket</span>
+                <span>Connected Workforce &amp; Executive Apps for {authenticatedCompany?.supermarketName || 'Store'} Supermarket</span>
               </h2>
               <p className="text-xs text-slate-400">
-                Configure feature access, standalone deep-links, and QR codes for staff and hardware deployment.
+                Configure feature access, standalone deep-links, and QR codes for staff, managers, and hardware deployment.
               </p>
             </div>
             {onOpenInstallModal && (
@@ -1174,8 +1180,8 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
             )}
           </div>
 
-          {/* 3 Apps Cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* 4 Apps Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
             
             {/* APP 1: STORE ADMIN HR PORTAL */}
             <div className="liquid-glass-card rounded-3xl p-5 border border-white/15 space-y-4 shadow-xl flex flex-col justify-between">
@@ -1525,6 +1531,127 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                       onClick={() => handleCopyText(getAppLaunchUrl('staff', authenticatedCompany?.code), 'staff-web-addr')}
                       className="py-1.5 px-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
                       title="Copy Staff Web Address"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* APP 4: APPS MANAGER HUB */}
+            <div className="liquid-glass-card rounded-3xl p-5 border border-purple-500/30 space-y-4 shadow-xl flex flex-col justify-between hover:border-purple-500/50 transition-all">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                    <SlidersHorizontal className="w-6 h-6" />
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold text-[10px]">
+                    MASTER CONSOLE
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="text-base font-extrabold text-white">Apps Manager Hub</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Centralized master console to register supermarket companies, manage codes &amp; passwords, and pair kiosks.
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-black/50 border border-white/10 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Launch Slug:</span>
+                    <span className="font-mono text-purple-300 font-bold">?app=manager</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Target Device:</span>
+                    <span className="text-slate-200">Executive IT / Master Console</span>
+                  </div>
+                </div>
+
+                {/* Feature Toggles */}
+                <div className="space-y-2 pt-2 border-t border-white/10 text-xs">
+                  <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">
+                    Manager Permissions
+                  </span>
+                  <label className="flex items-center justify-between p-2 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer">
+                    <span className="text-slate-300 text-[11px]">Allow New Store Registration</span>
+                    <input
+                      type="checkbox"
+                      checked={appToggles.managerSelfRegisterEnabled}
+                      onChange={(e) => updateAppToggle('managerSelfRegisterEnabled', e.target.checked)}
+                      className="accent-purple-500 w-4 h-4 cursor-pointer"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between p-2 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer">
+                    <span className="text-slate-300 text-[11px]">Require Master PIN for Setup</span>
+                    <input
+                      type="checkbox"
+                      checked={appToggles.managerPinRequired}
+                      onChange={(e) => updateAppToggle('managerPinRequired', e.target.checked)}
+                      className="accent-purple-500 w-4 h-4 cursor-pointer"
+                    />
+                  </label>
+                  <label className="flex items-center justify-between p-2 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer">
+                    <span className="text-slate-300 text-[11px]">Real-Time Cloud Sync Audit</span>
+                    <input
+                      type="checkbox"
+                      checked={appToggles.managerCloudSyncAuditEnabled}
+                      onChange={(e) => updateAppToggle('managerCloudSyncAuditEnabled', e.target.checked)}
+                      className="accent-purple-500 w-4 h-4 cursor-pointer"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-3 border-t border-white/10">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      if (onLaunchPortal) onLaunchPortal('APPS_MANAGER');
+                      else window.location.href = getAppLaunchUrl('manager');
+                    }}
+                    className="py-2 px-3 rounded-xl bg-purple-500 hover:bg-purple-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Launch Manager</span>
+                  </button>
+                  <button
+                    onClick={() => openQrModalForApp('Apps Manager Hub', 'manager')}
+                    className="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-purple-400" />
+                    <span>QR Code</span>
+                  </button>
+                </div>
+                {/* Dedicated Web Address for Apps Manager Hub */}
+                <div className="p-2.5 rounded-2xl bg-black/60 border border-purple-500/30 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-300 font-bold flex items-center gap-1">
+                      <Globe className="w-3 h-3 text-purple-400" />
+                      Web Address:
+                    </span>
+                    {copiedKey === 'manager-web-addr' ? (
+                      <span className="text-[10px] text-purple-400 font-bold flex items-center gap-1 animate-pulse">
+                        <Check className="w-3 h-3" /> Copied!
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 font-mono">Executive Console</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      readOnly
+                      value={getAppLaunchUrl('manager')}
+                      className="flex-1 bg-slate-900/80 border border-white/10 rounded-xl px-2.5 py-1.5 text-[11px] font-mono text-purple-300 focus:outline-none select-all truncate"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleCopyText(getAppLaunchUrl('manager'), 'manager-web-addr')}
+                      className="py-1.5 px-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+                      title="Copy Apps Manager Web Address"
                     >
                       <Copy className="w-3.5 h-3.5" />
                       <span>Copy</span>
