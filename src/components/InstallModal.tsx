@@ -265,7 +265,7 @@ export const InstallModal: React.FC<InstallModalProps> = ({
         <div className="bg-white rounded-xl p-4 flex flex-col sm:flex-row items-center gap-4 mb-4 border border-[#E2E8F0] shadow-xs">
           
           {/* QR Code Container */}
-          <div className="relative p-2 bg-white rounded-xl border border-slate-200 shadow-xs flex-shrink-0 flex items-center justify-center">
+          <div className="relative p-2 bg-white keep-white rounded-xl border border-slate-200 shadow-xs flex-shrink-0 flex items-center justify-center">
             {qrDataUrl ? (
               <img
                 src={qrDataUrl}

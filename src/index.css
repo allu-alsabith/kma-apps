@@ -106,7 +106,13 @@
   color-scheme: dark;
 }
 
-.dark .bg-white {
+.keep-white,
+.dark .keep-white {
+  background-color: #FFFFFF !important;
+  color: #05070D !important;
+}
+
+.dark .bg-white:not(.keep-white) {
   background-color: #1E293B !important;
 }
 

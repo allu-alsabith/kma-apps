@@ -173,9 +173,84 @@ export interface FirestoreErrorInfo {
   };
 }
 
+// =========================================================================
+// QUOTA EXCEEDED CIRCUIT BREAKER (Graceful Offline-First Fallback)
+// Prevents continuous write storms and backoff delay warnings when
+// Firebase Free Tier quota is reached.
+// =========================================================================
+const QUOTA_EXHAUSTED_STORAGE_KEY = 'attendo_firestore_quota_exhausted';
+let isFirestoreQuotaExhausted = false;
+
+// Check existing stored quota status (resets automatically after 12h)
+if (typeof window !== 'undefined') {
+  try {
+    const raw = localStorage.getItem(QUOTA_EXHAUSTED_STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Date.now() - data.timestamp < 12 * 60 * 60 * 1000) {
+        isFirestoreQuotaExhausted = true;
+      } else {
+        localStorage.removeItem(QUOTA_EXHAUSTED_STORAGE_KEY);
+      }
+    }
+  } catch {
+    // Ignore
+  }
+}
+
+const quotaListeners = new Set<(exhausted: boolean) => void>();
+
+export function getIsQuotaExhausted(): boolean {
+  return isFirestoreQuotaExhausted;
+}
+
+export function subscribeToQuotaStatus(listener: (exhausted: boolean) => void): () => void {
+  quotaListeners.add(listener);
+  listener(isFirestoreQuotaExhausted);
+  return () => {
+    quotaListeners.delete(listener);
+  };
+}
+
+export function markQuotaExhausted() {
+  if (!isFirestoreQuotaExhausted) {
+    isFirestoreQuotaExhausted = true;
+    try {
+      localStorage.setItem(
+        QUOTA_EXHAUSTED_STORAGE_KEY,
+        JSON.stringify({ timestamp: Date.now(), reason: 'resource-exhausted' })
+      );
+    } catch {
+      // Ignore
+    }
+    quotaListeners.forEach((fn) => {
+      try {
+        fn(true);
+      } catch {}
+    });
+  }
+}
+
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errStr = error instanceof Error ? error.message : String(error);
+  const errCode = (error as { code?: string })?.code;
+
+  // Intercept quota limit errors to prevent spamming backend & triggering console errors
+  if (
+    errCode === 'resource-exhausted' ||
+    errStr.includes('resource-exhausted') ||
+    errStr.includes('Quota limit exceeded') ||
+    errStr.includes('Quota exceeded')
+  ) {
+    markQuotaExhausted();
+    console.warn(
+      '[Firestore Quota Breaker] Daily write quota reached on Free Tier database. Application is operating seamlessly in local offline-first mode.'
+    );
+    return;
+  }
+
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errStr,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
@@ -352,6 +427,7 @@ export function subscribeToLeaveRequests(
 
 // Fast Non-blocking Asynchronous Operations with error handling
 export async function syncEmployeeToFirestore(employee: Employee): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const docPath = `${EMPLOYEES_COLLECTION}/${employee.id}`;
   try {
     const docRef = doc(db, EMPLOYEES_COLLECTION, employee.id);
@@ -362,6 +438,7 @@ export async function syncEmployeeToFirestore(employee: Employee): Promise<void>
 }
 
 export async function deleteEmployeeFromFirestore(employeeId: string): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const docPath = `${EMPLOYEES_COLLECTION}/${employeeId}`;
   try {
     const docRef = doc(db, EMPLOYEES_COLLECTION, employeeId);
@@ -372,6 +449,7 @@ export async function deleteEmployeeFromFirestore(employeeId: string): Promise<v
 }
 
 export async function clearAllEmployeesInFirestore(): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   try {
     const snapshot = await getDocs(collection(db, EMPLOYEES_COLLECTION));
     const batch = writeBatch(db);
@@ -385,6 +463,7 @@ export async function clearAllEmployeesInFirestore(): Promise<void> {
 }
 
 export async function syncAttendanceRecordToFirestore(record: AttendanceRecord): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const docPath = `${ATTENDANCE_COLLECTION}/${record.id}`;
   try {
     const docRef = doc(db, ATTENDANCE_COLLECTION, record.id);
@@ -395,6 +474,7 @@ export async function syncAttendanceRecordToFirestore(record: AttendanceRecord):
 }
 
 export async function syncLeaveRequestToFirestore(leave: LeaveRequest): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const docPath = `${LEAVES_COLLECTION}/${leave.id}`;
   try {
     const docRef = doc(db, LEAVES_COLLECTION, leave.id);
@@ -408,6 +488,7 @@ export async function updateLeaveStatusInFirestore(
   leaveId: string, 
   status: 'APPROVED' | 'REJECTED'
 ): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const docPath = `${LEAVES_COLLECTION}/${leaveId}`;
   try {
     const docRef = doc(db, LEAVES_COLLECTION, leaveId);
@@ -421,6 +502,7 @@ export async function updateLeaveStatusInFirestore(
 }
 
 export async function deleteLeaveRequestFromFirestore(leaveId: string): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const docPath = `${LEAVES_COLLECTION}/${leaveId}`;
   try {
     const docRef = doc(db, LEAVES_COLLECTION, leaveId);
@@ -431,6 +513,7 @@ export async function deleteLeaveRequestFromFirestore(leaveId: string): Promise<
 }
 
 export async function deleteLeaveRequestsByEmployeeInFirestore(employeeId: string, employeeName?: string): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   try {
     const snapshot = await getDocs(collection(db, LEAVES_COLLECTION));
     const batch = writeBatch(db);
@@ -451,6 +534,7 @@ export async function deleteLeaveRequestsByEmployeeInFirestore(employeeId: strin
 }
 
 export async function clearAllLeaveRequestsInFirestore(): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   try {
     const snapshot = await getDocs(collection(db, LEAVES_COLLECTION));
     const batch = writeBatch(db);
@@ -464,6 +548,7 @@ export async function clearAllLeaveRequestsInFirestore(): Promise<void> {
 }
 
 export async function deleteAttendanceByEmployeeInFirestore(employeeId: string): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   try {
     const snapshot = await getDocs(collection(db, ATTENDANCE_COLLECTION));
     const batch = writeBatch(db);
@@ -484,6 +569,7 @@ export async function deleteAttendanceByEmployeeInFirestore(employeeId: string):
 }
 
 export async function syncStaffNotificationToFirestore(notification: StaffNotification): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const docPath = `${NOTIFICATIONS_COLLECTION}/${notification.id}`;
   try {
     const docRef = doc(db, NOTIFICATIONS_COLLECTION, notification.id);
@@ -494,6 +580,7 @@ export async function syncStaffNotificationToFirestore(notification: StaffNotifi
 }
 
 export async function updateNotificationReadInFirestore(notificationId: string, read: boolean): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const docPath = `${NOTIFICATIONS_COLLECTION}/${notificationId}`;
   try {
     const docRef = doc(db, NOTIFICATIONS_COLLECTION, notificationId);
@@ -504,6 +591,7 @@ export async function updateNotificationReadInFirestore(notificationId: string, 
 }
 
 export async function deleteNotificationFromFirestore(notificationId: string): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const docPath = `${NOTIFICATIONS_COLLECTION}/${notificationId}`;
   try {
     const docRef = doc(db, NOTIFICATIONS_COLLECTION, notificationId);
@@ -514,6 +602,7 @@ export async function deleteNotificationFromFirestore(notificationId: string): P
 }
 
 export async function clearAllNotificationsInFirestore(): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   try {
     const snapshot = await getDocs(collection(db, NOTIFICATIONS_COLLECTION));
     const batch = writeBatch(db);
@@ -527,6 +616,7 @@ export async function clearAllNotificationsInFirestore(): Promise<void> {
 }
 
 export async function syncCompanyToFirestore(company: Company): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const docPath = `${COMPANIES_COLLECTION}/${company.id}`;
   try {
     const docRef = doc(db, COMPANIES_COLLECTION, company.id);
@@ -537,6 +627,7 @@ export async function syncCompanyToFirestore(company: Company): Promise<void> {
 }
 
 export async function deleteCompanyFromFirestore(companyId: string): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const docPath = `${COMPANIES_COLLECTION}/${companyId}`;
   try {
     const docRef = doc(db, COMPANIES_COLLECTION, companyId);
@@ -572,6 +663,7 @@ export function subscribeToHelpRequests(
 }
 
 export async function syncHelpRequestToFirestore(request: HelpRequest): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const docPath = `${HELP_REQUESTS_COLLECTION}/${request.id}`;
   try {
     const docRef = doc(db, HELP_REQUESTS_COLLECTION, request.id);
@@ -582,6 +674,7 @@ export async function syncHelpRequestToFirestore(request: HelpRequest): Promise<
 }
 
 export async function updateHelpRequestStatusInFirestore(requestId: string, status: 'PENDING' | 'RESOLVED'): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const docPath = `${HELP_REQUESTS_COLLECTION}/${requestId}`;
   try {
     const docRef = doc(db, HELP_REQUESTS_COLLECTION, requestId);
@@ -592,6 +685,7 @@ export async function updateHelpRequestStatusInFirestore(requestId: string, stat
 }
 
 export async function deleteHelpRequestFromFirestore(requestId: string): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const docPath = `${HELP_REQUESTS_COLLECTION}/${requestId}`;
   try {
     const docRef = doc(db, HELP_REQUESTS_COLLECTION, requestId);
@@ -627,6 +721,7 @@ export function subscribeToShifts(
 }
 
 export async function syncShiftToFirestore(shift: Shift): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const docPath = `${SHIFTS_COLLECTION}/${shift.id}`;
   try {
     const docRef = doc(db, SHIFTS_COLLECTION, shift.id);
@@ -637,6 +732,7 @@ export async function syncShiftToFirestore(shift: Shift): Promise<void> {
 }
 
 export async function deleteShiftFromFirestore(shiftId: string): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const docPath = `${SHIFTS_COLLECTION}/${shiftId}`;
   try {
     const docRef = doc(db, SHIFTS_COLLECTION, shiftId);
@@ -650,6 +746,7 @@ export async function deleteShiftFromFirestore(shiftId: string): Promise<void> {
 // USER PROFILES & AUTH PERSISTENCE
 // ==========================================
 export async function syncUserProfileToFirestore(profile: UserProfile): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
   const docPath = `${USERS_COLLECTION}/${profile.uid}`;
   try {
     const docRef = doc(db, USERS_COLLECTION, profile.uid);
@@ -685,7 +782,10 @@ export async function syncAllDataToFirestore(data: {
   leaveRequests?: LeaveRequest[];
   notifications?: StaffNotification[];
   helpRequests?: HelpRequest[];
-}): Promise<{ success: boolean; syncedCounts: Record<string, number> }> {
+}): Promise<{ success: boolean; syncedCounts: Record<string, number>; quotaExhausted?: boolean }> {
+  if (isFirestoreQuotaExhausted) {
+    return { success: false, syncedCounts: {}, quotaExhausted: true };
+  }
   const counts: Record<string, number> = {
     companies: 0,
     employees: 0,

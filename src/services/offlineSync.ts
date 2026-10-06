@@ -15,6 +15,8 @@ import {
   updateNotificationReadInFirestore,
   syncShiftToFirestore,
   deleteShiftFromFirestore,
+  getIsQuotaExhausted,
+  subscribeToQuotaStatus,
 } from './firebase';
 import { AttendanceRecord, Employee, LeaveRequest, Company, HelpRequest, StaffNotification, Shift } from '../types';
 
@@ -46,6 +48,7 @@ export interface OfflineQueueItem {
 export interface NetworkSyncState {
   isOnline: boolean;
   isSyncing: boolean;
+  isQuotaExhausted: boolean;
   pendingCount: number;
   lastSyncTime: string | null;
   lastSyncResult?: 'SUCCESS' | 'ERROR' | null;
@@ -65,25 +68,30 @@ class OfflineSyncManager {
       window.addEventListener('online', this.handleOnline);
       window.addEventListener('offline', this.handleOffline);
       window.addEventListener('focus', () => {
-        if (this.isOnline && !this.isSyncing && this.getQueue().length > 0) {
+        if (this.isOnline && !this.isSyncing && !getIsQuotaExhausted() && this.getQueue().length > 0) {
           this.flushQueue();
         }
       });
       window.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && this.isOnline && !this.isSyncing && this.getQueue().length > 0) {
+        if (document.visibilityState === 'visible' && this.isOnline && !this.isSyncing && !getIsQuotaExhausted() && this.getQueue().length > 0) {
           this.flushQueue();
         }
       });
 
-      // Fast periodic background check every 4 seconds to guarantee automatic cloud synchronization
+      // Subscribe to quota status changes
+      subscribeToQuotaStatus(() => {
+        this.notify();
+      });
+
+      // Background check every 10 seconds to synchronize when online and quota available
       this.flushTimer = setInterval(() => {
-        if (this.isOnline && !this.isSyncing && this.getQueue().length > 0) {
+        if (this.isOnline && !this.isSyncing && !getIsQuotaExhausted() && this.getQueue().length > 0) {
           this.flushQueue();
         }
-      }, 4000);
+      }, 10000);
 
       // Run initial check if queue has pending items
-      if (this.isOnline && this.getQueue().length > 0) {
+      if (this.isOnline && !getIsQuotaExhausted() && this.getQueue().length > 0) {
         setTimeout(() => this.flushQueue(), 500);
       }
     }
@@ -92,8 +100,9 @@ class OfflineSyncManager {
   private handleOnline = () => {
     this.isOnline = true;
     this.notify();
-    // Auto-flush pending operations when back online
-    this.flushQueue();
+    if (!getIsQuotaExhausted()) {
+      this.flushQueue();
+    }
   };
 
   private handleOffline = () => {
@@ -131,6 +140,7 @@ class OfflineSyncManager {
     return {
       isOnline: this.isOnline,
       isSyncing: this.isSyncing,
+      isQuotaExhausted: getIsQuotaExhausted(),
       pendingCount: queue.length,
       lastSyncTime: lastSync,
     };
@@ -156,7 +166,7 @@ class OfflineSyncManager {
 
   /**
    * Enqueues an action to be synchronized.
-   * If online, attempts an immediate background flush.
+   * If online and quota available, attempts an immediate background flush.
    */
   public enqueue(type: OfflineActionType, payload: any): void {
     const item: OfflineQueueItem = {
@@ -172,8 +182,8 @@ class OfflineSyncManager {
     this.setQueue(queue);
     this.notify();
 
-    // If online, immediately try to flush
-    if (this.isOnline && !this.isSyncing) {
+    // If online and quota is not exhausted, flush in background
+    if (this.isOnline && !this.isSyncing && !getIsQuotaExhausted()) {
       setTimeout(() => this.flushQueue(), 100);
     }
   }
@@ -183,6 +193,11 @@ class OfflineSyncManager {
    */
   public async flushQueue(): Promise<{ syncedCount: number; errors: number }> {
     if (this.isSyncing) {
+      return { syncedCount: 0, errors: 0 };
+    }
+
+    if (getIsQuotaExhausted()) {
+      // Pause queue flush while quota is exhausted to prevent backend overload and backoff loops
       return { syncedCount: 0, errors: 0 };
     }
 

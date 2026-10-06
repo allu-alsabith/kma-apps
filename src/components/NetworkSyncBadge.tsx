@@ -13,12 +13,12 @@ export const NetworkSyncBadge: React.FC<NetworkSyncBadgeProps> = ({
   className = '',
   showDetails = true,
 }) => {
-  const { isOnline, isSyncing, pendingCount, lastSyncTime, triggerSync } = useNetworkSync();
+  const { isOnline, isSyncing, isQuotaExhausted, pendingCount, lastSyncTime, triggerSync } = useNetworkSync();
   const [showTooltip, setShowTooltip] = useState(false);
 
   const handleManualSync = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isOnline && !isSyncing) {
+    if (isOnline && !isSyncing && !isQuotaExhausted) {
       await triggerSync();
     }
   };
@@ -33,6 +33,8 @@ export const NetworkSyncBadge: React.FC<NetworkSyncBadgeProps> = ({
         } font-semibold ${
           isSyncing
             ? 'bg-sky-500/15 border border-sky-500/30 text-sky-300'
+            : isQuotaExhausted
+            ? 'bg-amber-500/15 border border-amber-500/35 text-amber-400'
             : !isOnline
             ? 'bg-amber-500/20 border border-amber-500/40 text-amber-300 shadow-sm'
             : pendingCount > 0
@@ -45,6 +47,11 @@ export const NetworkSyncBadge: React.FC<NetworkSyncBadgeProps> = ({
           <>
             <RefreshCw className="w-3 h-3 animate-spin text-sky-400" />
             <span>{compact ? 'Syncing' : `Syncing ${pendingCount > 0 ? `(${pendingCount})` : ''}`}</span>
+          </>
+        ) : isQuotaExhausted ? (
+          <>
+            <CloudOff className="w-3 h-3 text-amber-400 shrink-0" />
+            <span>{compact ? 'Local Mode' : 'Local Mode • Quota Limit'}</span>
           </>
         ) : !isOnline ? (
           <>
@@ -79,13 +86,19 @@ export const NetworkSyncBadge: React.FC<NetworkSyncBadgeProps> = ({
         >
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#E2E8F0]">
             <div className="flex items-center gap-1.5">
-              {isOnline ? (
+              {isQuotaExhausted ? (
+                <div className="w-2 h-2 rounded-full bg-amber-500" />
+              ) : isOnline ? (
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
               ) : (
                 <div className="w-2 h-2 rounded-full bg-amber-500" />
               )}
               <span className="text-xs font-bold text-[#1E293B]">
-                {isOnline ? 'Internet Connected' : 'Offline Autonomy Mode'}
+                {isQuotaExhausted
+                  ? 'Firestore Quota Reached (Local Mode)'
+                  : isOnline
+                  ? 'Internet Connected'
+                  : 'Offline Autonomy Mode'}
               </span>
             </div>
             <button
@@ -97,7 +110,9 @@ export const NetworkSyncBadge: React.FC<NetworkSyncBadgeProps> = ({
           </div>
 
           <p className="text-[11px] text-slate-600 leading-relaxed">
-            {!isOnline
+            {isQuotaExhausted
+              ? 'Firestore Free Tier daily write quota has been reached. Attendo is operating in 100% offline-first local mode. All data is securely stored on this device and will automatically sync when daily quota resets tomorrow or billing is enabled.'
+              : !isOnline
               ? 'Your device is operating in autonomous offline mode. All face punches, PIN clockings, and leaves are saved locally and will auto-upload to the cloud as soon as connection is re-established.'
               : pendingCount > 0
               ? `Auto-sync in progress: ${pendingCount} operation(s) syncing to the cloud database automatically.`
@@ -107,9 +122,9 @@ export const NetworkSyncBadge: React.FC<NetworkSyncBadgeProps> = ({
           <div className="mt-3 pt-2 border-t border-[#E2E8F0] flex items-center justify-between text-[10px] text-slate-500">
             <span className="flex items-center gap-1 text-emerald-600 font-semibold">
               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-              100% Automatic Data Sync
+              100% Offline-First Safety
             </span>
-            {isOnline && (
+            {isOnline && !isQuotaExhausted && (
               <button
                 disabled={isSyncing}
                 onClick={handleManualSync}

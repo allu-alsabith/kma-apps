@@ -39,6 +39,7 @@ export const isSampleCompany = (c: Partial<Company>): boolean => {
   if (c.supermarketName && sampleNames.includes(c.supermarketName)) return true;
   return false;
 };
+import { CloudOff, ExternalLink, X } from 'lucide-react';
 import { KioskFace } from './components/KioskFace';
 import { EmployeeApp } from './components/EmployeeApp';
 import { AdminPortal } from './components/AdminPortal';
@@ -80,10 +81,45 @@ import {
   subscribeToShifts,
   syncShiftToFirestore,
   syncAllDataToFirestore,
+  getIsQuotaExhausted,
+  subscribeToQuotaStatus,
 } from './services/firebase';
 
 function AppContent() {
-  const { isDark } = useTheme();
+  const { isDark, theme } = useTheme();
+
+  // Directly apply the dark class, color scheme, and background styles to root <html> and <body> elements
+  useEffect(() => {
+    const root = document.documentElement;
+    const body = document.body;
+
+    if (isDark) {
+      root.classList.add('dark');
+      root.setAttribute('data-theme', 'dark');
+      root.style.backgroundColor = '#0F172A';
+      root.style.color = '#F8FAFC';
+      root.style.colorScheme = 'dark';
+      if (body) {
+        body.classList.add('dark');
+        body.setAttribute('data-theme', 'dark');
+        body.style.backgroundColor = '#0F172A';
+        body.style.color = '#F8FAFC';
+      }
+    } else {
+      root.classList.remove('dark');
+      root.setAttribute('data-theme', 'light');
+      root.style.backgroundColor = '#F8FAFC';
+      root.style.color = '#1E293B';
+      root.style.colorScheme = 'light';
+      if (body) {
+        body.classList.remove('dark');
+        body.setAttribute('data-theme', 'light');
+        body.style.backgroundColor = '#F8FAFC';
+        body.style.color = '#1E293B';
+      }
+    }
+  }, [isDark, theme]);
+
   // App Portal Mode detection: 'STAFF' (Employee Phone), 'KIOSK' (Door Tablet), 'ADMIN' (Manager HR), 'MANAGER' (Apps Manager)
   const [standaloneMode, setStandaloneMode] = useState<'STAFF' | 'KIOSK' | 'ADMIN' | 'MANAGER'>(() => {
     if (typeof window !== 'undefined') {
@@ -137,6 +173,8 @@ function AppContent() {
   const [isInstallModalOpen, setIsInstallModalOpen] = useState<boolean>(false);
   const [installModalTarget, setInstallModalTarget] = useState<AppInstallTarget>('STAFF');
   const [isFirebaseLive, setIsFirebaseLive] = useState<boolean>(true);
+  const [isQuotaExhausted, setIsQuotaExhausted] = useState<boolean>(() => getIsQuotaExhausted());
+  const [isQuotaBannerDismissed, setIsQuotaBannerDismissed] = useState<boolean>(false);
   const [autoOpenCreateCompany, setAutoOpenCreateCompany] = useState<boolean>(false);
 
   const openInstallHub = (target: AppInstallTarget = 'STAFF') => {
@@ -444,20 +482,12 @@ function AppContent() {
 
   // Firebase Real-time Synchronization Listeners
   useEffect(() => {
-    testFirestoreConnection().then(async (ok) => {
+    testFirestoreConnection().then((ok) => {
       setIsFirebaseLive(ok);
-      if (ok) {
-        // Ensure every data entity exists in Firebase Firestore
-        await syncAllDataToFirestore({
-          companies,
-          employees,
-          attendanceLogs,
-          shifts,
-          leaveRequests,
-          notifications,
-          helpRequests,
-        });
-      }
+    });
+
+    const unsubQuota = subscribeToQuotaStatus((exhausted) => {
+      setIsQuotaExhausted(exhausted);
     });
 
     // Listen to remote changes in real-time
@@ -532,6 +562,7 @@ function AppContent() {
       unsubShifts();
       unsubHelpRequests();
       unsubSync();
+      unsubQuota();
     };
   }, []);
 
@@ -1103,6 +1134,42 @@ function AppContent() {
 
   return (
     <div className={`min-h-screen ${isDark ? 'dark bg-[#0F172A] text-[#F8FAFC]' : 'bg-[#F8FAFC] text-[#1E293B]'} flex flex-col relative selection:bg-[#2563EB] selection:text-white transition-colors duration-200`}>
+      {/* Informative Quota Limit Notification Banner (Autonomous Offline Mode) */}
+      {isQuotaExhausted && !isQuotaBannerDismissed && (
+        <aside
+          role="status"
+          aria-live="polite"
+          className="w-full bg-amber-500/10 dark:bg-amber-500/15 border-b border-amber-500/30 px-3.5 py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-amber-900 dark:text-amber-200 z-40 transition-all shadow-xs"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <CloudOff className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <p className="leading-snug">
+              <strong className="font-semibold text-amber-950 dark:text-amber-100">Firestore Free Tier Quota Reached:</strong> Attendo is operating in <strong>Autonomous Offline-First Mode</strong>. All face punches, PIN clockings, and rosters are safely saved on this device and will auto-sync when daily quota resets tomorrow.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            <a
+              href="https://console.firebase.google.com/project/plasma-envoy-qpqwl/firestore/databases/ai-studio-testremix2attend-770b42bd-2afa-4943-870f-11b29a02e21d/data?openUpgradeDialog=true"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2.5 py-1 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-medium flex items-center gap-1 transition-colors text-[11px] shadow-xs"
+              title="Open Firebase Console to view database or enable billing"
+            >
+              <span>Upgrade Quota</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+            <button
+              onClick={() => setIsQuotaBannerDismissed(true)}
+              className="p-1 rounded-md hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 transition-colors cursor-pointer"
+              aria-label="Dismiss quota notice"
+              title="Dismiss notice"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </aside>
+      )}
+
       {/* Main Active Portal Render */}
       <main className="flex-1 flex flex-col items-center justify-start pb-12 w-full">
         {currentPortal === 'ADMIN_PORTAL' && (
