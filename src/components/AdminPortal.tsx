@@ -53,6 +53,7 @@ import { FaceEnrollmentScanner } from './FaceEnrollmentScanner';
 import { clearBiometricCache } from '../utils/faceRecognition';
 import { AccountHelpModal } from './AccountHelpModal';
 import { NetworkSyncBadge } from './NetworkSyncBadge';
+import { ThemeToggle } from './ThemeToggle';
 import { signInWithGoogle, signOutUser, subscribeToAuth, type User } from '../services/firebase';
 import { 
   formatTime12H, 
@@ -600,24 +601,27 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     return (
       <div className="w-full max-w-xl mx-auto px-4 py-8 sm:py-16 select-none animate-scale-in">
         <div className="bg-white rounded-xl p-6 sm:p-8 border border-[#E2E8F0] shadow-sm space-y-6 text-[#1E293B]">
-          {/* Header Identity */}
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2563EB] shrink-0">
-              <Store className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-bold text-[#1E293B] tracking-tight">
-                  Store Admin Login
-                </h1>
-                <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-semibold border border-[#E2E8F0]">
-                  STORE HR CONSOLE
-                </span>
+          {/* Header Identity & Theme Toggle */}
+          <div className="flex items-center justify-between gap-3.5">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2563EB] shrink-0">
+                <Store className="w-6 h-6" />
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Supermarket Store HR & Workforce Administration
-              </p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl sm:text-2xl font-bold text-[#1E293B] tracking-tight">
+                    Store Admin Login
+                  </h1>
+                  <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-semibold border border-[#E2E8F0]">
+                    STORE HR CONSOLE
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Supermarket Store HR &amp; Workforce Administration
+                </p>
+              </div>
             </div>
+            <ThemeToggle />
           </div>
 
           {/* Guidance Banner */}
@@ -889,43 +893,48 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           </p>
         </div>
 
-        {/* Tab Navigation in Minimal Classic Style */}
-        <div className="flex items-center gap-1 p-1 bg-[#F8FAFC] rounded-lg border border-[#E2E8F0] overflow-x-auto w-full lg:w-auto">
-          {[
-            { id: 'OVERVIEW', label: 'Floor Live' },
-            { id: 'DIRECTORY', label: `Staff Directory (${employees.length})` },
-            { id: 'SHIFTS', label: 'Shift Roster' },
-            { 
-              id: 'LEAVES', 
-              label: pendingLeavesCount > 0 
-                ? `Leaves (${pendingLeavesCount} pending)` 
-                : leaveRequests.length > 0 
-                  ? `Leaves (${leaveRequests.length})` 
-                  : 'Leaves' 
-            },
-            { id: 'PAYROLL', label: 'Payroll Export' },
-            { 
-              id: 'SECURITY', 
-              label: unreadSecurityAlertsCount > 0 
-                ? `Security Alerts (${unreadSecurityAlertsCount})` 
-                : securityAlertNotifications.length > 0 
-                  ? `Security Alerts (${securityAlertNotifications.length})` 
-                  : 'Security Alerts' 
-            },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              id={`admin-tab-${tab.id.toLowerCase()}`}
-              onClick={() => setAdminTab(tab.id as typeof adminTab)}
-              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                adminTab === tab.id
-                  ? 'bg-[#2563EB] text-white shadow-xs'
-                  : 'text-slate-600 hover:text-[#1E293B] hover:bg-slate-200/50'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* Top-Right Navigation Header Controls: Tabs + Theme Toggle */}
+        <div className="flex items-center gap-2 w-full lg:w-auto justify-between lg:justify-end">
+          <div className="flex items-center gap-1 p-1 bg-[#F8FAFC] dark:bg-slate-800 rounded-lg border border-[#E2E8F0] dark:border-slate-700 overflow-x-auto">
+            {[
+              { id: 'OVERVIEW', label: 'Floor Live' },
+              { id: 'DIRECTORY', label: `Staff Directory (${employees.length})` },
+              { id: 'SHIFTS', label: 'Shift Roster' },
+              { 
+                id: 'LEAVES', 
+                label: pendingLeavesCount > 0 
+                  ? `Leaves (${pendingLeavesCount} pending)` 
+                  : leaveRequests.length > 0 
+                    ? `Leaves (${leaveRequests.length})` 
+                    : 'Leaves' 
+              },
+              { id: 'PAYROLL', label: 'Payroll Export' },
+              { 
+                id: 'SECURITY', 
+                label: unreadSecurityAlertsCount > 0 
+                  ? `Security Alerts (${unreadSecurityAlertsCount})` 
+                  : securityAlertNotifications.length > 0 
+                    ? `Security Alerts (${securityAlertNotifications.length})` 
+                    : 'Security Alerts' 
+              },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                id={`admin-tab-${tab.id.toLowerCase()}`}
+                onClick={() => setAdminTab(tab.id as typeof adminTab)}
+                className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                  adminTab === tab.id
+                    ? 'bg-[#2563EB] text-white shadow-xs'
+                    : 'text-slate-600 hover:text-[#1E293B] hover:bg-slate-200/50'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Compact Top-Right Icon Theme Toggle */}
+          <ThemeToggle />
         </div>
       </div>
 

@@ -44,6 +44,7 @@ import QRCode from 'qrcode';
 import { Company, Employee, AttendanceRecord, AppPortal, HelpRequest, Shift, LeaveRequest, StaffNotification, DEFAULT_DEPARTMENTS, SUGGESTED_DEPARTMENTS } from '../types';
 import { soundService } from '../services/sound';
 import { AppInstallTarget } from './InstallModal';
+import { ThemeToggle } from './ThemeToggle';
 import { signInWithGoogle, signOutUser, subscribeToAuth, syncAllDataToFirestore, type User as FirebaseUser } from '../services/firebase';
 import firebaseConfigData from '../../firebase-applet-config.json';
 
@@ -816,45 +817,50 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
           </p>
         </div>
 
-        {/* Section Tabs */}
-        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 overflow-x-auto w-full lg:w-auto">
-          {[
-            { id: 'COMPANIES', label: `Companies (${companies.length})`, icon: Building2 },
-            { id: 'APPS', label: '4 Apps & Access', icon: Layers },
-            { id: 'DEPLOYMENT', label: 'Fast Store Setup', icon: Share2 },
-            { 
-              id: 'SUPPORT_REQUESTS', 
-              label: `Requests (${(helpRequests || []).filter((r) => r.status === 'PENDING').length})`, 
-              icon: LifeBuoy,
-              badgeCount: (helpRequests || []).filter((r) => r.status === 'PENDING').length
-            },
-            { id: 'DATABASE', label: 'Firebase Cloud DB', icon: Database },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isTabActive = managerTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                id={`btn-manager-tab-${tab.id.toLowerCase()}`}
-                onClick={() => setManagerTab(tab.id as typeof managerTab)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-                  isTabActive
-                    ? 'bg-[#2563EB] text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                }`}
-              >
-                <Icon className={`w-3.5 h-3.5 ${isTabActive ? 'text-white' : 'text-slate-500'}`} />
-                <span>{tab.label}</span>
-                {tab.badgeCount !== undefined && tab.badgeCount > 0 && (
-                  <span className={`ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
-                    isTabActive ? 'bg-white text-[#2563EB]' : 'bg-rose-500 text-white'
-                  }`}>
-                    {tab.badgeCount}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        {/* Top-Right Navigation Header: Section Tabs & Compact Icon Theme Toggle */}
+        <div className="flex items-center gap-2 w-full lg:w-auto justify-between lg:justify-end">
+          <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto">
+            {[
+              { id: 'COMPANIES', label: `Companies (${companies.length})`, icon: Building2 },
+              { id: 'APPS', label: '4 Apps & Access', icon: Layers },
+              { id: 'DEPLOYMENT', label: 'Fast Store Setup', icon: Share2 },
+              { 
+                id: 'SUPPORT_REQUESTS', 
+                label: `Requests (${(helpRequests || []).filter((r) => r.status === 'PENDING').length})`, 
+                icon: LifeBuoy,
+                badgeCount: (helpRequests || []).filter((r) => r.status === 'PENDING').length
+              },
+              { id: 'DATABASE', label: 'Firebase Cloud DB', icon: Database },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isTabActive = managerTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  id={`btn-manager-tab-${tab.id.toLowerCase()}`}
+                  onClick={() => setManagerTab(tab.id as typeof managerTab)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                    isTabActive
+                      ? 'bg-[#2563EB] text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
+                >
+                  <Icon className={`w-3.5 h-3.5 ${isTabActive ? 'text-white' : 'text-slate-500'}`} />
+                  <span>{tab.label}</span>
+                  {tab.badgeCount !== undefined && tab.badgeCount > 0 && (
+                    <span className={`ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                      isTabActive ? 'bg-white text-[#2563EB]' : 'bg-rose-500 text-white'
+                    }`}>
+                      {tab.badgeCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Compact Top-Right Icon Theme Toggle */}
+          <ThemeToggle />
         </div>
       </div>
 

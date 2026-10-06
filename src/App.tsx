@@ -45,6 +45,7 @@ import { AdminPortal } from './components/AdminPortal';
 import { AppsManager } from './components/AppsManager';
 import { InstallModal, AppInstallTarget } from './components/InstallModal';
 import { NetworkSyncBadge } from './components/NetworkSyncBadge';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { offlineSyncService } from './services/offlineSync';
 import { autoSyncService } from './services/autoSync';
 import { soundService } from './services/sound';
@@ -81,7 +82,8 @@ import {
   syncAllDataToFirestore,
 } from './services/firebase';
 
-export default function App() {
+function AppContent() {
+  const { isDark } = useTheme();
   // App Portal Mode detection: 'STAFF' (Employee Phone), 'KIOSK' (Door Tablet), 'ADMIN' (Manager HR), 'MANAGER' (Apps Manager)
   const [standaloneMode, setStandaloneMode] = useState<'STAFF' | 'KIOSK' | 'ADMIN' | 'MANAGER'>(() => {
     if (typeof window !== 'undefined') {
@@ -1100,7 +1102,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#1E293B] flex flex-col relative selection:bg-[#2563EB] selection:text-white">
+    <div className={`min-h-screen ${isDark ? 'dark bg-[#0F172A] text-[#F8FAFC]' : 'bg-[#F8FAFC] text-[#1E293B]'} flex flex-col relative selection:bg-[#2563EB] selection:text-white transition-colors duration-200`}>
       {/* Main Active Portal Render */}
       <main className="flex-1 flex flex-col items-center justify-start pb-12 w-full">
         {currentPortal === 'ADMIN_PORTAL' && (
@@ -1254,5 +1256,13 @@ export default function App() {
       />
 
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }
