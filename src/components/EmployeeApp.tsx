@@ -365,39 +365,35 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
       {/* SMARTPHONE VIEW CANVAS (NATIVE ON MOBILE, MOCKUP ON DESKTOP) */}
       {/* ========================================================= */}
       <div className={isNativeMobileView 
-        ? "relative w-full max-w-md min-h-screen bg-[#F8FAFC] dark:bg-slate-950 text-[#1E293B] dark:text-white flex flex-col justify-between sm:rounded-[36px] sm:border sm:border-slate-200 sm:dark:border-white/10 sm:my-3 sm:shadow-2xl overflow-hidden transition-colors" 
-        : "relative w-full max-w-[390px] h-[810px] rounded-[55px] p-3.5 bg-slate-200 dark:bg-gradient-to-b dark:from-slate-800 dark:via-slate-950 dark:to-black shadow-[0_20px_60px_rgba(0,0,0,0.12)] dark:shadow-[0_30px_90px_rgba(0,0,0,0.8)] border border-slate-300 dark:border-slate-700/60 overflow-hidden flex flex-col transition-colors"
+        ? "relative w-full max-w-md min-h-screen bg-[#F8FAFC] text-[#1E293B] flex flex-col justify-between sm:rounded-2xl sm:border sm:border-[#E2E8F0] sm:my-3 sm:shadow-lg overflow-hidden transition-colors" 
+        : "relative w-full max-w-[400px] h-[820px] rounded-[48px] p-3 bg-slate-100 shadow-xl border border-slate-300 overflow-hidden flex flex-col transition-colors"
       }>
         
         {/* Dynamic Island Pill (Only on desktop preview mockup) */}
         {!isNativeMobileView && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 w-32 h-7 bg-slate-900 dark:bg-black rounded-full flex items-center justify-between px-3 border border-slate-700 dark:border-white/10 shadow-lg">
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 w-32 h-6 bg-slate-900 rounded-full flex items-center justify-between px-3 border border-slate-700 shadow-sm">
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
+              <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
               <span className="text-[9px] font-mono text-emerald-400 font-semibold">
                 {currentEmployee ? 'ATTENDO' : 'LOGIN'}
               </span>
             </div>
-            <div className="w-3 h-3 rounded-full bg-slate-800 border border-white/20"></div>
+            <div className="w-2.5 h-2.5 rounded-full bg-slate-800"></div>
           </div>
         )}
 
         {/* Liquid Screen Canvas (Internal phone view) */}
-        <div className={`relative w-full h-full ${!isNativeMobileView ? 'rounded-[45px] border border-slate-200 dark:border-white/10' : ''} overflow-hidden bg-[#F8FAFC] dark:bg-slate-950 text-[#1E293B] dark:text-white flex flex-col justify-between flex-1 transition-colors`}>
+        <div className={`relative w-full h-full ${!isNativeMobileView ? 'rounded-[38px] border border-slate-200' : ''} overflow-hidden bg-[#F8FAFC] text-[#1E293B] flex flex-col justify-between flex-1 transition-colors`}>
           
-          {/* Ambient fluid glow inside phone */}
-          <div className="absolute -top-16 -left-16 w-60 h-60 bg-sky-500/10 dark:bg-sky-500/15 rounded-full blur-3xl pointer-events-none"></div>
-          <div className="absolute -bottom-16 -right-16 w-60 h-60 bg-emerald-500/10 dark:bg-emerald-500/15 rounded-full blur-3xl pointer-events-none"></div>
-
           {/* iOS Status Bar & In-Phone Small Theme Toggle */}
-          <div className="w-full pt-3 px-6 pb-1 flex items-center justify-between text-xs text-slate-700 dark:text-white z-40">
-            <span className="text-[12px] font-semibold tracking-tight">09:41</span>
+          <div className="w-full pt-3 px-6 pb-1 flex items-center justify-between text-xs text-slate-700 z-40 border-b border-[#E2E8F0]/40">
+            <span className="text-[12px] font-semibold tracking-tight text-slate-800">09:41</span>
             <div className="flex items-center gap-2">
               <ThemeToggle className="!w-6 !h-6 !p-0" />
-              <div className="flex items-center gap-1 text-slate-500 dark:text-slate-300">
+              <div className="flex items-center gap-1 text-slate-500">
                 <Signal className="w-3 h-3" />
                 <Wifi className="w-3 h-3" />
-                <Battery className="w-3.5 h-3.5 text-emerald-500" />
+                <Battery className="w-3.5 h-3.5 text-emerald-600" />
               </div>
             </div>
           </div>
@@ -405,130 +401,130 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
           {/* VIEW A: STAFF LOGIN SCREEN IF NOT AUTHENTICATED */}
           {!currentEmployee ? (
             <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col justify-between z-20">
-              <div className="pt-4 text-center">
-                <div className="w-14 h-14 rounded-2xl mx-auto mb-3 bg-gradient-to-tr from-sky-500 to-emerald-400 p-0.5 shadow-xl">
-                  <div className="w-full h-full bg-white dark:bg-slate-950 rounded-[14px] flex items-center justify-center text-sky-500">
-                    <ScanFace className="w-7 h-7" />
-                  </div>
+              <div className="pt-3 text-center">
+                <div className="w-12 h-12 rounded-xl mx-auto mb-2.5 bg-blue-50 border border-blue-200 flex items-center justify-center text-[#2563EB] shadow-xs">
+                  <ScanFace className="w-6 h-6" />
                 </div>
-                <h2 className="text-xl font-bold text-[#1E293B] dark:text-white tracking-tight">Staff Sign In</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-[260px] mx-auto">
+                <h2 className="text-xl font-bold text-[#1E293B] tracking-tight">Staff Sign In</h2>
+                <p className="text-xs text-slate-500 mt-0.5 max-w-[260px] mx-auto">
                   Staff Attendance Portal
                 </p>
               </div>
 
               {/* Login Form */}
-              <form onSubmit={handleStaffLogin} className="space-y-3 my-auto pt-2 pb-2">
-                {loginError && (
-                  <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2 animate-shake">
-                    <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
-                    <span>{loginError}</span>
-                  </div>
-                )}
+              <div className="bg-white rounded-xl p-4 sm:p-5 border border-[#E2E8F0] shadow-xs my-auto">
+                <form onSubmit={handleStaffLogin} className="space-y-3">
+                  {loginError && (
+                    <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                      <span>{loginError}</span>
+                    </div>
+                  )}
 
-                {/* Empty Companies Notice */}
-                {(!companies || companies.length === 0) && (
-                  <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs flex items-start gap-2.5">
-                    <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                    <div>
-                      <strong className="block text-white font-semibold">No Business Registered Yet</strong>
-                      <span className="text-[11px] text-slate-300 leading-tight block mt-0.5">
-                        Please have your store owner or manager set up the company first in the Store Admin Console.
-                      </span>
+                  {/* Empty Companies Notice */}
+                  {(!companies || companies.length === 0) && (
+                    <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-start gap-2.5">
+                      <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="block text-amber-900 font-semibold">No Business Registered Yet</strong>
+                        <span className="text-[11px] text-amber-700 leading-tight block mt-0.5">
+                          Please have your store owner or manager set up the company first in Store Admin Console.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Company Name / Supermarket Selector */}
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                      Company Code or Name
+                    </label>
+                    <div className="relative">
+                      <Building2 className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400 pointer-events-none" />
+                      <input
+                        id="staff-login-company"
+                        type="text"
+                        autoComplete="off"
+                        required
+                        placeholder="Enter company code or name"
+                        value={loginCompanyName}
+                        onChange={(e) => setLoginCompanyName(e.target.value)}
+                        className="w-full bg-white border border-[#CBD5E1] rounded-lg pl-9 pr-3.5 py-2 text-xs text-[#1E293B] placeholder-slate-400 focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] font-medium"
+                      />
                     </div>
                   </div>
-                )}
 
-                {/* Company Name / Supermarket Selector */}
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-300 block mb-1">
-                    Company Code or Name
-                  </label>
-                  <div className="relative">
-                    <Building2 className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400 pointer-events-none" />
+                  {/* Company Password */}
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                      Company Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400 pointer-events-none" />
+                      <input
+                        id="staff-login-company-password"
+                        type="password"
+                        autoComplete="current-password"
+                        required
+                        placeholder="Enter company password"
+                        value={loginCompanyPassword}
+                        onChange={(e) => setLoginCompanyPassword(e.target.value)}
+                        className="w-full bg-white border border-[#CBD5E1] rounded-lg pl-9 pr-3.5 py-2 text-xs text-[#1E293B] placeholder-slate-400 focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                      Employee ID or Phone
+                    </label>
                     <input
-                      id="staff-login-company"
+                      id="staff-login-id"
                       type="text"
                       autoComplete="off"
                       required
-                      placeholder="Enter company code or name"
-                      value={loginCompanyName}
-                      onChange={(e) => setLoginCompanyName(e.target.value)}
-                      className="w-full bg-slate-900 border border-white/15 rounded-2xl pl-9 pr-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-400 font-medium"
+                      placeholder="Enter employee ID or phone"
+                      value={loginEmpId}
+                      onChange={(e) => setLoginEmpId(e.target.value)}
+                      className="w-full bg-white border border-[#CBD5E1] rounded-lg px-3.5 py-2 text-xs text-[#1E293B] placeholder-slate-400 focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] font-mono"
                     />
                   </div>
-                </div>
 
-                {/* Company Password */}
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-300 block mb-1">
-                    Company Password
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400 pointer-events-none" />
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                      4-Digit Staff PIN
+                    </label>
                     <input
-                      id="staff-login-company-password"
+                      id="staff-login-pin"
                       type="password"
-                      autoComplete="current-password"
+                      autoComplete="new-password"
+                      maxLength={4}
                       required
-                      placeholder="Enter company password"
-                      value={loginCompanyPassword}
-                      onChange={(e) => setLoginCompanyPassword(e.target.value)}
-                      className="w-full bg-slate-900 border border-white/15 rounded-2xl pl-9 pr-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-400 font-mono"
+                      placeholder="Enter 4-digit PIN"
+                      value={loginPin}
+                      onChange={(e) => setLoginPin(e.target.value)}
+                      className="w-full bg-white border border-[#CBD5E1] rounded-lg px-3.5 py-2 text-xs text-[#1E293B] placeholder-slate-400 focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] font-mono tracking-widest text-center text-sm"
                     />
                   </div>
-                </div>
 
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-300 block mb-1">
-                    Employee ID or Phone
-                  </label>
-                  <input
-                    id="staff-login-id"
-                    type="text"
-                    autoComplete="off"
-                    required
-                    placeholder="Enter employee ID or phone"
-                    value={loginEmpId}
-                    onChange={(e) => setLoginEmpId(e.target.value)}
-                    className="w-full bg-slate-900 border border-white/15 rounded-2xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-400 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-semibold text-slate-300 block mb-1">
-                    4-Digit Staff PIN
-                  </label>
-                  <input
-                    id="staff-login-pin"
-                    type="password"
-                    autoComplete="new-password"
-                    maxLength={4}
-                    required
-                    placeholder="Enter 4-digit PIN"
-                    value={loginPin}
-                    onChange={(e) => setLoginPin(e.target.value)}
-                    className="w-full bg-slate-900 border border-white/15 rounded-2xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-400 font-mono tracking-widest text-center text-sm"
-                  />
-                </div>
-
-                <button
-                  id="btn-staff-login-submit"
-                  type="submit"
-                  className="w-full py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-emerald-400 text-slate-950 font-extrabold text-xs shadow-xl active:scale-95 transition-all cursor-pointer"
-                >
-                  Sign In to Staff App
-                </button>
-              </form>
+                  <button
+                    id="btn-staff-login-submit"
+                    type="submit"
+                    className="w-full py-2.5 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-xs shadow-xs active:scale-98 transition-all cursor-pointer"
+                  >
+                    Sign In to Staff App
+                  </button>
+                </form>
+              </div>
 
               {/* Secure Corporate Portal Notice & Account Help */}
-              <div className="pt-3 border-t border-white/10 text-center space-y-2">
-                <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-300 font-medium">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <div className="pt-2 border-t border-[#E2E8F0] text-center space-y-1.5">
+                <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-600 font-medium">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#2563EB]" />
                   <span>Authorized Staff Portal</span>
                 </div>
-                <p className="text-[10px] text-slate-400 leading-relaxed max-w-xs mx-auto">
-                  Sign in with your supermarket credentials, Employee ID, and 4-digit security PIN provided by Store Management or HR.
+                <p className="text-[10px] text-slate-500 leading-relaxed max-w-xs mx-auto">
+                  Sign in with credentials provided by Store Management or HR.
                 </p>
 
                 <div className="pt-1 flex items-center justify-center gap-2 flex-wrap">
@@ -536,7 +532,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                     type="button"
                     id="btn-staff-account-help"
                     onClick={() => setShowAccountHelpModal(true)}
-                    className="text-amber-400 hover:text-amber-300 font-semibold text-[11px] flex items-center gap-1.5 py-1 px-3 rounded-xl bg-amber-400/10 border border-amber-400/20 hover:bg-amber-400/20 transition-all cursor-pointer"
+                    className="text-[#2563EB] hover:text-blue-800 font-semibold text-[11px] flex items-center gap-1.5 py-1 px-3 rounded-lg bg-blue-50 border border-blue-200 transition-all cursor-pointer"
                   >
                     <LifeBuoy className="w-3.5 h-3.5" />
                     <span>Need Help?</span>
@@ -567,16 +563,16 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                 {/* Header / Greeting & Theme Toggle */}
                 <div className="flex items-center justify-between pt-1">
                   <div>
-                    <div className="flex items-center gap-1 text-[11px] text-[#2563EB] dark:text-sky-400 font-semibold tracking-wide uppercase">
+                    <div className="flex items-center gap-1 text-[11px] text-[#2563EB] font-semibold tracking-wide uppercase">
                       <Store className="w-3 h-3" /> {supermarketBrandName} Supermarket
                     </div>
-                    <h2 className="text-xl font-extrabold text-[#1E293B] dark:text-white tracking-tight">
+                    <h2 className="text-xl font-bold text-[#1E293B] tracking-tight">
                       Hi, {currentEmployee.name.split(' ')[0]}
                     </h2>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                      {currentEmployee.role} • <span className="font-mono text-[#2563EB] dark:text-sky-300">{currentEmployee.id}</span>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      {currentEmployee.role} • <span className="font-mono text-[#2563EB] font-semibold">{currentEmployee.id}</span>
                       {staffCompany && (
-                        <span className="ml-1.5 px-1.5 py-0.2 rounded bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300 font-mono text-[9px]">
+                        <span className="ml-1.5 px-1.5 py-0.2 rounded bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[9px] font-semibold">
                           {staffCompany.code}
                         </span>
                       )}
@@ -590,11 +586,11 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                       id="btn-staff-notifications-toggle"
                       onClick={() => setShowNotificationsModal(true)}
                       title="Staff In-App Notifications"
-                      className="relative p-2 rounded-xl bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/15 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition-all cursor-pointer shadow-xs"
+                      className="relative p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-[#E2E8F0] transition-all cursor-pointer shadow-xs"
                     >
                       <Bell className="w-4 h-4" />
                       {unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white font-bold text-[9px] flex items-center justify-center border-2 border-white dark:border-slate-950 animate-pulse">
+                        <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white font-bold text-[9px] flex items-center justify-center border-2 border-white animate-pulse">
                           {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                       )}
@@ -602,7 +598,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                     <button
                       onClick={handleStaffLogout}
                       title="Sign Out"
-                      className="px-2 py-1.5 rounded-xl bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/15 text-slate-600 dark:text-slate-400 hover:text-[#1E293B] dark:hover:text-white text-[10px] font-semibold border border-slate-200 dark:border-white/10 transition-all cursor-pointer shadow-xs"
+                      className="px-2 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-600 hover:text-[#1E293B] text-[10px] font-semibold border border-[#E2E8F0] transition-all cursor-pointer shadow-xs"
                     >
                       Sign Out
                     </button>
@@ -610,9 +606,9 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                       <img
                         src={currentEmployee.avatar}
                         alt={currentEmployee.name}
-                        className="w-10 h-10 rounded-2xl object-cover border border-slate-200 dark:border-white/20 shadow-xs"
+                        className="w-10 h-10 rounded-xl object-cover border border-[#CBD5E1] shadow-xs"
                       />
-                      <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-950 flex items-center justify-center text-[7px] font-bold text-black">
+                      <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center text-[7px] font-bold text-white">
                         ✓
                       </span>
                     </div>
@@ -623,37 +619,25 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                 {latestUnreadToast && (
                   <div
                     onClick={() => handleOpenNotificationItem(latestUnreadToast)}
-                    className={`p-3 rounded-2xl border transition-all cursor-pointer shadow-lg animate-fade-in flex items-center justify-between gap-2.5 ${
-                      latestUnreadToast.type === 'LEAVE_STATUS'
-                        ? latestUnreadToast.leaveStatus === 'APPROVED'
-                          ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-200'
-                          : 'bg-rose-950/80 border-rose-500/40 text-rose-200'
-                        : 'bg-sky-950/80 border-sky-500/40 text-sky-200'
-                    }`}
+                    className="p-3 rounded-xl border border-[#E2E8F0] bg-white transition-all cursor-pointer shadow-sm animate-fade-in flex items-center justify-between gap-2.5 text-[#1E293B]"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={`p-1.5 rounded-xl shrink-0 ${
-                        latestUnreadToast.type === 'LEAVE_STATUS'
-                          ? latestUnreadToast.leaveStatus === 'APPROVED'
-                            ? 'bg-emerald-500/25 text-emerald-300'
-                            : 'bg-rose-500/25 text-rose-300'
-                          : 'bg-sky-500/25 text-sky-300'
-                      }`}>
+                      <div className="p-1.5 rounded-lg bg-blue-50 text-[#2563EB] shrink-0 border border-blue-100">
                         <BellRing className="w-4 h-4 animate-bounce" />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[11px] font-bold text-white truncate">
+                          <span className="text-[11px] font-bold text-[#1E293B] truncate">
                             {latestUnreadToast.title}
                           </span>
-                          <span className="text-[9px] font-mono opacity-70 shrink-0">{latestUnreadToast.timeFormatted}</span>
+                          <span className="text-[9px] font-mono text-slate-400 shrink-0">{latestUnreadToast.timeFormatted}</span>
                         </div>
-                        <p className="text-[10px] opacity-90 truncate">{latestUnreadToast.message}</p>
+                        <p className="text-[10px] text-slate-600 truncate">{latestUnreadToast.message}</p>
                       </div>
                     </div>
                     <button
                       onClick={(e) => handleDismissToast(e, latestUnreadToast.id)}
-                      className="p-1 rounded-lg hover:bg-white/10 opacity-70 hover:opacity-100 shrink-0"
+                      className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 shrink-0"
                       title="Dismiss alert"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -664,61 +648,61 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
             {/* TAB CONTENT: TODAY'S SHIFT */}
             {activeTab === 'TODAY' && (
               <>
-                {/* Hero Shift Liquid Card */}
-                <div className="liquid-glass-card rounded-3xl p-4 relative overflow-hidden">
+                {/* Hero Shift Card */}
+                <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs relative overflow-hidden text-[#1E293B]">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-[#2563EB] border border-blue-200">
                       {assignedShift.name}
                     </span>
-                    <span className="text-[11px] font-mono text-slate-400">
+                    <span className="text-[11px] font-mono text-slate-500 font-medium">
                       {assignedShift.badge}
                     </span>
                   </div>
 
                   <div className="my-2">
-                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block">ATTENDANCE STATUS</span>
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-semibold">ATTENDANCE STATUS</span>
                     <div className="flex items-center gap-2 mt-1">
-                      <div className={`w-3 h-3 rounded-full ${isClockedIn ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`} />
-                      <span className="text-lg font-bold text-white">
+                      <div className={`w-3 h-3 rounded-full ${isClockedIn ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                      <span className="text-lg font-bold text-[#1E293B]">
                         {isClockedIn ? 'Currently Clocked In' : 'Not Clocked In'}
                       </span>
                     </div>
                   </div>
 
                   {latestPunch && (
-                    <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between text-xs">
-                      <span className="text-slate-400">Last Punch:</span>
-                      <span className="text-white font-mono font-semibold">
+                    <div className="mt-3 pt-3 border-t border-[#E2E8F0] flex items-center justify-between text-xs">
+                      <span className="text-slate-500">Last Punch:</span>
+                      <span className="text-[#1E293B] font-mono font-semibold">
                         {formatTime12H(latestPunch.time, true)} ({latestPunch.type})
                       </span>
                     </div>
                   )}
 
                   {/* Geofence / Location Status */}
-                  <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between">
+                  <div className="mt-2 text-[11px] text-slate-500 flex items-center justify-between pt-1">
                     <span className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+                      <MapPin className="w-3.5 h-3.5 text-[#2563EB]" />
                       <span>{supermarketBrandName} Store Geofence: Inside Zone</span>
                     </span>
-                    <span className="text-[10px] text-emerald-400 font-semibold">Live GPS Active</span>
+                    <span className="text-[10px] text-emerald-700 font-semibold">Live GPS Active</span>
                   </div>
                 </div>
 
                 {/* Mobile Attendance Punch Action Card - Only shown if mobile punch is enabled */}
                 {currentEmployee.allowMobilePunch !== false && (
-                  <div className="rounded-2xl p-4 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-white/15 shadow-xl space-y-3">
+                  <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs space-y-3 text-[#1E293B]">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 text-[#2563EB] flex items-center justify-center">
                           <ScanFace className="w-4 h-4" />
                         </div>
                         <div>
-                          <span className="text-xs font-bold text-white block">Mobile Attendance Punch</span>
-                          <span className="text-[10px] text-slate-400">Biometric FaceID + Geofence</span>
+                          <span className="text-xs font-bold text-[#1E293B] block">Mobile Attendance Punch</span>
+                          <span className="text-[10px] text-slate-500">Biometric FaceID + Geofence</span>
                         </div>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200 flex items-center gap-1">
+                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
                         Ready
                       </span>
                     </div>
@@ -729,9 +713,9 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                           id="btn-staff-mobile-clock-in"
                           type="button"
                           onClick={() => setActivePunchType('IN')}
-                          className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
+                          className="w-full py-3 px-4 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold text-sm shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
                         >
-                          <ScanFace className="w-5 h-5 text-slate-950" />
+                          <ScanFace className="w-4 h-4 text-white" />
                           <span>Clock In with Face ID</span>
                         </button>
                       ) : isClockedIn ? (
@@ -740,18 +724,18 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                             id="btn-staff-mobile-break-start"
                             type="button"
                             onClick={() => setActivePunchType('BREAK_START')}
-                            className="py-3 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-xs border border-amber-500/30 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
+                            className="py-2.5 px-3 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs border border-amber-300 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
                           >
-                            <Coffee className="w-4 h-4 text-amber-400" />
+                            <Coffee className="w-4 h-4 text-amber-700" />
                             <span>Start Break</span>
                           </button>
                           <button
                             id="btn-staff-mobile-clock-out"
                             type="button"
                             onClick={() => setActivePunchType('OUT')}
-                            className="py-3 px-3 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-xs border border-rose-500/30 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
+                            className="py-2.5 px-3 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-900 font-bold text-xs border border-rose-300 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
                           >
-                            <XCircle className="w-4 h-4 text-rose-400" />
+                            <XCircle className="w-4 h-4 text-rose-700" />
                             <span>Clock Out</span>
                           </button>
                         </div>
@@ -761,18 +745,18 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                             id="btn-staff-mobile-break-end"
                             type="button"
                             onClick={() => setActivePunchType('BREAK_END')}
-                            className="py-3 px-3 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold text-xs border border-emerald-500/30 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
+                            className="py-2.5 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-xs border border-emerald-300 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
                           >
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            <CheckCircle2 className="w-4 h-4 text-emerald-700" />
                             <span>End Break</span>
                           </button>
                           <button
                             id="btn-staff-mobile-clock-out-from-break"
                             type="button"
                             onClick={() => setActivePunchType('OUT')}
-                            className="py-3 px-3 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-xs border border-rose-500/30 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
+                            className="py-2.5 px-3 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-900 font-bold text-xs border border-rose-300 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.98]"
                           >
-                            <XCircle className="w-4 h-4 text-rose-400" />
+                            <XCircle className="w-4 h-4 text-rose-700" />
                             <span>Clock Out</span>
                           </button>
                         </div>
@@ -783,9 +767,9 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
 
                 {/* Quick Stats Grid */}
                 <div className="grid grid-cols-2 gap-2.5">
-                  <div className="liquid-glass rounded-2xl p-3">
-                    <span className="text-[10px] text-slate-400 font-medium block">ESTIMATED EARNINGS</span>
-                    <span className="text-lg font-extrabold text-emerald-400 mt-1 block">
+                  <div className="bg-white rounded-xl p-3 border border-[#E2E8F0] shadow-xs text-[#1E293B]">
+                    <span className="text-[10px] text-slate-500 font-semibold block uppercase">ESTIMATED EARNINGS</span>
+                    <span className="text-lg font-bold text-[#1E293B] mt-1 block tabular-nums">
                       {formatCurrencyINR(
                         currentEmployee.payBasis === 'DAILY'
                           ? (currentEmployee.wageRate || 650) * 26
@@ -794,35 +778,35 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                             : (currentEmployee.wageRate || 18000)
                       )}
                     </span>
-                    <span className="text-[10px] text-slate-400 block mt-1 truncate">
+                    <span className="text-[10px] text-slate-500 block mt-0.5 truncate">
                       {formatSalaryRate(currentEmployee.payBasis, currentEmployee.wageRate, currentEmployee.hourlyRate)}
                     </span>
                   </div>
 
-                  <div className="liquid-glass rounded-2xl p-3">
-                    <span className="text-[10px] text-slate-400 font-medium block">THIS MONTH HOURS</span>
-                    <span className="text-lg font-extrabold text-white mt-1 block">154.5 <span className="text-xs font-normal text-slate-400">hrs</span></span>
-                    <span className="text-[10px] text-emerald-400 flex items-center gap-0.5 mt-1 font-semibold">
+                  <div className="bg-white rounded-xl p-3 border border-[#E2E8F0] shadow-xs text-[#1E293B]">
+                    <span className="text-[10px] text-slate-500 font-semibold block uppercase">THIS MONTH HOURS</span>
+                    <span className="text-lg font-bold text-[#1E293B] mt-1 block tabular-nums">154.5 <span className="text-xs font-normal text-slate-500">hrs</span></span>
+                    <span className="text-[10px] text-[#2563EB] flex items-center gap-0.5 mt-0.5 font-semibold">
                       <TrendingUp className="w-3 h-3" /> Target 160 hrs
                     </span>
                   </div>
                 </div>
 
                 {/* Quick Action: Apply for Leave */}
-                <div className="liquid-glass rounded-2xl p-3 flex items-center justify-between">
+                <div className="bg-white rounded-xl p-3 border border-[#E2E8F0] shadow-xs flex items-center justify-between text-[#1E293B]">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl liquid-pill flex items-center justify-center text-amber-400">
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2563EB]">
                       <Calendar className="w-4 h-4" />
                     </div>
                     <div>
-                      <span className="text-xs font-bold text-white block">Need Time Off?</span>
-                      <span className="text-[10px] text-slate-400">Apply for casual or sick leave</span>
+                      <span className="text-xs font-bold text-[#1E293B] block">Need Time Off?</span>
+                      <span className="text-[10px] text-slate-500">Apply for casual or sick leave</span>
                     </div>
                   </div>
                   <button
                     id="open-leave-modal"
                     onClick={() => setShowLeaveModal(true)}
-                    className="px-3 py-1.5 rounded-xl liquid-pill text-xs font-semibold text-white hover:bg-white/10 flex items-center gap-1"
+                    className="px-3 py-1.5 rounded-lg bg-blue-50 text-[#2563EB] hover:bg-blue-100 border border-blue-200 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all"
                   >
                     <span>Apply</span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -835,29 +819,29 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
             {activeTab === 'HISTORY' && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between px-1">
-                  <span className="text-xs font-bold text-white">Your Punch Logs</span>
-                  <span className="text-[10px] text-slate-400">{myLogs.length} events logged</span>
+                  <span className="text-xs font-bold text-[#1E293B]">Your Punch Logs</span>
+                  <span className="text-[10px] text-slate-500">{myLogs.length} events logged</span>
                 </div>
 
                 {myLogs.length === 0 ? (
-                  <div className="p-6 text-center text-slate-400 text-xs">
+                  <div className="bg-white rounded-xl p-6 border border-[#E2E8F0] shadow-xs text-center text-slate-500 text-xs">
                     No punch records found today.
                   </div>
                 ) : (
                   myLogs.map((log) => (
-                    <div key={log.id} className="liquid-glass rounded-2xl p-3 flex items-center justify-between">
+                    <div key={log.id} className="bg-white rounded-xl p-3 border border-[#E2E8F0] shadow-xs flex items-center justify-between text-[#1E293B]">
                       <div className="flex items-center gap-2.5">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold ${
-                          log.type === 'IN' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border ${
+                          log.type === 'IN' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
                         }`}>
                           {log.type}
                         </div>
                         <div>
-                          <span className="text-xs font-bold text-white block">{formatTime12H(log.time, true)}</span>
-                          <span className="text-[10px] text-slate-400">{log.device.replace('_', ' ')}</span>
+                          <span className="text-xs font-bold text-[#1E293B] block">{formatTime12H(log.time, true)}</span>
+                          <span className="text-[10px] text-slate-500">{log.device.replace('_', ' ')}</span>
                         </div>
                       </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/10 text-emerald-300">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-semibold">
                         {log.status}
                       </span>
                     </div>
@@ -870,10 +854,10 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
             {activeTab === 'LEAVES' && (
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between px-1">
-                  <span className="text-xs font-bold text-white">My Leave Requests</span>
+                  <span className="text-xs font-bold text-[#1E293B]">My Leave Requests</span>
                   <button
                     onClick={() => setShowLeaveModal(true)}
-                    className="text-[11px] text-sky-400 font-semibold cursor-pointer"
+                    className="text-[11px] text-[#2563EB] hover:text-blue-700 font-semibold cursor-pointer"
                   >
                     + New Request
                   </button>
@@ -883,50 +867,50 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                 {staffNotifications.filter(n => n.type === 'LEAVE_STATUS').slice(0, 1).map((notif) => (
                   <div
                     key={notif.id}
-                    className={`p-2.5 rounded-2xl border text-xs flex items-start gap-2 ${
+                    className={`p-2.5 rounded-xl border text-xs flex items-start gap-2 ${
                       notif.leaveStatus === 'APPROVED'
-                        ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-200'
-                        : 'bg-rose-500/10 border-rose-500/25 text-rose-200'
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                        : 'bg-rose-50 border-rose-200 text-rose-800'
                     }`}
                   >
                     <div className="mt-0.5 shrink-0">
                       {notif.leaveStatus === 'APPROVED' ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                       ) : (
-                        <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
                       )}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <strong className="text-white text-[11px]">{notif.title}</strong>
-                        <span className="text-[9px] opacity-70 font-mono">{notif.timeFormatted}</span>
+                        <strong className="text-[#1E293B] text-[11px]">{notif.title}</strong>
+                        <span className="text-[9px] text-slate-500 font-mono">{notif.timeFormatted}</span>
                       </div>
-                      <p className="text-[10px] opacity-90 mt-0.5">{notif.message}</p>
+                      <p className="text-[10px] text-slate-600 mt-0.5">{notif.message}</p>
                     </div>
                   </div>
                 ))}
 
                 {myLeaves.length === 0 ? (
-                  <div className="p-6 text-center text-slate-400 text-xs liquid-glass rounded-2xl">
+                  <div className="bg-white rounded-xl p-6 border border-[#E2E8F0] shadow-xs text-center text-slate-500 text-xs">
                     No active leave requests.
                   </div>
                 ) : (
                   myLeaves.map((leave) => (
-                    <div key={leave.id} className="liquid-glass rounded-2xl p-3 border border-white/5">
+                    <div key={leave.id} className="bg-white rounded-xl p-3 border border-[#E2E8F0] shadow-xs text-[#1E293B]">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-white">{leave.type} LEAVE</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        <span className="text-xs font-bold text-[#1E293B]">{leave.type} LEAVE</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
                           leave.status === 'APPROVED'
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             : leave.status === 'REJECTED'
-                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
                         }`}>
                           {leave.status}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-300">{leave.reason}</p>
-                      <div className="mt-2 text-[10px] text-slate-400 flex items-center justify-between border-t border-white/5 pt-1.5">
+                      <p className="text-[11px] text-slate-600">{leave.reason}</p>
+                      <div className="mt-2 text-[10px] text-slate-500 flex items-center justify-between border-t border-[#E2E8F0] pt-1.5">
                         <span>{leave.startDate} to {leave.endDate}</span>
                         <span>Req: {formatTime12H(leave.requestedAt, false)}</span>
                       </div>
@@ -941,11 +925,11 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
               <div className="space-y-3">
                 <div className="flex items-center justify-between px-1">
                   <div>
-                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <Bell className="w-3.5 h-3.5 text-sky-400" />
+                    <span className="text-xs font-bold text-[#1E293B] flex items-center gap-1.5">
+                      <Bell className="w-3.5 h-3.5 text-[#2563EB]" />
                       <span>In-App Notifications</span>
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-slate-500">
                       {unreadCount > 0 ? `${unreadCount} unread alert${unreadCount === 1 ? '' : 's'}` : 'All caught up'}
                     </span>
                   </div>
@@ -953,7 +937,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                   {staffNotifications.length > 0 && onMarkAllNotificationsAsRead && (
                     <button
                       onClick={() => onMarkAllNotificationsAsRead(currentEmployee.id)}
-                      className="text-[10px] text-sky-400 hover:text-sky-300 font-semibold cursor-pointer"
+                      className="text-[10px] text-[#2563EB] hover:text-blue-700 font-semibold cursor-pointer"
                     >
                       Mark all read
                     </button>
@@ -961,14 +945,14 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                 </div>
 
                 {/* Filter Chips */}
-                <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-2xl border border-white/10 text-[11px]">
+                <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-[#E2E8F0] text-[11px]">
                   {(['ALL', 'LEAVES', 'SHIFTS'] as const).map((filter) => (
                     <button
                       key={filter}
                       type="button"
                       onClick={() => setActiveNotifFilter(filter)}
-                      className={`flex-1 py-1 rounded-xl font-bold transition-all text-center cursor-pointer ${
-                        activeNotifFilter === filter ? 'bg-sky-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
+                      className={`flex-1 py-1 rounded-lg font-bold transition-all text-center cursor-pointer ${
+                        activeNotifFilter === filter ? 'bg-[#2563EB] text-white shadow-xs' : 'text-slate-600 hover:text-[#1E293B]'
                       }`}
                     >
                       {filter === 'ALL' ? 'All Alerts' : filter === 'LEAVES' ? 'Leaves' : 'Shifts'}
@@ -977,10 +961,10 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                 </div>
 
                 {filteredStaffNotifications.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 text-xs liquid-glass rounded-2xl space-y-2">
-                    <Bell className="w-8 h-8 text-slate-600 mx-auto" />
-                    <p className="font-semibold text-white">No notifications yet</p>
-                    <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                  <div className="bg-white rounded-xl p-8 border border-[#E2E8F0] shadow-xs text-center text-slate-500 text-xs space-y-2">
+                    <Bell className="w-8 h-8 text-slate-400 mx-auto" />
+                    <p className="font-semibold text-[#1E293B]">No notifications yet</p>
+                    <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
                       You will be notified here immediately when your leave request is approved/rejected or when store shift schedules are adjusted.
                     </p>
                   </div>
@@ -990,23 +974,23 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                       <div
                         key={notif.id}
                         onClick={() => handleOpenNotificationItem(notif)}
-                        className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative ${
-                          !notif.read ? 'bg-white/10 border-sky-400/40 shadow-lg' : 'bg-white/5 border-white/10'
+                        className={`p-3.5 rounded-xl border transition-all cursor-pointer relative bg-white shadow-xs ${
+                          !notif.read ? 'border-[#2563EB] ring-1 ring-[#2563EB]/20' : 'border-[#E2E8F0]'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-2 mb-1.5">
                           <div className="flex items-center gap-2">
-                            <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${
+                            <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md border ${
                               notif.type === 'LEAVE_STATUS'
                                 ? notif.leaveStatus === 'APPROVED'
-                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                  : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                                : 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-rose-50 text-rose-700 border-rose-200'
+                                : 'bg-blue-50 text-[#2563EB] border-blue-200'
                             }`}>
                               {notif.type === 'LEAVE_STATUS' ? `LEAVE ${notif.leaveStatus || 'DECISION'}` : 'SHIFT SCHEDULE'}
                             </span>
                             {!notif.read && (
-                              <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
+                              <span className="w-2 h-2 rounded-full bg-[#2563EB]" />
                             )}
                           </div>
 
@@ -1019,7 +1003,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                                   e.stopPropagation();
                                   onDeleteNotification(notif.id);
                                 }}
-                                className="p-1 text-slate-500 hover:text-rose-400 transition-colors cursor-pointer"
+                                className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                                 title="Delete alert"
                               >
                                 <Trash2 className="w-3 h-3" />
@@ -1028,13 +1012,13 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                           </div>
                         </div>
 
-                        <h4 className="text-xs font-bold text-white mb-1">{notif.title}</h4>
-                        <p className="text-[11px] text-slate-300 leading-relaxed">{notif.message}</p>
+                        <h4 className="text-xs font-bold text-[#1E293B] mb-1">{notif.title}</h4>
+                        <p className="text-[11px] text-slate-600 leading-relaxed">{notif.message}</p>
 
                         {notif.type === 'LEAVE_STATUS' && notif.leaveStatus && (
-                          <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between text-[10px]">
-                            <span className="text-slate-400">Decision logged in store system:</span>
-                            <strong className={notif.leaveStatus === 'APPROVED' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                          <div className="mt-2 pt-2 border-t border-[#E2E8F0] flex items-center justify-between text-[10px]">
+                            <span className="text-slate-500">Decision logged in store system:</span>
+                            <strong className={notif.leaveStatus === 'APPROVED' ? 'text-emerald-700 font-bold' : 'text-rose-700 font-bold'}>
                               {notif.leaveStatus}
                             </strong>
                           </div>
@@ -1049,47 +1033,47 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
             {/* TAB CONTENT: PROFILE */}
             {activeTab === 'PROFILE' && (
               <div className="space-y-3">
-                <div className="liquid-glass rounded-3xl p-4 flex flex-col items-center text-center">
+                <div className="bg-white rounded-xl p-5 border border-[#E2E8F0] shadow-xs flex flex-col items-center text-center text-[#1E293B]">
                   <img
                     src={currentEmployee.avatar}
                     alt={currentEmployee.name}
-                    className="w-20 h-20 rounded-2xl object-cover border-2 border-sky-400 shadow-xl mb-2"
+                    className="w-20 h-20 rounded-xl object-cover border-2 border-[#2563EB] shadow-xs mb-2"
                   />
-                  <h3 className="text-base font-extrabold text-white">{currentEmployee.name}</h3>
-                  <p className="text-xs text-sky-400 font-medium">{currentEmployee.role}</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">{currentEmployee.department}</p>
+                  <h3 className="text-base font-bold text-[#1E293B]">{currentEmployee.name}</h3>
+                  <p className="text-xs text-[#2563EB] font-semibold">{currentEmployee.role}</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">{currentEmployee.department}</p>
                 </div>
 
-                <div className="liquid-glass rounded-2xl p-3 space-y-2 text-xs">
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="text-slate-400">Employee ID:</span>
-                    <span className="font-mono font-bold text-white">{currentEmployee.id}</span>
+                <div className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-xs space-y-2.5 text-xs text-[#1E293B]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Employee ID:</span>
+                    <span className="font-mono font-bold text-[#1E293B]">{currentEmployee.id}</span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="text-slate-400">Compensation:</span>
-                    <span className="font-bold text-emerald-400">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Compensation:</span>
+                    <span className="font-bold text-emerald-700">
                       {formatSalaryRate(currentEmployee.payBasis, currentEmployee.wageRate, currentEmployee.hourlyRate)}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="text-slate-400">Pay Scheme:</span>
-                    <span className="font-semibold text-white">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Pay Scheme:</span>
+                    <span className="font-semibold text-[#1E293B]">
                       {currentEmployee.payBasis === 'DAILY' ? 'Daily Wage (Per Day)' : currentEmployee.payBasis === 'WEEKLY' ? 'Weekly Wage (Per Week)' : 'Monthly Salary'}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="text-slate-400">Assigned Shift:</span>
-                    <span className="text-white font-medium">{assignedShift.name} ({assignedShift.badge})</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Assigned Shift:</span>
+                    <span className="text-[#1E293B] font-medium">{assignedShift.name} ({assignedShift.badge})</span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="text-slate-400">Mobile Punch:</span>
-                    <span className={currentEmployee.allowMobilePunch === false ? "text-amber-400 font-semibold" : "text-emerald-400 font-semibold"}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Mobile Punch:</span>
+                    <span className={currentEmployee.allowMobilePunch === false ? "text-amber-700 font-semibold" : "text-emerald-700 font-semibold"}>
                       {currentEmployee.allowMobilePunch === false ? "Entrance Kiosk Only" : "Enabled (Face ID + GPS)"}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="text-slate-400">Face Biometrics:</span>
-                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Face Biometrics:</span>
+                    <span className="text-emerald-700 font-semibold flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" /> Enrolled (Active)
                     </span>
                   </div>
@@ -1099,12 +1083,12 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
 
           </div>
 
-          {/* iOS Liquid Tab Bar */}
-          <div className="w-full px-4 pb-4 pt-2 z-40 bg-slate-950/80 backdrop-blur-xl border-t border-white/10 flex items-center justify-around">
+          {/* Clean Light Tab Bar */}
+          <div className="w-full px-4 pb-4 pt-2 z-40 bg-white border-t border-[#E2E8F0] flex items-center justify-around shadow-xs">
             <button
               onClick={() => setActiveTab('TODAY')}
-              className={`flex flex-col items-center gap-1 py-1 transition-all ${
-                activeTab === 'TODAY' ? 'text-sky-400 scale-105' : 'text-slate-500 hover:text-slate-300'
+              className={`flex flex-col items-center gap-1 py-1 transition-all cursor-pointer ${
+                activeTab === 'TODAY' ? 'text-[#2563EB] font-bold' : 'text-slate-500 hover:text-[#1E293B]'
               }`}
             >
               <Clock className="w-4 h-4" />
@@ -1113,8 +1097,8 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
 
             <button
               onClick={() => setActiveTab('HISTORY')}
-              className={`flex flex-col items-center gap-1 py-1 transition-all ${
-                activeTab === 'HISTORY' ? 'text-sky-400 scale-105' : 'text-slate-500 hover:text-slate-300'
+              className={`flex flex-col items-center gap-1 py-1 transition-all cursor-pointer ${
+                activeTab === 'HISTORY' ? 'text-[#2563EB] font-bold' : 'text-slate-500 hover:text-[#1E293B]'
               }`}
             >
               <FileText className="w-4 h-4" />
@@ -1123,8 +1107,8 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
 
             <button
               onClick={() => setActiveTab('LEAVES')}
-              className={`flex flex-col items-center gap-1 py-1 transition-all ${
-                activeTab === 'LEAVES' ? 'text-sky-400 scale-105' : 'text-slate-500 hover:text-slate-300'
+              className={`flex flex-col items-center gap-1 py-1 transition-all cursor-pointer ${
+                activeTab === 'LEAVES' ? 'text-[#2563EB] font-bold' : 'text-slate-500 hover:text-[#1E293B]'
               }`}
             >
               <Calendar className="w-4 h-4" />
@@ -1134,14 +1118,14 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
             <button
               id="tab-btn-alerts"
               onClick={() => setActiveTab('ALERTS')}
-              className={`relative flex flex-col items-center gap-1 py-1 transition-all ${
-                activeTab === 'ALERTS' ? 'text-sky-400 scale-105' : 'text-slate-500 hover:text-slate-300'
+              className={`relative flex flex-col items-center gap-1 py-1 transition-all cursor-pointer ${
+                activeTab === 'ALERTS' ? 'text-[#2563EB] font-bold' : 'text-slate-500 hover:text-[#1E293B]'
               }`}
             >
               <div className="relative">
                 <Bell className="w-4 h-4" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1.5 -right-2 min-w-[14px] h-3.5 px-0.5 rounded-full bg-rose-500 text-white font-bold text-[8px] flex items-center justify-center border border-slate-950 animate-pulse">
+                  <span className="absolute -top-1.5 -right-2 min-w-[14px] h-3.5 px-0.5 rounded-full bg-rose-500 text-white font-bold text-[8px] flex items-center justify-center border border-white animate-pulse">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
@@ -1151,8 +1135,8 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
 
             <button
               onClick={() => setActiveTab('PROFILE')}
-              className={`flex flex-col items-center gap-1 py-1 transition-all ${
-                activeTab === 'PROFILE' ? 'text-sky-400 scale-105' : 'text-slate-500 hover:text-slate-300'
+              className={`flex flex-col items-center gap-1 py-1 transition-all cursor-pointer ${
+                activeTab === 'PROFILE' ? 'text-[#2563EB] font-bold' : 'text-slate-500 hover:text-[#1E293B]'
               }`}
             >
               <UserCheck className="w-4 h-4" />
@@ -1162,7 +1146,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
 
           {/* iOS Home Indicator Bar (Only on desktop preview mockup) */}
           {!isNativeMobileView && (
-            <div className="w-32 h-1 bg-white/30 rounded-full mx-auto mb-1.5 z-40"></div>
+            <div className="w-32 h-1 bg-slate-300 rounded-full mx-auto mb-1.5 z-40"></div>
           )}
 
           </>
@@ -1174,29 +1158,29 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
 
       {/* APPLY LEAVE MODAL */}
       {showLeaveModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4">
-          <div className="w-full max-w-sm liquid-glass-card rounded-3xl p-5 border border-white/20 shadow-2xl animate-scale-in">
-            <h3 className="text-base font-bold text-white mb-1">Apply for Leave</h3>
-            <p className="text-xs text-slate-400 mb-4">Request approval from Store Admin</p>
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-white rounded-xl p-5 border border-[#E2E8F0] shadow-xl text-[#1E293B] animate-scale-in">
+            <h3 className="text-base font-bold text-[#1E293B] mb-1">Apply for Leave</h3>
+            <p className="text-xs text-slate-500 mb-4">Request approval from Store Admin</p>
 
             {leaveSubmitted ? (
               <div className="py-8 text-center">
-                <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto mb-2 animate-bounce" />
-                <p className="text-sm font-bold text-white">Leave Request Submitted!</p>
-                <p className="text-xs text-slate-400">Store Manager notified for review.</p>
+                <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto mb-2 animate-bounce" />
+                <p className="text-sm font-bold text-[#1E293B]">Leave Request Submitted!</p>
+                <p className="text-xs text-slate-500">Store Manager notified for review.</p>
               </div>
             ) : (
               <form onSubmit={handleLeaveSubmit} className="space-y-3">
                 <div>
-                  <label className="text-[11px] text-slate-300 font-semibold block mb-1">Leave Type</label>
+                  <label className="text-[11px] text-slate-600 font-semibold block mb-1">Leave Type</label>
                   <div className="grid grid-cols-2 gap-1.5">
                     {(['CASUAL', 'SICK', 'EMERGENCY', 'ANNUAL'] as const).map((type) => (
                       <button
                         key={type}
                         type="button"
                         onClick={() => setLeaveType(type)}
-                        className={`py-1.5 text-xs font-semibold rounded-xl transition-all ${
-                          leaveType === type ? 'bg-sky-500 text-black' : 'liquid-pill text-slate-300'
+                        className={`py-1.5 text-xs font-semibold rounded-lg transition-all border cursor-pointer ${
+                          leaveType === type ? 'bg-[#2563EB] text-white border-[#2563EB]' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-[#E2E8F0]'
                         }`}
                       >
                         {type}
@@ -1207,34 +1191,34 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] text-slate-400 block mb-1">Start Date</label>
+                    <label className="text-[10px] text-slate-500 block mb-1">Start Date</label>
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-2 py-1.5 text-xs text-white"
+                      className="w-full bg-white border border-[#CBD5E1] rounded-lg px-2.5 py-1.5 text-xs text-[#1E293B] focus:outline-none focus:border-[#2563EB]"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-400 block mb-1">End Date</label>
+                    <label className="text-[10px] text-slate-500 block mb-1">End Date</label>
                     <input
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-2 py-1.5 text-xs text-white"
+                      className="w-full bg-white border border-[#CBD5E1] rounded-lg px-2.5 py-1.5 text-xs text-[#1E293B] focus:outline-none focus:border-[#2563EB]"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-[11px] text-slate-300 font-semibold block mb-1">Reason</label>
+                  <label className="text-[11px] text-slate-600 font-semibold block mb-1">Reason</label>
                   <textarea
                     rows={2}
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     placeholder="Reason for leave"
                     required
-                    className="w-full bg-slate-900 border border-white/15 rounded-xl p-2 text-xs text-white focus:outline-none focus:border-sky-400"
+                    className="w-full bg-white border border-[#CBD5E1] rounded-lg p-2.5 text-xs text-[#1E293B] focus:outline-none focus:border-[#2563EB]"
                   />
                 </div>
 
@@ -1242,13 +1226,13 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowLeaveModal(false)}
-                    className="flex-1 py-2 rounded-xl liquid-pill text-xs font-semibold text-slate-400"
+                    className="flex-1 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 border border-[#E2E8F0] cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-black font-bold text-xs shadow-lg"
+                    className="flex-1 py-2 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white font-bold text-xs shadow-xs cursor-pointer"
                   >
                     Submit Request
                   </button>
@@ -1261,16 +1245,16 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
 
       {/* NOTIFICATIONS CENTER MODAL */}
       {showNotificationsModal && currentEmployee && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-md liquid-glass-card rounded-3xl p-5 border border-white/20 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-md bg-white rounded-xl p-5 border border-[#E2E8F0] shadow-xl space-y-4 max-h-[85vh] flex flex-col text-[#1E293B]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-sky-500/20 text-sky-400">
+                <div className="p-2 rounded-lg bg-blue-50 border border-blue-100 text-[#2563EB]">
                   <Bell className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">Notification Alerts</h3>
-                  <p className="text-xs text-slate-400">
+                  <h3 className="text-base font-bold text-[#1E293B]">Notification Alerts</h3>
+                  <p className="text-xs text-slate-500">
                     {unreadCount > 0 ? `${unreadCount} unread message${unreadCount === 1 ? '' : 's'}` : 'All caught up'}
                   </p>
                 </div>
@@ -1279,14 +1263,14 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                 {staffNotifications.length > 0 && onMarkAllNotificationsAsRead && (
                   <button
                     onClick={() => onMarkAllNotificationsAsRead(currentEmployee.id)}
-                    className="text-[11px] text-sky-400 hover:text-sky-300 font-semibold px-2 py-1 rounded-lg hover:bg-white/5 cursor-pointer"
+                    className="text-[11px] text-[#2563EB] hover:text-blue-700 font-semibold px-2 py-1 rounded-lg hover:bg-slate-100 cursor-pointer"
                   >
                     Mark all read
                   </button>
                 )}
                 <button
                   onClick={() => setShowNotificationsModal(false)}
-                  className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer"
+                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-[#1E293B] cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1294,14 +1278,14 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
             </div>
 
             {/* Filter pills */}
-            <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-2xl border border-white/10 text-xs shrink-0">
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-[#E2E8F0] text-xs shrink-0">
               {(['ALL', 'LEAVES', 'SHIFTS'] as const).map((filter) => (
                 <button
                   key={filter}
                   type="button"
                   onClick={() => setActiveNotifFilter(filter)}
-                  className={`flex-1 py-1 rounded-xl font-bold transition-all text-center cursor-pointer ${
-                    activeNotifFilter === filter ? 'bg-sky-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'
+                  className={`flex-1 py-1 rounded-lg font-bold transition-all text-center cursor-pointer ${
+                    activeNotifFilter === filter ? 'bg-[#2563EB] text-white shadow-xs' : 'text-slate-600 hover:text-[#1E293B]'
                   }`}
                 >
                   {filter === 'ALL' ? 'All' : filter === 'LEAVES' ? 'Leaves' : 'Shifts'}
@@ -1312,10 +1296,10 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
             {/* Notification items list */}
             <div className="overflow-y-auto space-y-2.5 pr-1 flex-1">
               {filteredStaffNotifications.length === 0 ? (
-                <div className="py-12 text-center text-slate-400 space-y-2">
-                  <Bell className="w-8 h-8 text-slate-600 mx-auto" />
-                  <p className="text-sm font-semibold text-white">No notifications</p>
-                  <p className="text-xs text-slate-400">
+                <div className="py-12 text-center text-slate-500 space-y-2">
+                  <Bell className="w-8 h-8 text-slate-400 mx-auto" />
+                  <p className="text-sm font-semibold text-[#1E293B]">No notifications</p>
+                  <p className="text-xs text-slate-500">
                     Leave status decisions and store shift adjustments will appear here.
                   </p>
                 </div>
@@ -1324,23 +1308,23 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                   <div
                     key={notif.id}
                     onClick={() => handleOpenNotificationItem(notif)}
-                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative ${
-                      !notif.read ? 'bg-white/10 border-sky-400/40 shadow-lg' : 'bg-white/5 border-white/10'
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer relative bg-white shadow-xs ${
+                      !notif.read ? 'border-[#2563EB] ring-1 ring-[#2563EB]/20' : 'border-[#E2E8F0]'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <div className="flex items-center gap-2">
-                        <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${
+                        <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md border ${
                           notif.type === 'LEAVE_STATUS'
                             ? notif.leaveStatus === 'APPROVED'
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                              : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                            : 'bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-rose-50 text-rose-700 border-rose-200'
+                            : 'bg-blue-50 text-[#2563EB] border-blue-200'
                         }`}>
                           {notif.type === 'LEAVE_STATUS' ? `LEAVE ${notif.leaveStatus || 'UPDATE'}` : 'SHIFT ROSTER'}
                         </span>
                         {!notif.read && (
-                          <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
+                          <span className="w-2 h-2 rounded-full bg-[#2563EB]" />
                         )}
                       </div>
 
@@ -1353,7 +1337,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                               e.stopPropagation();
                               onDeleteNotification(notif.id);
                             }}
-                            className="p-1 text-slate-500 hover:text-rose-400 transition-colors cursor-pointer"
+                            className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                             title="Delete alert"
                           >
                             <Trash2 className="w-3 h-3" />
@@ -1362,13 +1346,13 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                       </div>
                     </div>
 
-                    <h4 className="text-xs font-bold text-white mb-0.5">{notif.title}</h4>
-                    <p className="text-[11px] text-slate-300 leading-relaxed">{notif.message}</p>
+                    <h4 className="text-xs font-bold text-[#1E293B] mb-0.5">{notif.title}</h4>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">{notif.message}</p>
 
                     {notif.type === 'LEAVE_STATUS' && notif.leaveStatus && (
-                      <div className="mt-2 pt-1.5 border-t border-white/5 flex items-center justify-between text-[10px]">
-                        <span className="text-slate-400">Decision:</span>
-                        <strong className={notif.leaveStatus === 'APPROVED' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                      <div className="mt-2 pt-1.5 border-t border-[#E2E8F0] flex items-center justify-between text-[10px]">
+                        <span className="text-slate-500">Decision:</span>
+                        <strong className={notif.leaveStatus === 'APPROVED' ? 'text-emerald-700 font-bold' : 'text-rose-700 font-bold'}>
                           {notif.leaveStatus}
                         </strong>
                       </div>
@@ -1378,10 +1362,10 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
               )}
             </div>
 
-            <div className="pt-2 border-t border-white/10 shrink-0">
+            <div className="pt-2 border-t border-[#E2E8F0] shrink-0">
               <button
                 onClick={() => setShowNotificationsModal(false)}
-                className="w-full py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs transition-all cursor-pointer"
+                className="w-full py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-all cursor-pointer border border-[#E2E8F0]"
               >
                 Close
               </button>

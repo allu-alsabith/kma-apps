@@ -786,10 +786,10 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           <button
             id="kiosk-manager-unlock-btn"
             onClick={() => setShowManagerUnlockModal(true)}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white transition-all border border-white/10 cursor-pointer"
-            title="Manager settings &amp; unlock terminal"
+            className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-600 hover:text-[#1E293B] transition-all border border-[#E2E8F0] shadow-xs cursor-pointer"
+            title="Manager settings & unlock terminal"
           >
-            <Lock className="w-4 h-4 text-amber-400" />
+            <Lock className="w-4 h-4 text-[#2563EB]" />
           </button>
 
           {/* Small compact icon theme toggle */}
@@ -798,7 +798,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       </div>
 
       {/* CENTER STAGE: CAMERA & BIOMETRIC RETICLE */}
-      <div className="relative my-3 w-full aspect-[4/3] rounded-[40px] overflow-hidden p-2 liquid-glass-card shadow-2xl flex items-center justify-center">
+      <div className="relative my-3 w-full aspect-[4/3] rounded-3xl overflow-hidden p-2 bg-white border border-[#E2E8F0] shadow-sm flex items-center justify-center">
         
         {/* Real Video Feed */}
         <video
@@ -806,8 +806,8 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           playsInline
           muted
           autoPlay
-          className={`w-full h-full object-cover rounded-[34px] transform scale-x-[-1] ${
-            !hasCamera ? 'opacity-20 filter grayscale' : 'opacity-90'
+          className={`w-full h-full object-cover rounded-2xl transform scale-x-[-1] ${
+            !hasCamera ? 'opacity-20 filter grayscale' : 'opacity-95'
           }`}
         />
 
@@ -815,19 +815,19 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
 
         {/* Camera Standby / Permission Notice */}
         {!hasCamera && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-            <div className="w-16 h-16 rounded-3xl liquid-glass flex items-center justify-center text-slate-400 mb-3 border border-white/20">
-              <Camera className="w-8 h-8" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-white/95">
+            <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 mb-3 border border-[#E2E8F0]">
+              <Camera className="w-8 h-8 text-[#2563EB]" />
             </div>
-            <p className="text-sm font-semibold text-slate-200">
+            <p className="text-sm font-semibold text-[#1E293B]">
               {cameraError || 'Camera stream standby'}
             </p>
-            <p className="text-xs text-slate-400 max-w-xs mt-1">
+            <p className="text-xs text-slate-500 max-w-xs mt-1">
               Position tablet facing staff entrance. Click Verify &amp; Punch Face to scan.
             </p>
             <button
               onClick={startCamera}
-              className="mt-4 px-4 py-1.5 rounded-xl liquid-button text-xs text-emerald-400 font-semibold flex items-center gap-1.5 cursor-pointer"
+              className="mt-4 px-4 py-2 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-xs text-white font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <RefreshCw className="w-3.5 h-3.5" /> Retry Camera
             </button>
@@ -942,28 +942,28 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
 
         {/* Security Alert: Unrecognized Face Overlay Card */}
         {scanningStatus === 'UNRECOGNIZED' && unrecognizedSnapshot && (
-          <div className="absolute inset-x-4 bottom-24 sm:bottom-28 z-40 mx-auto max-w-md liquid-glass-card rounded-2xl p-4 border-2 border-red-500/80 bg-red-950/95 backdrop-blur-2xl shadow-2xl shadow-red-950/90 animate-shake text-white">
+          <div className="absolute inset-x-4 bottom-24 sm:bottom-28 z-40 mx-auto max-w-md bg-white rounded-xl p-4 border border-rose-300 shadow-xl animate-shake text-[#1E293B]">
             <div className="flex items-center gap-3.5">
               <div className="relative shrink-0">
                 <img
                   src={unrecognizedSnapshot}
                   alt="Unrecognized Individual"
-                  className="w-16 h-16 rounded-xl object-cover border-2 border-red-500 shadow-lg"
+                  className="w-16 h-16 rounded-xl object-cover border border-rose-400 shadow-xs"
                 />
-                <span className="absolute -bottom-1.5 -right-1 px-1.5 py-0.2 rounded bg-red-600 text-[8px] font-black uppercase text-white font-mono shadow">
+                <span className="absolute -bottom-1.5 -right-1 px-1.5 py-0.2 rounded bg-rose-600 text-[8px] font-black uppercase text-white font-mono shadow">
                   UNRECOGNIZED
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 text-red-400 font-black text-xs uppercase tracking-wide">
+                <div className="flex items-center gap-1.5 text-rose-600 font-bold text-xs uppercase tracking-wide">
                   <ShieldAlert className="w-4 h-4 shrink-0 animate-bounce" />
                   <span>Security Alert: Unrecognized Face</span>
                 </div>
-                <p className="text-[11px] text-slate-200 mt-0.5 leading-snug">
+                <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
                   Face biometric does not match any registered staff member. Access denied.
                 </p>
-                <div className="flex items-center gap-1.5 mt-1 text-[10px] text-red-300 font-mono">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping"></span>
+                <div className="flex items-center gap-1.5 mt-1 text-[10px] text-rose-600 font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
                   <span>Incident photo transmitted to Store Admin Console</span>
                 </div>
               </div>
@@ -973,12 +973,12 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
 
         {/* Notice: No Face Detected in Screen */}
         {scanningStatus === 'NO_FACE' && (
-          <div className="absolute inset-x-4 bottom-24 sm:bottom-28 z-40 mx-auto max-w-sm liquid-glass-card rounded-2xl p-3.5 border-2 border-amber-500/70 bg-amber-950/90 backdrop-blur-xl shadow-xl shadow-amber-950/60 animate-fade-in text-white text-center">
-            <div className="flex items-center justify-center gap-2 text-amber-400 font-bold text-xs">
+          <div className="absolute inset-x-4 bottom-24 sm:bottom-28 z-40 mx-auto max-w-sm bg-white rounded-xl p-3.5 border border-amber-300 shadow-lg animate-fade-in text-[#1E293B] text-center">
+            <div className="flex items-center justify-center gap-2 text-amber-600 font-bold text-xs">
               <UserX className="w-4 h-4 shrink-0" />
               <span>No Face Detected In Screen</span>
             </div>
-            <p className="text-[11px] text-slate-200 mt-1">
+            <p className="text-[11px] text-slate-600 mt-1">
               Please position your face directly inside the camera reticle before pressing verify.
             </p>
           </div>
@@ -988,16 +988,16 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
         {/* MODAL 1: INTERACTIVE PUNCH OPTIONS MODAL (When already clocked in / on break) */}
         {/* ------------------------------------------------------------------ */}
         {staffPunchOptions && (
-          <div className="absolute inset-4 rounded-[32px] liquid-glass p-6 flex flex-col items-center justify-between text-center z-40 animate-fade-in shadow-2xl border border-sky-500/50 bg-slate-950/95">
+          <div className="absolute inset-4 rounded-2xl bg-white p-6 border border-[#E2E8F0] flex flex-col items-center justify-between text-center z-40 animate-fade-in shadow-xl text-[#1E293B]">
             
             <div className="flex items-center justify-between w-full">
-              <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40 flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-sky-400" />
+              <span className="text-xs font-mono font-bold px-3 py-1 rounded-md bg-blue-50 text-[#2563EB] border border-blue-200 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-[#2563EB]" />
                 <span>STAFF VERIFIED</span>
               </span>
               <button
                 onClick={handleImmediateDismiss}
-                className="p-1 rounded-lg text-slate-400 hover:text-white"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1008,26 +1008,26 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                 <img
                   src={staffPunchOptions.employee.avatar}
                   alt={staffPunchOptions.employee.name}
-                  className="w-20 h-20 rounded-3xl object-cover border-2 border-sky-400 shadow-2xl"
+                  className="w-20 h-20 rounded-2xl object-cover border-2 border-[#2563EB] shadow-md"
                 />
-                <div className="absolute -bottom-2 -right-2 p-1 rounded-full bg-emerald-500 text-black">
+                <div className="absolute -bottom-2 -right-2 p-1 rounded-full bg-emerald-600 text-white">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
               </div>
 
-              <h3 className="text-xl font-extrabold text-white tracking-tight">
+              <h3 className="text-xl font-bold text-[#1E293B] tracking-tight">
                 {staffPunchOptions.employee.name}
               </h3>
-              <p className="text-xs font-semibold text-slate-300 mt-0.5">
-                {staffPunchOptions.employee.role} &bull; <span className="font-mono text-sky-300">{staffPunchOptions.employee.id}</span>
+              <p className="text-xs font-semibold text-slate-600 mt-0.5">
+                {staffPunchOptions.employee.role} &bull; <span className="font-mono text-[#2563EB] font-bold">{staffPunchOptions.employee.id}</span>
               </p>
 
               {/* Status Note */}
-              <div className="mt-2.5 px-3 py-1 rounded-full bg-white/10 text-[11px] text-slate-200">
+              <div className="mt-2.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-[11px] text-slate-700">
                 {staffPunchOptions.currentState === 'ON_SHIFT' ? (
                   <span>Currently on shift {staffPunchOptions.lastPunchTime ? `since ${formatTime12H(staffPunchOptions.lastPunchTime, true)}` : ''}</span>
                 ) : (
-                  <span className="text-amber-300">Currently on break {staffPunchOptions.lastPunchTime ? `since ${formatTime12H(staffPunchOptions.lastPunchTime, true)}` : ''}</span>
+                  <span className="text-amber-800 font-semibold">Currently on break {staffPunchOptions.lastPunchTime ? `since ${formatTime12H(staffPunchOptions.lastPunchTime, true)}` : ''}</span>
                 )}
               </div>
 
@@ -1038,18 +1038,18 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                     <button
                       id="btn-kiosk-start-break"
                       onClick={() => executePunch(staffPunchOptions.employee, 'BREAK_START', 'KIOSK_FACE')}
-                      className="py-3 px-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20 active:scale-95 transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer"
+                      className="py-3 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs shadow-xs active:scale-98 transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      <Coffee className="w-5 h-5 text-slate-950" />
+                      <Coffee className="w-5 h-5 text-amber-700" />
                       <span>Start Break</span>
                     </button>
 
                     <button
                       id="btn-kiosk-punch-out"
                       onClick={() => executePunch(staffPunchOptions.employee, 'OUT', 'KIOSK_FACE')}
-                      className="py-3 px-4 rounded-2xl bg-rose-500 hover:bg-rose-400 text-white font-black text-xs shadow-lg shadow-rose-500/20 active:scale-95 transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer"
+                      className="py-3 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-300 font-bold text-xs shadow-xs active:scale-98 transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      <LogOut className="w-5 h-5 text-white" />
+                      <LogOut className="w-5 h-5 text-rose-700" />
                       <span>Punch Out</span>
                     </button>
                   </div>
@@ -1057,9 +1057,9 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                   <button
                     id="btn-kiosk-end-break"
                     onClick={() => executePunch(staffPunchOptions.employee, 'BREAK_END', 'KIOSK_FACE')}
-                    className="w-full py-3.5 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm shadow-xl shadow-emerald-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-3 px-4 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold text-xs shadow-xs active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <Play className="w-5 h-5 text-slate-950" />
+                    <Play className="w-4 h-4 text-white" />
                     <span>End Break &bull; Resume Shift</span>
                   </button>
                 )}
@@ -1069,7 +1069,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
             <div className="w-full pt-2">
               <button
                 onClick={handleImmediateDismiss}
-                className="text-slate-400 hover:text-white text-xs font-semibold"
+                className="text-slate-500 hover:text-slate-800 text-xs font-semibold cursor-pointer"
               >
                 Not You? Cancel
               </button>
@@ -1082,21 +1082,15 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
         {/* MODAL 2: PUNCH EXECUTION CONFIRMATION CARD */}
         {/* ------------------------------------------------------------------ */}
         {executedPunchType && matchedEmployee && !staffPunchOptions && (
-          <div className={`absolute inset-4 rounded-[32px] liquid-glass p-6 flex flex-col items-center justify-between text-center z-30 animate-fade-in shadow-2xl border ${
-            executedPunchType === 'OUT' 
-              ? 'border-rose-500/50 bg-rose-950/85' 
-              : executedPunchType === 'BREAK_START'
-              ? 'border-amber-500/50 bg-amber-950/85'
-              : 'border-emerald-500/50 bg-slate-950/90'
-          }`}>
+          <div className="absolute inset-4 rounded-2xl bg-white p-6 border border-[#E2E8F0] flex flex-col items-center justify-between text-center z-30 animate-fade-in shadow-xl text-[#1E293B]">
             
             <div className="flex items-center justify-between w-full">
-              <span className={`text-xs font-mono font-bold px-3 py-1 rounded-full border flex items-center gap-1.5 ${
+              <span className={`text-xs font-mono font-bold px-3 py-1 rounded-md border flex items-center gap-1.5 ${
                 executedPunchType === 'OUT'
-                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                  ? 'bg-rose-50 text-rose-800 border-rose-200'
                   : executedPunchType === 'BREAK_START'
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                  : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                  ? 'bg-amber-50 text-amber-800 border-amber-200'
+                  : 'bg-emerald-50 text-emerald-800 border-emerald-200'
               }`}>
                 {executedPunchType === 'IN' && <LogIn className="w-3.5 h-3.5" />}
                 {executedPunchType === 'OUT' && <LogOut className="w-3.5 h-3.5" />}
@@ -1110,7 +1104,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                 </span>
               </span>
 
-              <span className="text-xs font-mono text-slate-300">
+              <span className="text-xs font-mono text-slate-500">
                 Match: {(matchScore * 100).toFixed(1)}%
               </span>
             </div>
@@ -1120,7 +1114,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                 <img
                   src={matchedEmployee.avatar}
                   alt={matchedEmployee.name}
-                  className={`w-24 h-24 rounded-3xl object-cover border-2 shadow-2xl ${
+                  className={`w-24 h-24 rounded-2xl object-cover border-2 shadow-sm ${
                     executedPunchType === 'OUT'
                       ? 'border-rose-400'
                       : executedPunchType === 'BREAK_START'
@@ -1130,23 +1124,23 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                 />
                 <div className={`absolute -bottom-2 -right-2 p-1.5 rounded-full ${
                   executedPunchType === 'OUT' 
-                    ? 'bg-rose-500 text-white' 
+                    ? 'bg-rose-600 text-white' 
                     : executedPunchType === 'BREAK_START'
-                    ? 'bg-amber-500 text-black'
-                    : 'bg-emerald-500 text-black'
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-emerald-600 text-white'
                 }`}>
-                  <CheckCircle2 className="w-5 h-5" />
+                  <CheckCircle2 className="w-4 h-4" />
                 </div>
               </div>
 
-              <h3 className="text-2xl font-extrabold text-white tracking-tight">
+              <h3 className="text-2xl font-bold text-[#1E293B] tracking-tight">
                 {matchedEmployee.name}
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 {matchedEmployee.role} &bull; Staff ID: {matchedEmployee.id}
               </p>
 
-              <div className="mt-3 px-3 py-1 rounded-full bg-white/10 text-xs text-slate-200">
+              <div className="mt-3 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-xs text-slate-700">
                 {executedPunchType === 'IN' && 'Welcome to work! Shift recorded.'}
                 {executedPunchType === 'OUT' && 'Shift complete! Have a great rest.'}
                 {executedPunchType === 'BREAK_START' && 'Enjoy your break!'}
@@ -1155,16 +1149,16 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
             </div>
 
             <div className="w-full flex items-center justify-between gap-3">
-              <div className="flex-1 bg-white/5 rounded-2xl p-2.5 border border-white/10 flex items-center justify-between text-xs">
+              <div className="flex-1 bg-[#F8FAFC] rounded-xl p-2.5 border border-[#E2E8F0] flex items-center justify-between text-xs">
                 <div className="text-left">
-                  <span className="text-slate-400 block text-[10px]">TIME RECORDED</span>
-                  <span className="font-mono text-white font-bold text-sm">
+                  <span className="text-slate-500 block text-[10px]">TIME RECORDED</span>
+                  <span className="font-mono text-[#1E293B] font-bold text-sm">
                     {get12HTimeString(new Date(), true)}
                   </span>
                 </div>
                 <div className="text-right">
-                  <span className="text-slate-400 block text-[10px]">STATUS</span>
-                  <span className="text-emerald-400 font-bold">
+                  <span className="text-slate-500 block text-[10px]">STATUS</span>
+                  <span className="text-emerald-700 font-bold">
                     VERIFIED
                   </span>
                 </div>
@@ -1172,7 +1166,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
 
               <button
                 onClick={handleImmediateDismiss}
-                className="px-4 py-2.5 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-all cursor-pointer whitespace-nowrap border border-slate-200"
               >
                 Next Person
               </button>
@@ -1185,14 +1179,14 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
 
       {/* BOTTOM WALK-UP ACTION BAR */}
       <div className="w-full max-w-xl flex flex-col gap-3 relative z-10">
-        <div className="liquid-glass-card rounded-[32px] p-5 shadow-2xl border border-white/15 flex flex-col items-center gap-3">
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#E2E8F0] flex flex-col items-center gap-3 text-[#1E293B]">
           
           {/* Quick Staff Selection Roster (When multiple employees enrolled) */}
           {companyEmployees.length > 1 && (
-            <div className="w-full pb-1 border-b border-white/10">
-              <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-                <span className="flex items-center gap-1.5 font-semibold text-slate-300">
-                  <Users className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="w-full pb-2 border-b border-[#E2E8F0]">
+              <div className="flex items-center justify-between text-xs text-slate-600 mb-2">
+                <span className="flex items-center gap-1.5 font-semibold text-[#1E293B]">
+                  <Users className="w-3.5 h-3.5 text-[#2563EB]" />
                   <span>Select Staff to Verify</span>
                 </span>
                 <div className="flex items-center gap-2">
@@ -1200,12 +1194,12 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                     <button
                       type="button"
                       onClick={() => setSelectedStaffIdForScan('')}
-                      className="text-[10px] text-amber-300 hover:text-white underline cursor-pointer"
+                      className="text-[10px] text-[#2563EB] hover:underline cursor-pointer font-medium"
                     >
                       Clear Selection
                     </button>
                   )}
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-[10px] text-slate-500">
                     {companyEmployees.length} enrolled
                   </span>
                 </div>
@@ -1226,25 +1220,25 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                           handleTriggerFaceScan(emp);
                         }
                       }}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-2xl text-xs whitespace-nowrap transition-all border cursor-pointer active:scale-95 ${
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all border cursor-pointer active:scale-95 ${
                         isSelected
-                          ? 'bg-emerald-500/25 border-emerald-400 text-white shadow-md'
-                          : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300'
+                          ? 'bg-blue-50 border-[#2563EB] text-[#2563EB] font-bold shadow-xs'
+                          : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
                       }`}
                     >
                       <div className="relative">
                         <img
                           src={emp.avatar}
                           alt={emp.name}
-                          className="w-6 h-6 rounded-full object-cover border border-white/20"
+                          className="w-6 h-6 rounded-full object-cover border border-slate-300"
                         />
                         <span
-                          className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-slate-950 ${
+                          className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white ${
                             currentState === 'ON_SHIFT'
-                              ? 'bg-emerald-400'
+                              ? 'bg-emerald-500'
                               : currentState === 'ON_BREAK'
-                              ? 'bg-amber-400'
-                              : 'bg-slate-500'
+                              ? 'bg-amber-500'
+                              : 'bg-slate-400'
                           }`}
                         />
                       </div>
@@ -1258,9 +1252,9 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
 
           {/* Roster Empty Notice */}
           {companyEmployees.length === 0 && (
-            <div className="w-full p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs flex items-center justify-between gap-2.5">
+            <div className="w-full p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center justify-between gap-2.5">
               <div className="flex items-center gap-2">
-                <Info className="w-4 h-4 shrink-0 text-amber-400" />
+                <Info className="w-4 h-4 shrink-0 text-amber-600" />
                 <span className="text-[11px] leading-tight">
                   No staff enrolled for {companySupermarketName} yet. Add staff in Store Admin Console to enable biometric walk-up face punch.
                 </span>
@@ -1268,22 +1262,22 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
             </div>
           )}
 
-          {/* VERIFY & PUNCH FACE (BIOMETRIC ONLY) */}
+          {/* VERIFY & PUNCH FACE (BIOMETRIC ONLY - ENTERPRISE SLATE BLUE #2563EB) */}
           <div className="w-full">
             <button
               id="kiosk-trigger-scan-btn"
               onClick={() => handleTriggerFaceScan()}
               disabled={scanningStatus === 'DETECTING' || companyEmployees.length === 0}
-              className="w-full py-4 px-5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-sm sm:text-base shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 active:scale-[0.98] transition-all flex items-center justify-center gap-3 cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3.5 px-5 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold text-sm sm:text-base shadow-xs active:scale-[0.98] transition-all flex items-center justify-center gap-3 cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <div className="w-9 h-9 rounded-xl bg-black/15 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <ScanFace className="w-5 h-5 text-slate-950" />
+              <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <ScanFace className="w-5 h-5 text-white" />
               </div>
               <div className="text-left">
-                <span className="block text-sm sm:text-base font-black tracking-tight leading-tight">
+                <span className="block text-sm sm:text-base font-bold tracking-tight leading-tight">
                   VERIFY &amp; PUNCH FACE
                 </span>
-                <span className="block text-[10px] font-semibold text-slate-900/80">
+                <span className="block text-[10px] font-normal text-blue-100">
                   {companyEmployees.length === 0
                     ? 'No staff enrolled yet'
                     : selectedStaffIdForScan
@@ -1294,66 +1288,64 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
             </button>
           </div>
 
-          <div className="w-full flex items-center justify-center text-xs text-slate-400 px-2 pt-1 border-t border-white/10">
+          <div className="w-full flex items-center justify-center text-xs text-slate-500 px-2 pt-1 border-t border-[#E2E8F0]">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="text-slate-300 font-medium text-[11px]">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-slate-600 font-medium text-[11px]">
                 Biometric Face Scanner Armed &bull; {companySupermarketName}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Live Recent Punch Audit Pill */}
+        {/* Live Recent Punch Audit */}
         {lastPunchAudit && (
-          <div className="liquid-pill rounded-2xl px-4 py-2.5 flex items-center justify-between text-xs text-slate-300 shadow-md">
+          <div className="bg-white rounded-xl px-4 py-2.5 border border-[#E2E8F0] flex items-center justify-between text-xs text-[#1E293B] shadow-xs">
             <div className="flex items-center gap-2.5">
-              <img src={lastPunchAudit.avatar} alt="" className="w-7 h-7 rounded-full object-cover border border-white/20" />
+              <img src={lastPunchAudit.avatar} alt="" className="w-7 h-7 rounded-full object-cover border border-slate-200" />
               <div>
-                <span className="text-slate-400 text-[11px] block sm:inline">Recent punch: </span>
-                <strong className="text-white">{lastPunchAudit.name}</strong> &bull;{' '}
+                <span className="text-slate-500 text-[11px] block sm:inline">Recent punch: </span>
+                <strong className="text-[#1E293B]">{lastPunchAudit.name}</strong> &bull;{' '}
                 <span className={
                   lastPunchAudit.type === 'OUT' 
-                    ? 'text-rose-400 font-bold' 
+                    ? 'text-rose-600 font-bold' 
                     : lastPunchAudit.type === 'BREAK_START'
-                    ? 'text-amber-400 font-bold'
-                    : 'text-emerald-400 font-bold'
+                    ? 'text-amber-600 font-bold'
+                    : 'text-emerald-600 font-bold'
                 }>
                   {lastPunchAudit.type === 'IN' && 'Punched IN'}
                   {lastPunchAudit.type === 'OUT' && 'Punched OUT'}
                   {lastPunchAudit.type === 'BREAK_START' && 'Started Break'}
                   {lastPunchAudit.type === 'BREAK_END' && 'Ended Break'}
                 </span>{' '}
-                <span className="text-slate-400">at {formatTime12H(lastPunchAudit.time, true)}</span>
+                <span className="text-slate-500">at {formatTime12H(lastPunchAudit.time, true)}</span>
               </div>
             </div>
-            <span className="text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            <span className="text-[10px] px-2.5 py-0.5 rounded-md font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
               {lastPunchAudit.status}
             </span>
           </div>
         )}
       </div>
 
-
-
       {/* ------------------------------------------------------------------ */}
       {/* STORE MANAGER UNLOCK / DEACTIVATE MODAL */}
       {/* ------------------------------------------------------------------ */}
       {showManagerUnlockModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-4">
-          <div className="w-full max-w-sm liquid-glass-card rounded-[36px] p-6 flex flex-col items-center shadow-2xl animate-scale-in border border-amber-500/30">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center text-amber-400 mb-3 border border-amber-500/40">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-white rounded-2xl p-6 flex flex-col items-center shadow-xl animate-scale-in border border-[#E2E8F0] text-[#1E293B]">
+            <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-[#2563EB] mb-3 border border-blue-100">
               <Lock className="w-6 h-6" />
             </div>
 
-            <h3 className="text-lg font-bold text-white">Manager Authorization</h3>
-            <p className="text-xs text-slate-400 text-center mt-1">
+            <h3 className="text-lg font-bold text-[#1E293B]">Manager Authorization</h3>
+            <p className="text-xs text-slate-500 text-center mt-1">
               Enter Store Manager PIN or Company Password to unlock &amp; switch terminal
             </p>
 
             <form onSubmit={handleManagerUnlock} className="w-full mt-4 space-y-3">
               {managerUnlockError && (
-                <div className="p-2 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-xs text-center">
+                <div className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs text-center">
                   {managerUnlockError}
                 </div>
               )}
@@ -1367,7 +1359,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                   placeholder="Enter PIN"
                   value={managerUnlockPin}
                   onChange={(e) => setManagerUnlockPin(e.target.value)}
-                  className="w-full bg-slate-900 border border-white/20 rounded-2xl py-3 text-center text-xl font-mono text-white tracking-widest focus:outline-none focus:border-amber-400"
+                  className="w-full bg-white border border-[#CBD5E1] rounded-xl py-3 text-center text-xl font-mono text-[#1E293B] tracking-widest focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]"
                 />
               </div>
 
@@ -1379,13 +1371,13 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                     setManagerUnlockPin('');
                     setManagerUnlockError(null);
                   }}
-                  className="py-2.5 rounded-xl liquid-pill text-xs font-semibold text-slate-400 hover:text-white cursor-pointer"
+                  className="py-2.5 rounded-lg bg-white border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold text-xs shadow-lg cursor-pointer"
+                  className="py-2.5 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-xs shadow-xs cursor-pointer transition-all active:scale-98"
                 >
                   Unlock Terminal
                 </button>

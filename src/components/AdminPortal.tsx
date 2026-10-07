@@ -940,7 +940,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
       {/* Real-time Floating Security Push Notification Alert Toast (Unrecognizable Face Detected) */}
       {liveSecurityToast && (
-        <div className="liquid-glass-card rounded-3xl p-4 border-2 border-red-500/80 bg-red-950/95 shadow-2xl shadow-red-950/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-shake text-xs text-white">
+        <div className="bg-white rounded-xl p-4 border border-rose-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-shake text-xs text-[#1E293B]">
           <div className="flex items-center gap-3.5 min-w-0">
             {/* Captured Photo Thumbnail */}
             <div className="relative shrink-0">
@@ -948,34 +948,34 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 <img
                   src={liveSecurityToast.photoUrl || liveSecurityToast.meta?.capturedPhoto}
                   alt="Unrecognized individual"
-                  className="w-14 h-14 rounded-2xl object-cover border-2 border-red-500 shadow-md cursor-pointer hover:scale-105 transition-transform"
+                  className="w-14 h-14 rounded-xl object-cover border border-rose-300 shadow-xs cursor-pointer hover:scale-105 transition-transform"
                   onClick={() => setInspectingAlertPhoto(liveSecurityToast)}
                   title="Click to inspect photo in high resolution"
                 />
               ) : (
-                <div className="w-14 h-14 rounded-2xl bg-red-900/60 border-2 border-red-500 flex items-center justify-center text-red-300">
+                <div className="w-14 h-14 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
                   <ShieldAlert className="w-7 h-7 animate-bounce" />
                 </div>
               )}
-              <span className="absolute -bottom-1 -right-1 px-1 py-0.2 rounded bg-red-600 text-[8px] font-black uppercase text-white font-mono shadow">
+              <span className="absolute -bottom-1 -right-1 px-1 py-0.2 rounded bg-rose-600 text-[8px] font-black uppercase text-white font-mono shadow">
                 PHOTO
               </span>
             </div>
 
             <div className="min-w-0 space-y-0.5">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 rounded-full bg-red-500/30 text-red-200 text-[10px] font-mono font-bold flex items-center gap-1 border border-red-500/40">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" />
-                  🚨 ENTRANCE KIOSK BREACH ALERT
+                <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 text-[10px] font-mono font-bold flex items-center gap-1 border border-rose-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                  ENTRANCE KIOSK BREACH ALERT
                 </span>
-                <span className="text-[10px] text-red-300/80 font-mono">
+                <span className="text-[10px] text-slate-500 font-mono">
                   {liveSecurityToast.timeFormatted || 'Just now'}
                 </span>
               </div>
-              <h4 className="font-bold text-white text-sm tracking-tight truncate">
+              <h4 className="font-bold text-[#1E293B] text-sm tracking-tight truncate">
                 {liveSecurityToast.title || 'Unrecognizable Face Detected at Entrance Kiosk'}
               </h4>
-              <p className="text-slate-200 text-[11px] line-clamp-1 leading-snug">
+              <p className="text-slate-600 text-[11px] line-clamp-1 leading-snug">
                 {liveSecurityToast.message}
               </p>
             </div>
@@ -989,7 +989,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 setInspectingAlertPhoto(liveSecurityToast);
                 setAdminTab('SECURITY');
               }}
-              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-lg shadow-red-600/30 transition-all active:scale-95"
+              className="px-3 py-1.5 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-98"
             >
               <Eye className="w-3.5 h-3.5" />
               <span>Inspect Photo</span>
@@ -1001,7 +1001,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 if (onMarkNotificationAsRead) onMarkNotificationAsRead(liveSecurityToast.id);
                 setLiveSecurityToast(null);
               }}
-              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-xs font-semibold cursor-pointer transition-all"
+              className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-xs font-semibold cursor-pointer transition-all border border-slate-200"
             >
               Dismiss
             </button>
@@ -1011,19 +1011,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
       {/* Real-time Banner on Successful Staff Enrollment */}
       {enrollSuccessMessage && (
-        <div className="liquid-glass-card rounded-2xl p-4 border border-emerald-500/40 bg-emerald-950/40 flex items-center justify-between gap-3 animate-fade-in text-xs text-emerald-200 shadow-xl shadow-emerald-950/50">
+        <div className="bg-white rounded-xl p-4 border border-emerald-200 shadow-xs flex items-center justify-between gap-3 animate-fade-in text-xs text-emerald-900">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-300 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-200">
               <CheckCircle2 className="w-4 h-4" />
             </div>
             <div>
-              <p className="font-bold text-white text-sm">Staff Member Enrolled!</p>
-              <p className="text-emerald-300/90">{enrollSuccessMessage}</p>
+              <p className="font-bold text-[#1E293B] text-sm">Staff Member Enrolled!</p>
+              <p className="text-slate-600">{enrollSuccessMessage}</p>
             </div>
           </div>
           <button
             onClick={() => setEnrollSuccessMessage(null)}
-            className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-emerald-200 flex items-center justify-center cursor-pointer transition-all shrink-0"
+            className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center cursor-pointer transition-all shrink-0"
           >
             <X className="w-3.5 h-3.5" />
           </button>

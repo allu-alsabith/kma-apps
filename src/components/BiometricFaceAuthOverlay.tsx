@@ -308,7 +308,7 @@ export const BiometricFaceAuthOverlay: React.FC<BiometricFaceAuthOverlayProps> =
       </div>
 
       {/* Bottom Employee Information Badge */}
-      <div className="liquid-glass rounded-2xl p-3 flex items-center justify-between border border-white/15">
+      <div className="bg-slate-900/90 rounded-xl p-3 flex items-center justify-between border border-white/15 backdrop-blur-md">
         <div className="flex items-center gap-2.5">
           <img
             src={employee.avatar}
