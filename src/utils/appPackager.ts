@@ -17,8 +17,8 @@ export const APP_CONFIGS: Record<AppInstallTarget, AppMetadata> = {
     name: 'Staff Mobile Attendance',
     packageName: 'com.workforce.staff',
     description: 'Staff mobile attendance app with GPS geofencing & biometric face punch',
-    themeColor: '#0284c7',
-    backgroundColor: '#05070d',
+    themeColor: '#2563EB',
+    backgroundColor: '#F8FAFC',
     iconSlug: 'staff',
   },
   KIOSK: {
@@ -26,8 +26,8 @@ export const APP_CONFIGS: Record<AppInstallTarget, AppMetadata> = {
     name: 'Face Entrance Kiosk',
     packageName: 'com.workforce.kiosk',
     description: 'Entrance turnstile and tablet terminal with live biometric face scan',
-    themeColor: '#059669',
-    backgroundColor: '#05070d',
+    themeColor: '#2563EB',
+    backgroundColor: '#F8FAFC',
     iconSlug: 'kiosk',
   },
   ADMIN: {
@@ -35,8 +35,8 @@ export const APP_CONFIGS: Record<AppInstallTarget, AppMetadata> = {
     name: 'Store Admin HR Console',
     packageName: 'com.workforce.admin',
     description: 'Store HR management console, employee roster, live audit & payroll',
-    themeColor: '#7c3aed',
-    backgroundColor: '#05070d',
+    themeColor: '#2563EB',
+    backgroundColor: '#F8FAFC',
     iconSlug: 'admin',
   },
   MANAGER: {
@@ -44,8 +44,8 @@ export const APP_CONFIGS: Record<AppInstallTarget, AppMetadata> = {
     name: 'Apps Manager Hub',
     packageName: 'com.workforce.manager',
     description: 'Executive company management and multi-app provisioning hub',
-    themeColor: '#d97706',
-    backgroundColor: '#05070d',
+    themeColor: '#2563EB',
+    backgroundColor: '#F8FAFC',
     iconSlug: 'manager',
   },
 };

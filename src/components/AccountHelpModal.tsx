@@ -83,19 +83,19 @@ export const AccountHelpModal: React.FC<AccountHelpModalProps> = ({
   };
 
   const getAppBadgeColor = () => {
-    if (appName.includes('Face') || appName.includes('Kiosk')) return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
-    if (appName.includes('Staff') || appName.includes('Mobile')) return 'bg-sky-500/20 text-sky-300 border-sky-500/30';
-    return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
+    if (appName.includes('Face') || appName.includes('Kiosk')) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    if (appName.includes('Staff') || appName.includes('Mobile')) return 'bg-blue-50 text-[#2563EB] border-blue-200';
+    return 'bg-purple-50 text-purple-700 border-purple-200';
   };
 
   const getAppIcon = () => {
-    if (appName.includes('Face') || appName.includes('Kiosk')) return <ScanFace className="w-3.5 h-3.5 text-emerald-400" />;
-    if (appName.includes('Staff') || appName.includes('Mobile')) return <Smartphone className="w-3.5 h-3.5 text-sky-400" />;
-    return <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />;
+    if (appName.includes('Face') || appName.includes('Kiosk')) return <ScanFace className="w-3.5 h-3.5 text-emerald-600" />;
+    if (appName.includes('Staff') || appName.includes('Mobile')) return <Smartphone className="w-3.5 h-3.5 text-[#2563EB]" />;
+    return <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />;
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-slate-500/20 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl p-6 flex flex-col shadow-xl animate-scale-in border border-[#E2E8F0] text-[#1E293B]">
         
         {/* Header */}

@@ -285,7 +285,7 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
       {/* ============================================================== */}
       {activeMode === 'CAMERA' && (!capturedPreview || isStreaming) && (
         <div className="space-y-2">
-          <div className="relative w-full h-48 bg-slate-900 rounded-xl overflow-hidden border border-slate-300 flex items-center justify-center">
+          <div className="relative w-full h-48 bg-slate-100 rounded-xl overflow-hidden border border-[#CBD5E1] flex items-center justify-center">
             {/* Video Element */}
             <video
               ref={videoRef}
@@ -298,13 +298,13 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
             {/* Biometric Scanning Overlay */}
             {isStreaming && (
               <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-                <div className="w-24 h-32 rounded-[32px] border-2 border-emerald-400/80 shadow-[0_0_20px_rgba(16,185,129,0.3)] relative">
-                  <div className="absolute top-2 left-2 w-2.5 h-2.5 border-t-2 border-l-2 border-emerald-400"></div>
-                  <div className="absolute top-2 right-2 w-2.5 h-2.5 border-t-2 border-r-2 border-emerald-400"></div>
-                  <div className="absolute bottom-2 left-2 w-2.5 h-2.5 border-b-2 border-l-2 border-emerald-400"></div>
-                  <div className="absolute bottom-2 right-2 w-2.5 h-2.5 border-b-2 border-r-2 border-emerald-400"></div>
+                <div className="w-24 h-32 rounded-[32px] border-2 border-[#2563EB] shadow-[0_0_20px_rgba(37,99,235,0.25)] relative">
+                  <div className="absolute top-2 left-2 w-2.5 h-2.5 border-t-2 border-l-2 border-[#2563EB]"></div>
+                  <div className="absolute top-2 right-2 w-2.5 h-2.5 border-t-2 border-r-2 border-[#2563EB]"></div>
+                  <div className="absolute bottom-2 left-2 w-2.5 h-2.5 border-b-2 border-l-2 border-[#2563EB]"></div>
+                  <div className="absolute bottom-2 right-2 w-2.5 h-2.5 border-b-2 border-r-2 border-[#2563EB]"></div>
                 </div>
-                <span className="text-[10px] text-white font-mono mt-1 bg-black/70 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] text-slate-800 font-mono mt-1 bg-white/95 px-2.5 py-0.5 rounded-full border border-slate-200 shadow-xs">
                   Align face &amp; click capture
                 </span>
               </div>
@@ -326,10 +326,10 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
 
             {/* Error or not streaming state */}
             {(!isStreaming || cameraError) && (
-              <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center p-4 text-center">
-                <AlertCircle className="w-6 h-6 text-amber-400 mb-1" />
-                <p className="text-xs text-white font-semibold">{cameraError || 'Camera inactive'}</p>
-                <p className="text-[10px] text-slate-300 mt-1 max-w-xs">
+              <div className="absolute inset-0 bg-slate-50/95 flex flex-col items-center justify-center p-4 text-center">
+                <AlertCircle className="w-6 h-6 text-amber-500 mb-1" />
+                <p className="text-xs text-[#1E293B] font-semibold">{cameraError || 'Camera inactive'}</p>
+                <p className="text-[10px] text-slate-500 mt-1 max-w-xs">
                   You can grant camera access or easily switch to "Upload" or "Presets" tab.
                 </p>
                 <div className="flex items-center gap-2 mt-3">
@@ -343,7 +343,7 @@ export const FaceEnrollmentScanner: React.FC<FaceEnrollmentScannerProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveMode('UPLOAD')}
-                    className="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white text-[11px] font-semibold cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-[11px] font-semibold cursor-pointer"
                   >
                     Upload Photo
                   </button>

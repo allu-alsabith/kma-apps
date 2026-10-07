@@ -85,6 +85,38 @@ import {
 } from './services/firebase';
 
 function AppContent() {
+  // Ensure the entire application remains strictly and permanently in clean light theme
+  useEffect(() => {
+    const sanitizeLight = () => {
+      try {
+        localStorage.removeItem('attendo_theme');
+        localStorage.removeItem('theme');
+        localStorage.removeItem('retailsync_theme');
+        sessionStorage.removeItem('attendo_theme');
+        sessionStorage.removeItem('theme');
+        const root = document.documentElement;
+        const body = document.body;
+        if (root.classList.contains('dark')) root.classList.remove('dark');
+        if (root.getAttribute('data-theme') === 'dark') root.removeAttribute('data-theme');
+        root.style.backgroundColor = '#F8FAFC';
+        root.style.color = '#1E293B';
+        root.style.colorScheme = 'light';
+        if (body) {
+          if (body.classList.contains('dark')) body.classList.remove('dark');
+          if (body.getAttribute('data-theme') === 'dark') body.removeAttribute('data-theme');
+          body.style.backgroundColor = '#F8FAFC';
+          body.style.color = '#1E293B';
+        }
+      } catch {
+        // Ignore
+      }
+    };
+    sanitizeLight();
+    const observer = new MutationObserver(sanitizeLight);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+    return () => observer.disconnect();
+  }, []);
+
   // App Portal Mode detection: 'STAFF' (Employee Phone), 'KIOSK' (Door Tablet), 'ADMIN' (Manager HR), 'MANAGER' (Apps Manager)
   const [standaloneMode, setStandaloneMode] = useState<'STAFF' | 'KIOSK' | 'ADMIN' | 'MANAGER'>(() => {
     if (typeof window !== 'undefined') {
@@ -1136,7 +1168,7 @@ function AppContent() {
       )}
 
       {/* Main Active Portal Render */}
-      <main className="flex-1 flex flex-col items-center justify-start pb-12 w-full">
+      <main className="flex-1 flex flex-col items-center justify-start pb-12 w-full bg-[#F8FAFC] text-[#1E293B]">
         {currentPortal === 'ADMIN_PORTAL' && (
           <AdminPortal
             employees={scopedAdminEmployees}

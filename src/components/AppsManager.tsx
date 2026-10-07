@@ -675,7 +675,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
         width: 320,
         margin: 2,
         color: {
-          dark: '#05070D',
+          dark: '#1E293B',
           light: '#FFFFFF',
         },
       },
@@ -713,14 +713,14 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
   // APPS MANAGER DASHBOARD (MASTER HUB)
   // ==========================================
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 md:p-6 space-y-6 select-none">
+    <div className="w-full max-w-7xl mx-auto p-4 md:p-6 space-y-6 select-none text-[#1E293B]">
       
       {/* Discreet Standalone Bar if launched with ?app=manager */}
       {isStandalone && (
-        <div className="w-full px-2 py-1 flex items-center justify-between text-xs text-slate-400 border-b border-white/10 pb-2">
+        <div className="w-full px-2 py-1 flex items-center justify-between text-xs text-slate-500 border-b border-[#E2E8F0] pb-2">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-            <span className="font-semibold text-slate-300">
+            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+            <span className="font-semibold text-slate-700">
               Apps Manager Standalone &bull; {selectedCompany?.supermarketName || 'Master'} Console
             </span>
           </div>
@@ -2260,7 +2260,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
       )}
 
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-500/20 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
           <div className="w-full max-w-lg bg-white rounded-xl border border-[#E2E8F0] shadow-xl animate-scale-in text-[#1E293B] my-6">
             <div className="p-4 border-b border-[#E2E8F0] flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -2416,7 +2416,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
       {/* MODAL: EDIT COMPANY                                                       */}
       {/* ========================================================================= */}
       {showEditModal && companyToEdit && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-500/20 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
           <div className="w-full max-w-lg bg-white rounded-xl border border-[#E2E8F0] shadow-xl animate-scale-in text-[#1E293B] my-6">
             <div className="p-4 border-b border-[#E2E8F0] flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -2558,7 +2558,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
       {/* MODAL: DELETE CONFIRMATION                                                */}
       {/* ========================================================================= */}
       {companyToDelete && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+        <div className="fixed inset-0 z-50 bg-slate-500/20 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
           <div className="w-full max-w-md bg-white rounded-xl border border-[#E2E8F0] shadow-xl animate-scale-in text-[#1E293B] overflow-hidden">
             <div className="p-4 border-b border-[#E2E8F0] flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-2">
@@ -2609,7 +2609,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
       {/* MODAL: QR CODE DISPLAY & DOWNLOAD                                         */}
       {/* ========================================================================= */}
       {qrModalApp && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+        <div className="fixed inset-0 z-50 bg-slate-500/20 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
           <div className="w-full max-w-sm bg-white rounded-xl p-6 border border-[#E2E8F0] shadow-xl animate-scale-in text-[#1E293B] text-center space-y-4 relative">
             <button
               onClick={() => setQrModalApp(null)}

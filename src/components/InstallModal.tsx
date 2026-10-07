@@ -82,7 +82,7 @@ export const InstallModal: React.FC<InstallModalProps> = ({
         width: 280,
         margin: 2,
         color: {
-          dark: '#05070D',
+          dark: '#1E293B',
           light: '#FFFFFF',
         },
       },
@@ -116,7 +116,7 @@ export const InstallModal: React.FC<InstallModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-500/20 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       <div className="relative w-full max-w-2xl bg-white rounded-2xl p-5 sm:p-7 border border-[#E2E8F0] shadow-xl animate-scale-in text-[#1E293B] my-6">
         
         {/* Close Button */}
@@ -277,7 +277,7 @@ export const InstallModal: React.FC<InstallModalProps> = ({
                 <QrCode className="w-8 h-8 animate-pulse text-slate-400" />
               </div>
             )}
-            <div className="absolute -bottom-2 bg-slate-900 text-[9px] font-bold text-white px-2 py-0.5 rounded-full border border-slate-700">
+            <div className="absolute -bottom-2 bg-[#2563EB] text-[9px] font-bold text-white px-2.5 py-0.5 rounded-full shadow-xs">
               SCAN WITH CAMERA
             </div>
           </div>

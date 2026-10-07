@@ -807,7 +807,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   // VIEW 2: AUTHENTICATED STORE ADMIN DASHBOARD
   // ==========================================
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 md:p-6 space-y-6 select-none">
+    <div className="w-full max-w-7xl mx-auto p-4 md:p-6 space-y-6 select-none text-[#1E293B]">
       
       {/* STORE MANAGER COMMAND BAR */}
       <div className="bg-white rounded-xl p-5 border border-[#E2E8F0] shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 text-[#1E293B]">
@@ -1642,7 +1642,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
       {/* Edit Shift Schedule Modal */}
       {editingShift && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-500/20 backdrop-blur-xs animate-fade-in">
           <div className="w-full max-w-md bg-white rounded-2xl p-6 border border-[#E2E8F0] shadow-xl space-y-5 text-[#1E293B]">
             <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
               <div className="flex items-center gap-2.5">
@@ -2213,7 +2213,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                                 alt="Captured Unrecognized Individual"
                                 className="w-24 h-24 sm:w-28 sm:h-28 object-cover bg-slate-100"
                               />
-                              <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                              <div className="absolute inset-0 bg-[#2563EB]/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
                                 <ZoomIn className="w-6 h-6" />
                               </div>
                               <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-rose-600 text-white font-mono text-[8px] font-bold uppercase">
@@ -2311,7 +2311,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
       {/* FULL-SCREEN PHOTO EVIDENCE INSPECTION MODAL */}
       {inspectingAlertPhoto && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-fade-in text-[#1E293B]">
+        <div className="fixed inset-0 z-50 bg-slate-500/20 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-fade-in text-[#1E293B]">
           <div className="w-full max-w-lg bg-white rounded-2xl border border-[#E2E8F0] shadow-2xl animate-scale-in flex flex-col overflow-hidden max-h-[92vh]">
             
             {/* Modal Header */}
@@ -2431,7 +2431,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
       {/* ENROLL EMPLOYEE MODAL */}
       {showAddEmpModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 text-[#1E293B]">
+        <div className="fixed inset-0 z-50 bg-slate-500/20 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 text-[#1E293B]">
           <div className="w-full max-w-lg bg-white rounded-2xl border border-[#E2E8F0] shadow-2xl animate-scale-in flex flex-col max-h-[92vh] overflow-hidden">
             {/* Pinned Modal Header */}
             <div className="p-4 sm:p-5 border-b border-[#E2E8F0] flex items-center justify-between shrink-0 bg-[#F8FAFC]">
@@ -2753,7 +2753,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
       {/* EDIT EMPLOYEE MODAL */}
       {showEditEmpModal && editingEmp && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 text-[#1E293B]">
+        <div className="fixed inset-0 z-50 bg-slate-500/20 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 text-[#1E293B]">
           <div className="w-full max-w-lg bg-white rounded-2xl border border-[#E2E8F0] shadow-2xl animate-scale-in flex flex-col max-h-[92vh] overflow-hidden">
             {/* Pinned Modal Header */}
             <div className="p-4 sm:p-5 border-b border-[#E2E8F0] flex items-center justify-between shrink-0 bg-[#F8FAFC]">
@@ -3035,7 +3035,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
       {/* Safe In-App Confirmation Modal (Zero window.confirm) */}
       {confirmModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-[#1E293B]">
+        <div className="fixed inset-0 z-50 bg-slate-500/20 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-[#1E293B]">
           <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 max-w-md w-full shadow-2xl animate-scale-in">
             <h3 className="text-lg font-bold text-[#1E293B] mb-2">{confirmModal.title}</h3>
             <p className="text-sm text-slate-600 mb-6 leading-relaxed">{confirmModal.message}</p>

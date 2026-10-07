@@ -12,8 +12,8 @@
     }
   ],
   "start_url": "/?app=manager",
-  "background_color": "#05070D",
-  "theme_color": "#05070D",
+  "background_color": "#F8FAFC",
+  "theme_color": "#F8FAFC",
   "display": "standalone",
   "orientation": "any",
   "scope": "/"

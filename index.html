@@ -10,6 +10,7 @@
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="theme-color" content="#F8FAFC" />
+    <meta name="color-scheme" content="light" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Attendo Staff" />
@@ -20,6 +21,8 @@
         try {
           localStorage.removeItem('attendo_theme');
           localStorage.removeItem('theme');
+          localStorage.removeItem('retailsync_theme');
+          sessionStorage.clear();
           var root = document.documentElement;
           root.classList.remove('dark');
           root.removeAttribute('data-theme');
@@ -27,6 +30,21 @@
           root.style.color = '#1E293B';
           root.style.colorScheme = 'light';
         } catch (e) {}
+
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for (var i = 0; i < registrations.length; i++) {
+              registrations[i].unregister();
+            }
+          }).catch(function() {});
+        }
+        if ('caches' in window) {
+          caches.keys().then(function(keys) {
+            keys.forEach(function(key) {
+              caches.delete(key);
+            });
+          }).catch(function() {});
+        }
       })();
     </script>
     <script>
@@ -36,6 +54,9 @@
           var app = (params.get('app') || params.get('portal') || '').toLowerCase();
           var manifestEl = document.getElementById('app-manifest');
           var appleTitleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+          var themeColorMeta = document.querySelector('meta[name="theme-color"]');
+          if (themeColorMeta) themeColorMeta.setAttribute('content', '#F8FAFC');
+
           if (app === 'staff' || app === 'employee') {
             if (manifestEl) manifestEl.href = '/manifest-staff.json';
             document.title = 'Staff — Mobile Attendance';
@@ -53,6 +74,11 @@
             document.title = 'Apps Manager — Company & Application Hub';
             if (appleTitleMeta) appleTitleMeta.content = 'Apps Manager';
           }
+
+          var root = document.documentElement;
+          root.style.backgroundColor = '#F8FAFC';
+          root.style.color = '#1E293B';
+          root.style.colorScheme = 'light';
         } catch (e) {}
       })();
     </script>
@@ -60,24 +86,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
   </head>
-  <body>
+  <body class="bg-[#F8FAFC] text-[#1E293B]">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        // Skip service worker during development on dev domains to prevent stale module caching
-        var isDev = window.location.hostname.includes('run.app') || window.location.port === '3000';
-        if (isDev) {
-          navigator.serviceWorker.getRegistrations().then(function(regs) {
-            regs.forEach(function(r) { r.unregister(); });
-          }).catch(function() {});
-        } else {
-          window.addEventListener('load', function() {
-            navigator.serviceWorker.register('/sw.js').catch(function() {});
-          });
-        }
-      }
-    </script>
   </body>
 </html>
 

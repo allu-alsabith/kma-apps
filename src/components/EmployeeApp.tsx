@@ -14,9 +14,6 @@ import {
   AlertCircle,
   AlertTriangle,
   TrendingUp,
-  Battery,
-  Wifi,
-  Signal,
   ScanFace,
   QrCode,
   Smartphone,
@@ -336,7 +333,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
   };
 
   return (
-    <div className={`w-full flex flex-col items-center justify-center ${isNativeMobileView ? 'p-0 min-h-screen' : 'p-2 md:p-6'} select-none`}>
+    <div className={`w-full flex flex-col items-center justify-center ${isNativeMobileView ? 'p-0 min-h-screen' : 'p-2 md:p-6'} select-none bg-[#F8FAFC] text-[#1E293B]`}>
       
       {/* Install on Phone quick action banner */}
       {!isNativeMobileView && onOpenInstallModal && (
@@ -362,34 +359,11 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
       {/* ========================================================= */}
       <div className={isNativeMobileView 
         ? "relative w-full max-w-md min-h-screen bg-[#F8FAFC] text-[#1E293B] flex flex-col justify-between sm:rounded-2xl sm:border sm:border-[#E2E8F0] sm:my-3 sm:shadow-lg overflow-hidden transition-colors" 
-        : "relative w-full max-w-[400px] h-[820px] rounded-[48px] p-3 bg-slate-100 shadow-xl border border-slate-300 overflow-hidden flex flex-col transition-colors"
+        : "relative w-full max-w-[400px] h-[820px] rounded-[48px] p-3 bg-white shadow-xl border border-slate-200 overflow-hidden flex flex-col transition-colors"
       }>
         
-        {/* Dynamic Island Pill (Only on desktop preview mockup) */}
-        {!isNativeMobileView && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 w-32 h-6 bg-slate-900 rounded-full flex items-center justify-between px-3 border border-slate-700 shadow-sm">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-              <span className="text-[9px] font-mono text-emerald-400 font-semibold">
-                {currentEmployee ? 'ATTENDO' : 'LOGIN'}
-              </span>
-            </div>
-            <div className="w-2.5 h-2.5 rounded-full bg-slate-800"></div>
-          </div>
-        )}
-
-        {/* Liquid Screen Canvas (Internal phone view) */}
+        {/* Screen Canvas (Internal view) */}
         <div className={`relative w-full h-full ${!isNativeMobileView ? 'rounded-[38px] border border-slate-200' : ''} overflow-hidden bg-[#F8FAFC] text-[#1E293B] flex flex-col justify-between flex-1 transition-colors`}>
-          
-          {/* iOS Status Bar */}
-          <div className="w-full pt-3 px-6 pb-1 flex items-center justify-between text-xs text-slate-700 z-40 border-b border-[#E2E8F0]/40">
-            <span className="text-[12px] font-semibold tracking-tight text-slate-800">09:41</span>
-            <div className="flex items-center gap-1 text-slate-500">
-              <Signal className="w-3 h-3" />
-              <Wifi className="w-3 h-3" />
-              <Battery className="w-3.5 h-3.5 text-emerald-600" />
-            </div>
-          </div>
 
           {/* VIEW A: STAFF LOGIN SCREEN IF NOT AUTHENTICATED */}
           {!currentEmployee ? (
@@ -1150,7 +1124,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
 
       {/* APPLY LEAVE MODAL */}
       {showLeaveModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-500/20 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="w-full max-w-sm bg-white rounded-xl p-5 border border-[#E2E8F0] shadow-xl text-[#1E293B] animate-scale-in">
             <h3 className="text-base font-bold text-[#1E293B] mb-1">Apply for Leave</h3>
             <p className="text-xs text-slate-500 mb-4">Request approval from Store Admin</p>
@@ -1237,7 +1211,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
 
       {/* NOTIFICATIONS CENTER MODAL */}
       {showNotificationsModal && currentEmployee && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+        <div className="fixed inset-0 z-50 bg-slate-500/20 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
           <div className="w-full max-w-md bg-white rounded-xl p-5 border border-[#E2E8F0] shadow-xl space-y-4 max-h-[85vh] flex flex-col text-[#1E293B]">
             <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0] shrink-0">
               <div className="flex items-center gap-2.5">

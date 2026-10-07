@@ -719,7 +719,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   // VIEW 2: ACTIVE ENTRANCE BIOMETRIC CAMERA KIOSK
   // =========================================================================
   return (
-    <div className="relative w-full max-w-2xl mx-auto flex flex-col items-center select-none animate-scale-in">
+    <div className="relative w-full max-w-2xl mx-auto flex flex-col items-center select-none animate-scale-in text-[#1E293B]">
       
       {/* TOP HEADER: STATUS & TERMINAL SETTINGS */}
       <div className="w-full flex items-center justify-between px-2 mb-2">
@@ -845,55 +845,55 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                 ? 'border-4 border-red-500 shadow-[0_0_60px_rgba(239,68,68,0.7)] animate-shake'
                 : scanningStatus === 'FAILED'
                 ? 'border-2 border-red-500 shadow-[0_0_40px_rgba(239,68,68,0.4)]'
-                : 'border border-white/30 shadow-[inset_0_0_20px_rgba(255,255,255,0.1)]'
+                : 'border-2 border-[#2563EB]/40 shadow-[inset_0_0_20px_rgba(37,99,235,0.06)]'
             }`}
           >
             {/* Crosshairs */}
             <div className={`absolute top-4 left-6 w-5 h-5 border-t-2 border-l-2 rounded-tl-lg ${
-              scanningStatus === 'UNRECOGNIZED' ? 'border-red-400' : scanningStatus === 'NO_FACE' ? 'border-amber-400' : 'border-emerald-400/80'
+              scanningStatus === 'UNRECOGNIZED' ? 'border-red-500' : scanningStatus === 'NO_FACE' ? 'border-amber-500' : 'border-[#2563EB]'
             }`}></div>
             <div className={`absolute top-4 right-6 w-5 h-5 border-t-2 border-r-2 rounded-tr-lg ${
-              scanningStatus === 'UNRECOGNIZED' ? 'border-red-400' : scanningStatus === 'NO_FACE' ? 'border-amber-400' : 'border-emerald-400/80'
+              scanningStatus === 'UNRECOGNIZED' ? 'border-red-500' : scanningStatus === 'NO_FACE' ? 'border-amber-500' : 'border-[#2563EB]'
             }`}></div>
             <div className={`absolute bottom-4 left-6 w-5 h-5 border-b-2 border-l-2 rounded-bl-lg ${
-              scanningStatus === 'UNRECOGNIZED' ? 'border-red-400' : scanningStatus === 'NO_FACE' ? 'border-amber-400' : 'border-emerald-400/80'
+              scanningStatus === 'UNRECOGNIZED' ? 'border-red-500' : scanningStatus === 'NO_FACE' ? 'border-amber-500' : 'border-[#2563EB]'
             }`}></div>
             <div className={`absolute bottom-4 right-6 w-5 h-5 border-b-2 border-r-2 rounded-br-lg ${
-              scanningStatus === 'UNRECOGNIZED' ? 'border-red-400' : scanningStatus === 'NO_FACE' ? 'border-amber-400' : 'border-emerald-400/80'
+              scanningStatus === 'UNRECOGNIZED' ? 'border-red-500' : scanningStatus === 'NO_FACE' ? 'border-amber-500' : 'border-[#2563EB]'
             }`}></div>
 
             {/* Scanning Laser Beam */}
             {scanningStatus === 'DETECTING' && (
-              <div className="absolute inset-x-4 top-0 h-1 bg-gradient-to-r from-transparent via-sky-400 to-transparent shadow-[0_0_15px_#38bdf8] animate-bounce"></div>
+              <div className="absolute inset-x-4 top-0 h-1 bg-gradient-to-r from-transparent via-[#2563EB] to-transparent shadow-[0_0_15px_#2563EB] animate-bounce"></div>
             )}
 
             {/* Status Icons */}
             {scanningStatus === 'MATCHED' && !staffPunchOptions && (
               <div className={`w-20 h-20 rounded-full backdrop-blur-xl border flex items-center justify-center animate-scale-in ${
                 executedPunchType === 'OUT' 
-                  ? 'bg-rose-500/30 border-rose-400 text-rose-400' 
-                  : 'bg-emerald-500/30 border-emerald-400 text-emerald-400'
+                  ? 'bg-rose-50 border-rose-300 text-rose-600 shadow-md' 
+                  : 'bg-emerald-50 border-emerald-300 text-emerald-600 shadow-md'
               }`}>
                 <CheckCircle2 className="w-12 h-12" />
               </div>
             )}
 
             {scanningStatus === 'NO_FACE' && (
-              <div className="w-20 h-20 rounded-full bg-amber-500/30 backdrop-blur-xl border-2 border-amber-400 flex flex-col items-center justify-center text-amber-300 animate-scale-in shadow-2xl">
+              <div className="w-20 h-20 rounded-full bg-amber-50 backdrop-blur-xl border-2 border-amber-400 flex flex-col items-center justify-center text-amber-700 animate-scale-in shadow-md">
                 <UserX className="w-10 h-10" />
                 <span className="text-[9px] font-black uppercase mt-0.5 tracking-wider">No Face</span>
               </div>
             )}
 
             {scanningStatus === 'UNRECOGNIZED' && (
-              <div className="w-20 h-20 rounded-full bg-red-600/40 backdrop-blur-xl border-2 border-red-500 flex flex-col items-center justify-center text-red-300 animate-scale-in shadow-2xl">
+              <div className="w-20 h-20 rounded-full bg-rose-50 backdrop-blur-xl border-2 border-red-500 flex flex-col items-center justify-center text-rose-700 animate-scale-in shadow-md">
                 <ShieldAlert className="w-10 h-10 animate-bounce" />
                 <span className="text-[9px] font-black uppercase mt-0.5 tracking-wider">Denied</span>
               </div>
             )}
 
             {scanningStatus === 'FAILED' && (
-              <div className="w-16 h-16 rounded-full bg-red-500/30 backdrop-blur-xl border border-red-400 flex items-center justify-center text-red-400">
+              <div className="w-16 h-16 rounded-full bg-rose-50 backdrop-blur-xl border border-red-300 flex items-center justify-center text-rose-600">
                 <AlertTriangle className="w-8 h-8" />
               </div>
             )}
@@ -903,33 +903,33 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           <div className="mt-4 px-4 py-1.5 rounded-full liquid-pill text-xs font-semibold tracking-wide flex items-center gap-2">
             {scanningStatus === 'DETECTING' ? (
               <>
-                <span className="w-2 h-2 rounded-full bg-sky-400 animate-ping"></span>
-                <span className="text-sky-300">Biometric Facial Analysis...</span>
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
+                <span className="text-blue-700 font-semibold">Biometric Facial Analysis...</span>
               </>
             ) : scanningStatus === 'MATCHED' ? (
               <>
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-300">Staff Verified ({Math.round(matchScore * 100)}% Match)</span>
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-emerald-700 font-semibold">Staff Verified ({Math.round(matchScore * 100)}% Match)</span>
               </>
             ) : scanningStatus === 'NO_FACE' ? (
               <>
-                <UserX className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                <span className="text-amber-300 font-bold">No Face Detected &bull; Look Into Camera Frame</span>
+                <UserX className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
+                <span className="text-amber-800 font-bold">No Face Detected &bull; Look Into Camera Frame</span>
               </>
             ) : scanningStatus === 'UNRECOGNIZED' ? (
               <>
-                <ShieldAlert className="w-3.5 h-3.5 text-red-400 animate-ping" />
-                <span className="text-red-300 font-bold">Unrecognized Face &bull; Alert Pushed to Admin</span>
+                <ShieldAlert className="w-3.5 h-3.5 text-rose-600 animate-ping" />
+                <span className="text-rose-800 font-bold">Unrecognized Face &bull; Alert Pushed to Admin</span>
               </>
             ) : companyEmployees.length === 0 ? (
               <>
-                <Info className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-amber-300">No staff enrolled yet &bull; Enroll staff in Store Admin</span>
+                <Info className="w-3.5 h-3.5 text-amber-600" />
+                <span className="text-amber-800 font-medium">No staff enrolled yet &bull; Enroll staff in Store Admin</span>
               </>
             ) : (
               <>
-                <ScanFace className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-slate-300">Look at camera and press Verify &amp; Punch</span>
+                <ScanFace className="w-3.5 h-3.5 text-[#2563EB]" />
+                <span className="text-slate-700 font-medium">Look at camera and press Verify &amp; Punch</span>
               </>
             )}
           </div>
@@ -1327,7 +1327,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       {/* STORE MANAGER UNLOCK / DEACTIVATE MODAL */}
       {/* ------------------------------------------------------------------ */}
       {showManagerUnlockModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-500/20 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="w-full max-w-sm bg-white rounded-2xl p-6 flex flex-col items-center shadow-xl animate-scale-in border border-[#E2E8F0] text-[#1E293B]">
             <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-[#2563EB] mb-3 border border-blue-100">
               <Lock className="w-6 h-6" />
