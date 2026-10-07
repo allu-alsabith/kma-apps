@@ -44,7 +44,6 @@ import QRCode from 'qrcode';
 import { Company, Employee, AttendanceRecord, AppPortal, HelpRequest, Shift, LeaveRequest, StaffNotification, DEFAULT_DEPARTMENTS, SUGGESTED_DEPARTMENTS } from '../types';
 import { soundService } from '../services/sound';
 import { AppInstallTarget } from './InstallModal';
-import { ThemeToggle } from './ThemeToggle';
 import { signInWithGoogle, signOutUser, subscribeToAuth, syncAllDataToFirestore, type User as FirebaseUser } from '../services/firebase';
 import firebaseConfigData from '../../firebase-applet-config.json';
 
@@ -817,9 +816,9 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
           </p>
         </div>
 
-        {/* Top-Right Navigation Header: Section Tabs & Compact Icon Theme Toggle */}
+        {/* Top-Right Navigation Header: Section Tabs */}
         <div className="flex items-center gap-2 w-full lg:w-auto justify-between lg:justify-end">
-          <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto">
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 overflow-x-auto">
             {[
               { id: 'COMPANIES', label: `Companies (${companies.length})`, icon: Building2 },
               { id: 'APPS', label: '4 Apps & Access', icon: Layers },
@@ -858,9 +857,6 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
               );
             })}
           </div>
-
-          {/* Compact Top-Right Icon Theme Toggle */}
-          <ThemeToggle />
         </div>
       </div>
 

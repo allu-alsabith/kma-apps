@@ -1,13 +1,16 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
-
 @layer base {
   * {
     -webkit-tap-highlight-color: transparent;
   }
   button, a, input, select, textarea {
     touch-action: manipulation;
+  }
+  html {
+    background-color: #F8FAFC;
+    color: #1E293B;
+    color-scheme: light;
   }
   body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -16,13 +19,6 @@
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    transition: background-color 0.2s ease, color 0.2s ease;
-  }
-
-  html.dark body,
-  body.dark {
-    background-color: #0F172A;
-    color: #F8FAFC;
   }
 }
 
@@ -34,16 +30,6 @@
   border: 1px solid #E2E8F0 !important;
   box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.04) !important;
   color: #1E293B !important;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-}
-
-.dark .liquid-glass,
-.dark .liquid-glass-card,
-.dark .admin-card {
-  background: #1E293B !important;
-  border-color: #334155 !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3) !important;
-  color: #F8FAFC !important;
 }
 
 .liquid-glass-accent {
@@ -53,22 +39,10 @@
   color: #1E3A8A !important;
 }
 
-.dark .liquid-glass-accent {
-  background: rgba(37, 99, 235, 0.15) !important;
-  border-color: rgba(59, 130, 246, 0.3) !important;
-  color: #93C5FD !important;
-}
-
 .liquid-pill {
   background: #F8FAFC !important;
   border: 1px solid #E2E8F0 !important;
   color: #334155 !important;
-}
-
-.dark .liquid-pill {
-  background: #0F172A !important;
-  border-color: #334155 !important;
-  color: #94A3B8 !important;
 }
 
 .liquid-button {
@@ -89,124 +63,9 @@
   background: #E2E8F0;
 }
 
-.dark .liquid-button {
-  background: #1E293B;
-  border-color: #334155;
-  color: #F1F5F9;
-}
-
-.dark .liquid-button:hover {
-  background: #334155;
-  border-color: #475569;
-  color: #FFFFFF;
-}
-
-/* Dark Mode Administrative Theme Overrides */
-.dark {
-  color-scheme: dark;
-}
-
-.keep-white,
-.dark .keep-white {
+.keep-white {
   background-color: #FFFFFF !important;
-  color: #05070D !important;
-}
-
-.dark .bg-white:not(.keep-white) {
-  background-color: #1E293B !important;
-}
-
-.dark .bg-\[\#F8FAFC\] {
-  background-color: #0F172A !important;
-}
-
-.dark .bg-slate-50 {
-  background-color: #1E293B !important;
-}
-
-.dark .bg-slate-100 {
-  background-color: #0F172A !important;
-}
-
-.dark .border-\[\#E2E8F0\],
-.dark .border-slate-200 {
-  border-color: #334155 !important;
-}
-
-.dark .border-\[\#CBD5E1\],
-.dark .border-slate-300 {
-  border-color: #475569 !important;
-}
-
-.dark .text-\[\#1E293B\] {
-  color: #F8FAFC !important;
-}
-
-.dark .text-slate-900 {
-  color: #F8FAFC !important;
-}
-
-.dark .text-slate-800 {
-  color: #F1F5F9 !important;
-}
-
-.dark .text-slate-700 {
-  color: #E2E8F0 !important;
-}
-
-.dark .text-slate-600 {
-  color: #CBD5E1 !important;
-}
-
-.dark .text-slate-500 {
-  color: #94A3B8 !important;
-}
-
-.dark .hover\:bg-slate-50:hover {
-  background-color: #334155 !important;
-}
-
-.dark .hover\:bg-slate-100:hover {
-  background-color: #334155 !important;
-}
-
-.dark input:not([type="checkbox"]):not([type="radio"]),
-.dark select,
-.dark textarea {
-  background-color: #0F172A !important;
-  color: #F8FAFC !important;
-  border-color: #334155 !important;
-}
-
-.dark input::placeholder,
-.dark textarea::placeholder {
-  color: #64748B !important;
-}
-
-.dark select option {
-  background-color: #1E293B !important;
-  color: #F8FAFC !important;
-}
-
-/* Ensure primary blue buttons and active states retain crisp contrast */
-.dark .bg-\[\#2563EB\],
-.dark .bg-blue-600 {
-  background-color: #2563EB !important;
-  color: #FFFFFF !important;
-}
-
-.dark .text-\[\#2563EB\] {
-  color: #60A5FA !important;
-}
-
-.dark .bg-blue-50 {
-  background-color: rgba(37, 99, 235, 0.15) !important;
-  color: #93C5FD !important;
-}
-
-.dark .border-blue-200,
-.dark .border-blue-100 {
-  border-color: rgba(59, 130, 246, 0.3) !important;
+  color: #1E293B !important;
 }
 
 /* Enterprise Primary Button */

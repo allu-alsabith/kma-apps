@@ -9,31 +9,23 @@
     <meta property="og:description" content="Enterprise multi-company hypermarket ecosystem: Store Admin HR Portal, Attendo Face AI biometric tablet kiosk, Staff Mobile App, and dedicated Apps Manager for company registration and app provisioning." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="theme-color" content="#05070D" />
+    <meta name="theme-color" content="#F8FAFC" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Attendo Staff" />
     <link rel="apple-touch-icon" href="/icons/icon.svg" />
     <link id="app-manifest" rel="manifest" href="/manifest.json" />
     <script>
       (function() {
         try {
-          var saved = localStorage.getItem('attendo_theme') || localStorage.getItem('theme');
-          var isDark = saved === 'dark';
+          localStorage.removeItem('attendo_theme');
+          localStorage.removeItem('theme');
           var root = document.documentElement;
-          if (isDark) {
-            root.classList.add('dark');
-            root.setAttribute('data-theme', 'dark');
-            root.style.backgroundColor = '#0F172A';
-            root.style.color = '#F8FAFC';
-            root.style.colorScheme = 'dark';
-          } else {
-            root.classList.remove('dark');
-            root.setAttribute('data-theme', 'light');
-            root.style.backgroundColor = '#F8FAFC';
-            root.style.color = '#1E293B';
-            root.style.colorScheme = 'light';
-          }
+          root.classList.remove('dark');
+          root.removeAttribute('data-theme');
+          root.style.backgroundColor = '#F8FAFC';
+          root.style.color = '#1E293B';
+          root.style.colorScheme = 'light';
         } catch (e) {}
       })();
     </script>

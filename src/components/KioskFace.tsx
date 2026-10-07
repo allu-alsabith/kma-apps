@@ -39,7 +39,6 @@ import { formatTime12H, get12HTimeString } from '../utils/formatters';
 import { matchFaceAgainstEnrolledStaff } from '../utils/faceRecognition';
 import { AccountHelpModal } from './AccountHelpModal';
 import { NetworkSyncBadge } from './NetworkSyncBadge';
-import { ThemeToggle } from './ThemeToggle';
 
 interface KioskFaceProps {
   employees: Employee[];
@@ -570,7 +569,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       <div className="w-full max-w-lg mx-auto px-4 py-8 sm:py-16 select-none animate-scale-in text-[#1E293B]">
         <div className="bg-white rounded-xl p-6 sm:p-8 border border-[#E2E8F0] shadow-sm space-y-6">
           
-          {/* Identity Header & Theme Toggle */}
+          {/* Identity Header */}
           <div className="flex items-center justify-between gap-3.5">
             <div className="flex items-center gap-3.5">
               <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2563EB] shrink-0">
@@ -590,7 +589,6 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                 </p>
               </div>
             </div>
-            <ThemeToggle />
           </div>
 
           {/* Informational Guidance */}
@@ -727,7 +725,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       <div className="w-full flex items-center justify-between px-2 mb-2">
         <div className="flex items-center gap-2 flex-wrap">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
-          <span className="text-xs font-mono text-emerald-700 dark:text-emerald-400 font-semibold uppercase tracking-wider flex items-center gap-1.5">
+          <span className="text-xs font-mono text-emerald-700 font-semibold uppercase tracking-wider flex items-center gap-1.5">
             <Store className="w-3.5 h-3.5 shrink-0 text-[#2563EB]" />
             {companySupermarketName}
           </span>
@@ -745,17 +743,17 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                 }
                 soundService.playSuccessChime();
               }}
-              className="bg-white dark:bg-black/70 border border-slate-300 dark:border-white/20 rounded-lg px-2 py-0.5 text-[10px] text-slate-800 dark:text-amber-300 font-bold outline-none cursor-pointer hover:border-slate-400 dark:hover:border-amber-400 shadow-xs"
+              className="bg-white border border-[#CBD5E1] rounded-lg px-2 py-0.5 text-[10px] text-[#1E293B] font-bold outline-none cursor-pointer hover:border-slate-400 shadow-xs"
               title="Switch terminal to another registered supermarket store"
             >
               {companies.map((c) => (
-                <option key={c.id} value={c.id} className="bg-white dark:bg-slate-950 text-slate-800 dark:text-white font-normal">
+                <option key={c.id} value={c.id} className="bg-white text-[#1E293B] font-normal">
                   {c.supermarketName} ({c.code})
                 </option>
               ))}
             </select>
           )}
-          <span className="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300 font-mono text-[10px] font-bold border border-slate-300 dark:border-white/10">
+          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono text-[10px] font-bold border border-slate-200">
             {connectedCompany?.code || 'STORE'}
           </span>
         </div>
@@ -767,7 +765,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           {/* Audio Toggle */}
           <button
             onClick={() => setIsSoundEnabled(!isSoundEnabled)}
-            className="p-2 rounded-xl liquid-pill text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white transition-all cursor-pointer"
+            className="p-2 rounded-xl liquid-pill text-slate-700 hover:text-[#1E293B] transition-all cursor-pointer"
             title={isSoundEnabled ? 'Mute voice feedback' : 'Unmute voice feedback'}
           >
             {isSoundEnabled ? <Volume2 className="w-4 h-4 text-emerald-500" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
@@ -776,7 +774,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           {/* Fullscreen Toggle */}
           <button
             onClick={toggleFullscreen}
-            className="p-2 rounded-xl liquid-pill text-slate-700 dark:text-slate-300 hover:text-black dark:hover:text-white transition-all cursor-pointer"
+            className="p-2 rounded-xl liquid-pill text-slate-700 hover:text-[#1E293B] transition-all cursor-pointer"
             title="Toggle fullscreen tablet view"
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -791,9 +789,6 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           >
             <Lock className="w-4 h-4 text-[#2563EB]" />
           </button>
-
-          {/* Small compact icon theme toggle */}
-          <ThemeToggle />
         </div>
       </div>
 

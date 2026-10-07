@@ -53,7 +53,6 @@ import { FaceEnrollmentScanner } from './FaceEnrollmentScanner';
 import { clearBiometricCache } from '../utils/faceRecognition';
 import { AccountHelpModal } from './AccountHelpModal';
 import { NetworkSyncBadge } from './NetworkSyncBadge';
-import { ThemeToggle } from './ThemeToggle';
 import { signInWithGoogle, signOutUser, subscribeToAuth, type User } from '../services/firebase';
 import { 
   formatTime12H, 
@@ -601,7 +600,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     return (
       <div className="w-full max-w-xl mx-auto px-4 py-8 sm:py-16 select-none animate-scale-in">
         <div className="bg-white rounded-xl p-6 sm:p-8 border border-[#E2E8F0] shadow-sm space-y-6 text-[#1E293B]">
-          {/* Header Identity & Theme Toggle */}
+          {/* Header Identity */}
           <div className="flex items-center justify-between gap-3.5">
             <div className="flex items-center gap-3.5">
               <div className="w-12 h-12 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2563EB] shrink-0">
@@ -621,7 +620,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </p>
               </div>
             </div>
-            <ThemeToggle />
           </div>
 
           {/* Guidance Banner */}
@@ -893,9 +891,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
           </p>
         </div>
 
-        {/* Top-Right Navigation Header Controls: Tabs + Theme Toggle */}
+        {/* Top-Right Navigation Header Controls: Tabs */}
         <div className="flex items-center gap-2 w-full lg:w-auto justify-between lg:justify-end">
-          <div className="flex items-center gap-1 p-1 bg-[#F8FAFC] dark:bg-slate-800 rounded-lg border border-[#E2E8F0] dark:border-slate-700 overflow-x-auto">
+          <div className="flex items-center gap-1 p-1 bg-[#F8FAFC] rounded-lg border border-[#E2E8F0] overflow-x-auto">
             {[
               { id: 'OVERVIEW', label: 'Floor Live' },
               { id: 'DIRECTORY', label: `Staff Directory (${employees.length})` },
@@ -932,9 +930,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </button>
             ))}
           </div>
-
-          {/* Compact Top-Right Icon Theme Toggle */}
-          <ThemeToggle />
         </div>
       </div>
 

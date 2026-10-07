@@ -46,7 +46,6 @@ import { AdminPortal } from './components/AdminPortal';
 import { AppsManager } from './components/AppsManager';
 import { InstallModal, AppInstallTarget } from './components/InstallModal';
 import { NetworkSyncBadge } from './components/NetworkSyncBadge';
-import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { offlineSyncService } from './services/offlineSync';
 import { autoSyncService } from './services/autoSync';
 import { soundService } from './services/sound';
@@ -86,40 +85,6 @@ import {
 } from './services/firebase';
 
 function AppContent() {
-  const { isDark, theme } = useTheme();
-
-  // Directly apply the dark class, color scheme, and background styles to root <html> and <body> elements
-  useEffect(() => {
-    const root = document.documentElement;
-    const body = document.body;
-
-    if (isDark) {
-      root.classList.add('dark');
-      root.setAttribute('data-theme', 'dark');
-      root.style.backgroundColor = '#0F172A';
-      root.style.color = '#F8FAFC';
-      root.style.colorScheme = 'dark';
-      if (body) {
-        body.classList.add('dark');
-        body.setAttribute('data-theme', 'dark');
-        body.style.backgroundColor = '#0F172A';
-        body.style.color = '#F8FAFC';
-      }
-    } else {
-      root.classList.remove('dark');
-      root.setAttribute('data-theme', 'light');
-      root.style.backgroundColor = '#F8FAFC';
-      root.style.color = '#1E293B';
-      root.style.colorScheme = 'light';
-      if (body) {
-        body.classList.remove('dark');
-        body.setAttribute('data-theme', 'light');
-        body.style.backgroundColor = '#F8FAFC';
-        body.style.color = '#1E293B';
-      }
-    }
-  }, [isDark, theme]);
-
   // App Portal Mode detection: 'STAFF' (Employee Phone), 'KIOSK' (Door Tablet), 'ADMIN' (Manager HR), 'MANAGER' (Apps Manager)
   const [standaloneMode, setStandaloneMode] = useState<'STAFF' | 'KIOSK' | 'ADMIN' | 'MANAGER'>(() => {
     if (typeof window !== 'undefined') {
@@ -1133,18 +1098,18 @@ function AppContent() {
   };
 
   return (
-    <div className={`min-h-screen ${isDark ? 'dark bg-[#0F172A] text-[#F8FAFC]' : 'bg-[#F8FAFC] text-[#1E293B]'} flex flex-col relative selection:bg-[#2563EB] selection:text-white transition-colors duration-200`}>
+    <div className="min-h-screen bg-[#F8FAFC] text-[#1E293B] flex flex-col relative selection:bg-[#2563EB] selection:text-white">
       {/* Informative Quota Limit Notification Banner (Autonomous Offline Mode) */}
       {isQuotaExhausted && !isQuotaBannerDismissed && (
         <aside
           role="status"
           aria-live="polite"
-          className="w-full bg-amber-500/10 dark:bg-amber-500/15 border-b border-amber-500/30 px-3.5 py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-amber-900 dark:text-amber-200 z-40 transition-all shadow-xs"
+          className="w-full bg-amber-50 border-b border-amber-200 px-3.5 py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-amber-900 z-40 transition-all shadow-xs"
         >
           <div className="flex items-center gap-2 min-w-0">
-            <CloudOff className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <CloudOff className="w-4 h-4 text-amber-600 shrink-0" />
             <p className="leading-snug">
-              <strong className="font-semibold text-amber-950 dark:text-amber-100">Firestore Free Tier Quota Reached:</strong> Attendo is operating in <strong>Autonomous Offline-First Mode</strong>. All face punches, PIN clockings, and rosters are safely saved on this device and will auto-sync when daily quota resets tomorrow.
+              <strong className="font-semibold text-amber-950">Firestore Free Tier Quota Reached:</strong> Attendo is operating in <strong>Autonomous Offline-First Mode</strong>. All face punches, PIN clockings, and rosters are safely saved on this device and will auto-sync when daily quota resets tomorrow.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
@@ -1160,7 +1125,7 @@ function AppContent() {
             </a>
             <button
               onClick={() => setIsQuotaBannerDismissed(true)}
-              className="p-1 rounded-md hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 transition-colors cursor-pointer"
+              className="p-1 rounded-md hover:bg-amber-100 text-amber-700 transition-colors cursor-pointer"
               aria-label="Dismiss quota notice"
               title="Dismiss notice"
             >
@@ -1327,9 +1292,5 @@ function AppContent() {
 }
 
 export default function App() {
-  return (
-    <ThemeProvider>
-      <AppContent />
-    </ThemeProvider>
-  );
+  return <AppContent />;
 }
