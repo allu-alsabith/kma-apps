@@ -796,15 +796,23 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                 ) : (
                   myLogs.map((log) => (
                     <div key={log.id} className="bg-white rounded-xl p-3 border border-[#E2E8F0] shadow-xs flex items-center justify-between text-[#1E293B]">
-                      <div className="flex items-center gap-2.5">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border ${
-                          log.type === 'IN' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={`px-2.5 py-1 min-w-[40px] w-auto rounded-md flex items-center justify-center text-xs font-semibold whitespace-nowrap border shrink-0 transition-colors ${
+                          log.type === 'IN'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : log.type === 'OUT'
+                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                            : log.type === 'BREAK_START'
+                            ? 'bg-amber-50 text-amber-700 border-amber-300'
+                            : log.type === 'BREAK_END'
+                            ? 'bg-blue-50 text-blue-700 border-blue-200'
+                            : 'bg-slate-100 text-slate-700 border-slate-200'
                         }`}>
                           {log.type}
                         </div>
-                        <div>
-                          <span className="text-xs font-bold text-[#1E293B] block">{formatTime12H(log.time, true)}</span>
-                          <span className="text-[10px] text-slate-500">{log.device.replace('_', ' ')}</span>
+                        <div className="min-w-0">
+                          <span className="text-xs font-bold text-[#1E293B] block truncate">{formatTime12H(log.time, true)}</span>
+                          <span className="text-[10px] text-slate-500 block truncate">{log.device.replace('_', ' ')}</span>
                         </div>
                       </div>
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-semibold">

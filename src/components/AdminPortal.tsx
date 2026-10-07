@@ -1198,37 +1198,45 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                       key={log.id}
                       className="p-3 rounded-lg bg-[#F8FAFC] flex items-center justify-between gap-3 border border-[#E2E8F0] hover:border-slate-300 transition-all text-[#1E293B]"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-md flex items-center justify-center font-bold text-xs ${
-                          log.type === 'IN' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className={`px-3 py-1 min-w-[44px] w-auto text-xs font-semibold whitespace-nowrap rounded-md border flex items-center justify-center shrink-0 transition-colors ${
+                          log.type === 'IN'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : log.type === 'OUT'
+                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                            : log.type === 'BREAK_START'
+                            ? 'bg-amber-50 text-amber-700 border-amber-300'
+                            : log.type === 'BREAK_END'
+                            ? 'bg-blue-50 text-blue-700 border-blue-200'
+                            : 'bg-slate-100 text-slate-700 border-slate-200'
                         }`}>
                           {log.type}
                         </div>
 
-                        <div>
+                        <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-[#1E293B]">{log.employeeName}</span>
-                            <span className="text-[10px] font-mono text-slate-500">({log.employeeId})</span>
+                            <span className="text-xs font-bold text-[#1E293B] truncate">{log.employeeName}</span>
+                            <span className="text-[10px] font-mono text-slate-500 shrink-0">({log.employeeId})</span>
                           </div>
-                          <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-                            <span>{log.department}</span>
+                          <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5 truncate">
+                            <span className="truncate">{log.department}</span>
                             <span>•</span>
-                            <span className="font-mono text-slate-700">{formatTime12H(log.time, true)}</span>
+                            <span className="font-mono text-slate-700 shrink-0">{formatTime12H(log.time, true)}</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="text-right">
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                      <div className="text-right shrink-0">
+                        <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full border whitespace-nowrap ${
                           log.status === 'ON_TIME'
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : log.status === 'LATE'
                             ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                            : 'bg-slate-100 text-slate-700 border border-[#E2E8F0]'
+                            : 'bg-slate-100 text-slate-700 border-[#E2E8F0]'
                         }`}>
                           {log.status}
                         </span>
-                        <span className="block text-[10px] text-slate-400 mt-0.5">
+                        <span className="block text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">
                           {log.device === 'KIOSK_FACE' ? 'Face Terminal' : log.device === 'MOBILE_APP_GPS' ? 'Mobile GPS' : 'PIN Pad'}
                         </span>
                       </div>
