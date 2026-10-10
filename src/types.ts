@@ -186,13 +186,13 @@ export interface AppToggles {
 export const DEFAULT_APP_TOGGLES: AppToggles = {
   adminPayrollEnabled: true,
   adminLiveSplitEnabled: true,
-  kioskStrictBiometrics: false,
+  kioskStrictBiometrics: true,
   kioskAudioFeedback: true,
   kioskBackupPin: true,
   allowMobileGeoPunch: true,
   allowStaffLeaves: true,
   staffShiftAlerts: true,
   managerSelfRegisterEnabled: true,
-  managerPinRequired: false,
+  managerPinRequired: true,
   managerCloudSyncAuditEnabled: true,
 };
