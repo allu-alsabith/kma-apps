@@ -30,9 +30,7 @@ import {
   UserX,
   ShieldAlert,
   AlertOctagon,
-  CameraOff,
-  Sun,
-  Moon
+  CameraOff
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Employee, AttendanceRecord, PunchType, Company, HelpRequest, StaffNotification, AppToggles } from '../types';
@@ -121,25 +119,6 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   const [showKioskPassword, setShowKioskPassword] = useState<boolean>(false);
   const [kioskLoginError, setKioskLoginError] = useState<string | null>(null);
   const [showAccountHelpModal, setShowAccountHelpModal] = useState<boolean>(false);
-
-  // Independent Light/Dark Mode for Kiosk View (Local only, not synced across apps)
-  const [isKioskDark, setIsKioskDark] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('attendo_theme_kiosk') === 'dark';
-    }
-    return false;
-  });
-
-  const toggleKioskTheme = () => {
-    setIsKioskDark((prev) => {
-      const next = !prev;
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('attendo_theme_kiosk', next ? 'dark' : 'light');
-      }
-      soundService.playSuccessChime();
-      return next;
-    });
-  };
 
   // Filter employees belonging to the paired company
   const companyEmployees = useMemo(() => {
@@ -602,7 +581,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   // =========================================================================
   if (!isKioskLoggedIn) {
     return (
-      <div data-app-theme={isKioskDark ? 'dark' : 'light'} className="w-full max-w-lg mx-auto px-4 py-8 sm:py-16 select-none animate-scale-in text-[#1E293B]">
+      <div className="w-full max-w-lg mx-auto px-4 py-8 sm:py-16 select-none animate-scale-in text-[#1E293B]">
         <div className="bg-white rounded-xl p-6 sm:p-8 border border-[#E2E8F0] shadow-sm space-y-6">
           
           {/* Identity Header */}
@@ -625,27 +604,6 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                 </p>
               </div>
             </div>
-
-            {/* Independent Kiosk Theme Toggle */}
-            <button
-              id="btn-kiosk-login-theme-toggle"
-              type="button"
-              onClick={toggleKioskTheme}
-              className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-all border border-[#CBD5E1] shadow-xs shrink-0"
-              title={isKioskDark ? 'Switch Kiosk to Light Mode' : 'Switch Kiosk to Dark Mode'}
-            >
-              {isKioskDark ? (
-                <>
-                  <Sun className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Light</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-3.5 h-3.5 text-slate-600" />
-                  <span>Dark</span>
-                </>
-              )}
-            </button>
           </div>
 
           {/* Informational Guidance */}
@@ -776,7 +734,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   // VIEW 2: ACTIVE ENTRANCE BIOMETRIC CAMERA KIOSK
   // =========================================================================
   return (
-    <div data-app-theme={isKioskDark ? 'dark' : 'light'} className="relative w-full max-w-2xl mx-auto flex flex-col items-center select-none animate-scale-in text-[#1E293B]">
+    <div className="relative w-full max-w-2xl mx-auto flex flex-col items-center select-none animate-scale-in text-[#1E293B]">
       
       {/* TOP HEADER: STATUS & TERMINAL SETTINGS */}
       <div className="w-full flex items-center justify-between px-2 mb-2">
@@ -818,16 +776,6 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
         <div className="flex items-center gap-2">
           {/* Offline & Cloud Sync Status Badge */}
           <NetworkSyncBadge compact />
-
-          {/* Independent Kiosk Light/Dark Mode Toggle */}
-          <button
-            id="kiosk-theme-toggle-btn"
-            onClick={toggleKioskTheme}
-            className="p-2 rounded-xl liquid-pill text-slate-700 hover:text-[#1E293B] transition-all cursor-pointer shadow-xs"
-            title={isKioskDark ? 'Switch Kiosk to Light Mode' : 'Switch Kiosk to Dark Mode'}
-          >
-            {isKioskDark ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-slate-600" />}
-          </button>
 
           {/* Audio Toggle */}
           <button

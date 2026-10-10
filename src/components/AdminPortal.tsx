@@ -93,6 +93,7 @@ interface AdminPortalProps {
   onMarkNotificationAsRead?: (notificationId: string) => void;
   onDeleteNotification?: (notificationId: string) => void;
   onClearAllNotifications?: () => void;
+  onNavigatePortal?: (portal: AppPortal) => void;
 }
 
 export const AdminPortal: React.FC<AdminPortalProps> = ({
@@ -127,6 +128,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onMarkNotificationAsRead,
   onDeleteNotification,
   onClearAllNotifications,
+  onNavigatePortal,
 }) => {
   const [showAccountHelpModal, setShowAccountHelpModal] = useState<boolean>(false);
   const [adminTab, setAdminTab] = useState<'OVERVIEW' | 'DIRECTORY' | 'SHIFTS' | 'LEAVES' | 'PAYROLL' | 'SECURITY'>('OVERVIEW');
@@ -162,15 +164,34 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   }, [securityAlertNotifications, lastSeenAlertId]);
 
   // Store Admin Company Session Authentication
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const savedAuth = localStorage.getItem('attendo_admin_session_auth');
+      const savedCompId = localStorage.getItem('attendo_admin_company_id');
+      if (savedAuth === 'true') {
+        if (!savedCompId || !activeCompany || savedCompId === activeCompany.id) {
+          return true;
+        }
+      }
+    }
+    return false;
+  });
 
-  const [loginCompanyName, setLoginCompanyName] = useState<string>('');
-  const [loginCompanyCode, setLoginCompanyCode] = useState<string>('');
+  const [loginCompanyName, setLoginCompanyName] = useState<string>(() => activeCompany?.supermarketName || activeCompany?.name || '');
+  const [loginCompanyCode, setLoginCompanyCode] = useState<string>(() => activeCompany?.code || '');
   const [loginCompanyPassword, setLoginCompanyPassword] = useState<string>('');
   const [showLoginPassword, setShowLoginPassword] = useState<boolean>(false);
   const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
   const [googleUser, setGoogleUser] = useState<User | null>(null);
   const [isSigningInWithGoogle, setIsSigningInWithGoogle] = useState<boolean>(false);
+
+  // Sync login fields when active company updates
+  useEffect(() => {
+    if (activeCompany) {
+      if (!loginCompanyCode) setLoginCompanyCode(activeCompany.code || '');
+      if (!loginCompanyName) setLoginCompanyName(activeCompany.supermarketName || activeCompany.name || '');
+    }
+  }, [activeCompany, loginCompanyCode, loginCompanyName]);
 
   useEffect(() => {
     const unsub = subscribeToAuth((user) => {
@@ -782,18 +803,33 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             </button>
           </form>
 
-          {/* Account Help Option */}
-          <div className="pt-3 border-t border-[#E2E8F0] flex items-center justify-between text-xs text-slate-500">
-            <span>Can&apos;t log in or forgot password?</span>
-            <button
-              type="button"
-              id="btn-admin-account-help"
-              onClick={() => setShowAccountHelpModal(true)}
-              className="text-[#2563EB] hover:text-blue-700 font-semibold flex items-center gap-1.5 cursor-pointer transition-all hover:underline"
-            >
-              <LifeBuoy className="w-3.5 h-3.5" />
-              <span>Account Help</span>
-            </button>
+          {/* Account Help Option & Hub Switcher */}
+          <div className="pt-3 border-t border-[#E2E8F0] space-y-2">
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>Can&apos;t log in or forgot password?</span>
+              <button
+                type="button"
+                id="btn-admin-account-help"
+                onClick={() => setShowAccountHelpModal(true)}
+                className="text-[#2563EB] hover:text-blue-700 font-semibold flex items-center gap-1.5 cursor-pointer transition-all hover:underline"
+              >
+                <LifeBuoy className="w-3.5 h-3.5" />
+                <span>Account Help</span>
+              </button>
+            </div>
+            {onNavigatePortal && (
+              <div className="pt-1 flex items-center justify-center">
+                <button
+                  type="button"
+                  id="btn-admin-back-hub"
+                  onClick={() => onNavigatePortal('APPS_MANAGER')}
+                  className="text-xs text-slate-500 hover:text-[#2563EB] font-medium flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <Layers className="w-3.5 h-3.5 text-[#2563EB]" />
+                  <span>Return to Apps Manager Hub</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -893,6 +929,20 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               <LogOut className="w-3 h-3 text-slate-500" />
               <span>Sign Out</span>
             </button>
+
+            {/* Switch to Apps Manager Hub */}
+            {onNavigatePortal && (
+              <button
+                id="btn-admin-switch-hub"
+                type="button"
+                onClick={() => onNavigatePortal('APPS_MANAGER')}
+                className="px-2.5 py-1 rounded-lg bg-[#F8FAFC] hover:bg-blue-50 text-slate-700 hover:text-[#2563EB] font-semibold text-[11px] flex items-center gap-1.5 cursor-pointer transition-all border border-[#CBD5E1]"
+                title="Switch to Apps Manager Hub"
+              >
+                <Layers className="w-3 h-3 text-[#2563EB]" />
+                <span>Apps Hub</span>
+              </button>
+            )}
           </div>
           <h1 className="text-xl font-bold text-[#1E293B] tracking-tight mt-1.5">
             {activeCompany?.supermarketName || 'Store'} Manager &amp; HR Administration

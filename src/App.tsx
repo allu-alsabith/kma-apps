@@ -92,18 +92,24 @@ function AppContent() {
         localStorage.removeItem('attendo_theme');
         localStorage.removeItem('theme');
         localStorage.removeItem('retailsync_theme');
+        localStorage.removeItem('attendo_theme_staff');
+        localStorage.removeItem('attendo_theme_kiosk');
+        localStorage.removeItem('attendo_theme_manager');
+        localStorage.removeItem('attendo_theme_mode');
         sessionStorage.removeItem('attendo_theme');
         sessionStorage.removeItem('theme');
         const root = document.documentElement;
         const body = document.body;
         if (root.classList.contains('dark')) root.classList.remove('dark');
         if (root.getAttribute('data-theme') === 'dark') root.removeAttribute('data-theme');
+        if (root.getAttribute('data-app-theme')) root.removeAttribute('data-app-theme');
         root.style.backgroundColor = '#F8FAFC';
         root.style.color = '#1E293B';
         root.style.colorScheme = 'light';
         if (body) {
           if (body.classList.contains('dark')) body.classList.remove('dark');
           if (body.getAttribute('data-theme') === 'dark') body.removeAttribute('data-theme');
+          if (body.getAttribute('data-app-theme')) body.removeAttribute('data-app-theme');
           body.style.backgroundColor = '#F8FAFC';
           body.style.color = '#1E293B';
         }

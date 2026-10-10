@@ -28,9 +28,7 @@ import {
   Building2,
   Lock,
   LifeBuoy,
-  Layers,
-  Sun,
-  Moon
+  Layers
 } from 'lucide-react';
 import { Employee, AttendanceRecord, LeaveRequest, Shift, PunchType, StaffNotification, Company, HelpRequest } from '../types';
 import { formatTime12H, formatSalaryRate, formatCurrencyINR } from '../utils/formatters';
@@ -95,25 +93,6 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
   }, []);
 
   const isNativeMobileView = isMobileScreen || isStandalone || isStaffOnlyMode;
-
-  // Independent Light/Dark Mode for Staff App View (Local only, not synced across apps)
-  const [isStaffDark, setIsStaffDark] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('attendo_theme_staff') === 'dark';
-    }
-    return false;
-  });
-
-  const toggleStaffTheme = () => {
-    setIsStaffDark((prev) => {
-      const next = !prev;
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('attendo_theme_staff', next ? 'dark' : 'light');
-      }
-      soundService.playSuccessChime();
-      return next;
-    });
-  };
 
   const [showAccountHelpModal, setShowAccountHelpModal] = useState<boolean>(false);
 
@@ -354,7 +333,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
   };
 
   return (
-    <div data-app-theme={isStaffDark ? 'dark' : 'light'} className={`w-full flex flex-col items-center justify-center ${isNativeMobileView ? 'p-0 min-h-screen' : 'p-2 md:p-6'} select-none bg-[#F8FAFC] text-[#1E293B]`}>
+    <div className={`w-full flex flex-col items-center justify-center ${isNativeMobileView ? 'p-0 min-h-screen' : 'p-2 md:p-6'} select-none bg-[#F8FAFC] text-[#1E293B]`}>
       
       {/* Install on Phone quick action banner */}
       {!isNativeMobileView && onOpenInstallModal && (
@@ -389,18 +368,6 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
           {/* VIEW A: STAFF LOGIN SCREEN IF NOT AUTHENTICATED */}
           {!currentEmployee ? (
             <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col justify-between z-20">
-              <div className="flex justify-end pt-1">
-                <button
-                  id="btn-staff-login-theme-toggle"
-                  type="button"
-                  onClick={toggleStaffTheme}
-                  className="px-2 py-1 rounded-lg bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-all border border-[#CBD5E1] shadow-xs"
-                  title={isStaffDark ? 'Switch Staff to Light Mode' : 'Switch Staff to Dark Mode'}
-                >
-                  {isStaffDark ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
-                  <span>{isStaffDark ? 'Light' : 'Dark'}</span>
-                </button>
-              </div>
               <div className="pt-2 text-center">
                 <div className="w-12 h-12 rounded-xl mx-auto mb-2.5 bg-blue-50 border border-blue-200 flex items-center justify-center text-[#2563EB] shadow-xs">
                   <ScanFace className="w-6 h-6" />
@@ -581,15 +548,6 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
 
                   <div className="flex items-center gap-1.5">
                     <NetworkSyncBadge compact />
-                    {/* Independent Staff Theme Toggle */}
-                    <button
-                      id="btn-staff-theme-toggle"
-                      onClick={toggleStaffTheme}
-                      title={isStaffDark ? 'Switch Staff to Light Mode' : 'Switch Staff to Dark Mode'}
-                      className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-[#E2E8F0] transition-all cursor-pointer shadow-xs"
-                    >
-                      {isStaffDark ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-slate-600" />}
-                    </button>
                     <button
                       id="btn-staff-notifications-toggle"
                       onClick={() => setShowNotificationsModal(true)}

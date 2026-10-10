@@ -38,9 +38,7 @@ import {
   Server,
   Globe,
   Tag,
-  PlusCircle,
-  Sun,
-  Moon
+  PlusCircle
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { Company, Employee, AttendanceRecord, AppPortal, HelpRequest, Shift, LeaveRequest, StaffNotification, DEFAULT_DEPARTMENTS, SUGGESTED_DEPARTMENTS, AppToggles, DEFAULT_APP_TOGGLES } from '../types';
@@ -360,25 +358,6 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
   // Revealed passwords map
   const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-
-  // Independent Light/Dark Mode for Apps Manager / Master Control Hub (Local only, not synced across apps)
-  const [isManagerDark, setIsManagerDark] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('attendo_theme_manager') === 'dark';
-    }
-    return false;
-  });
-
-  const toggleManagerTheme = () => {
-    setIsManagerDark((prev) => {
-      const next = !prev;
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('attendo_theme_manager', next ? 'dark' : 'light');
-      }
-      soundService.playSuccessChime();
-      return next;
-    });
-  };
 
   // QR Code Generation Modal
   const [qrModalApp, setQrModalApp] = useState<{ name: string; url: string; target: string } | null>(null);
@@ -720,7 +699,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
   // APPS MANAGER DASHBOARD (MASTER HUB)
   // ==========================================
   return (
-    <div data-app-theme={isManagerDark ? 'dark' : 'light'} className="w-full max-w-7xl mx-auto p-4 md:p-6 space-y-6 select-none text-[#1E293B]">
+    <div className="w-full max-w-7xl mx-auto p-4 md:p-6 space-y-6 select-none text-[#1E293B]">
       
       {/* Discreet Standalone Bar if launched with ?app=manager */}
       {isStandalone && (
@@ -812,27 +791,6 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
             >
               <Store className="w-3.5 h-3.5 text-[#2563EB]" />
               <span>Launch Store Admin</span>
-            </button>
-
-            {/* Independent Manager Light/Dark Mode Toggle */}
-            <button
-              id="btn-manager-theme-toggle"
-              type="button"
-              onClick={toggleManagerTheme}
-              className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-[#CBD5E1] font-semibold text-[11px] flex items-center gap-1.5 cursor-pointer transition-all shadow-xs"
-              title={isManagerDark ? 'Switch Manager to Light Mode' : 'Switch Manager to Dark Mode'}
-            >
-              {isManagerDark ? (
-                <>
-                  <Sun className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Light</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-3.5 h-3.5 text-slate-600" />
-                  <span>Dark</span>
-                </>
-              )}
             </button>
           </div>
 

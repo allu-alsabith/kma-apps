@@ -33,6 +33,7 @@ interface InstallModalProps {
   initialApp?: AppInstallTarget;
   onLaunchApp?: (target: AppInstallTarget) => void;
   isManagerHub?: boolean;
+  companyCode?: string;
 }
 
 export const InstallModal: React.FC<InstallModalProps> = ({
@@ -41,6 +42,7 @@ export const InstallModal: React.FC<InstallModalProps> = ({
   initialApp = 'STAFF',
   onLaunchApp,
   isManagerHub = false,
+  companyCode,
 }) => {
   const [selectedApp, setSelectedApp] = useState<AppInstallTarget>(initialApp);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
@@ -64,10 +66,14 @@ export const InstallModal: React.FC<InstallModalProps> = ({
       else if (target === 'KIOSK') url.searchParams.set('app', 'kiosk');
       else if (target === 'ADMIN') url.searchParams.set('app', 'admin');
       else if (target === 'MANAGER') url.searchParams.set('app', 'manager');
+      if (companyCode && target !== 'MANAGER') {
+        url.searchParams.set('company', companyCode);
+      }
       return url.toString();
     }
     const slug = target === 'STAFF' ? 'staff' : target === 'KIOSK' ? 'kiosk' : target === 'ADMIN' ? 'admin' : 'manager';
-    return `https://attendo.local/?app=${slug}`;
+    const compQuery = companyCode && target !== 'MANAGER' ? `&company=${encodeURIComponent(companyCode)}` : '';
+    return `https://attendo.local/?app=${slug}${compQuery}`;
   };
 
   const activeAppUrl = getAppUrl(selectedApp);
