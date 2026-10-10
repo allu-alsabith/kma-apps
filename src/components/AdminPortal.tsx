@@ -1183,7 +1183,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </div>
               )}
 
-              <div className="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
+              <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1.5">
                 {attendanceLogs.length === 0 ? (
                   <div className="py-12 px-4 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] text-center">
                     <Clock className="w-10 h-10 text-slate-400 mx-auto mb-2" />
@@ -1196,7 +1196,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   attendanceLogs.map((log) => (
                     <div
                       key={log.id}
-                      className="p-3 rounded-lg bg-[#F8FAFC] flex items-center justify-between gap-3 border border-[#E2E8F0] hover:border-slate-300 transition-all text-[#1E293B]"
+                      className="px-4 py-3.5 rounded-lg bg-[#F8FAFC] flex items-center justify-between gap-3 border border-[#E2E8F0] hover:border-slate-300 transition-all text-[#1E293B] shadow-[0_1px_2px_rgba(0,0,0,0.02)] min-h-[64px]"
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className={`px-3 py-1 min-w-[44px] w-auto text-xs font-semibold whitespace-nowrap rounded-md border flex items-center justify-center shrink-0 transition-colors ${

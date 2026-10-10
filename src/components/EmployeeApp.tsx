@@ -783,7 +783,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
 
             {/* TAB CONTENT: ATTENDANCE HISTORY */}
             {activeTab === 'HISTORY' && (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-xs font-bold text-[#1E293B]">Your Punch Logs</span>
                   <span className="text-[10px] text-slate-500">{myLogs.length} events logged</span>
@@ -795,7 +795,7 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
                   </div>
                 ) : (
                   myLogs.map((log) => (
-                    <div key={log.id} className="bg-white rounded-xl p-3 border border-[#E2E8F0] shadow-xs flex items-center justify-between text-[#1E293B]">
+                    <div key={log.id} className="bg-white rounded-xl px-3.5 py-3 border border-[#E2E8F0] shadow-xs flex items-center justify-between text-[#1E293B] min-h-[56px]">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className={`px-2.5 py-1 min-w-[40px] w-auto rounded-md flex items-center justify-center text-xs font-semibold whitespace-nowrap border shrink-0 transition-colors ${
                           log.type === 'IN'
