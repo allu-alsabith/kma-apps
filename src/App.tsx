@@ -849,17 +849,30 @@ function AppContent() {
     offlineSyncService.enqueue('SYNC_EMPLOYEE', enrichedEmp);
     autoSyncService.broadcast('EMPLOYEE_UPDATED', enrichedEmp);
 
-    // If shift assignment was updated, dispatch in-app notification to staff member
-    if (oldEmp && oldEmp.shiftId !== enrichedEmp.shiftId) {
+    // If shift assignment or timing was updated, dispatch in-app notification to staff member
+    if (
+      oldEmp &&
+      (oldEmp.shiftId !== enrichedEmp.shiftId ||
+        oldEmp.shiftStartTime !== enrichedEmp.shiftStartTime ||
+        oldEmp.shiftEndTime !== enrichedEmp.shiftEndTime)
+    ) {
       const newShift = shifts.find((s) => s.id === enrichedEmp.shiftId);
       const oldShift = shifts.find((s) => s.id === oldEmp.shiftId);
+      const timingLabel =
+        enrichedEmp.shiftStartTime && enrichedEmp.shiftEndTime
+          ? `${enrichedEmp.shiftStartTime} - ${enrichedEmp.shiftEndTime}`
+          : newShift?.badge || '';
+      const oldTimingLabel =
+        oldEmp.shiftStartTime && oldEmp.shiftEndTime
+          ? `${oldEmp.shiftStartTime} - ${oldEmp.shiftEndTime}`
+          : oldShift?.badge || '';
       const now = new Date();
       const notif: StaffNotification = {
         id: `notif-shift-assign-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         employeeId: enrichedEmp.id,
         employeeName: enrichedEmp.name,
         title: 'Shift Assignment Updated',
-        message: `Your supermarket roster shift has been changed from ${oldShift?.name || 'Previous Shift'} to ${newShift?.name || 'New Shift'} (${newShift?.badge || ''}).`,
+        message: `Your supermarket roster shift has been updated to ${newShift?.name || 'Shift'} (${timingLabel}).`,
         type: 'SHIFT_UPDATE',
         timestamp: now.toISOString(),
         timeFormatted: get12HTimeString(now, false),
@@ -867,8 +880,8 @@ function AppContent() {
         meta: {
           shiftId: enrichedEmp.shiftId,
           shiftName: newShift?.name,
-          oldTimings: oldShift?.badge,
-          newTimings: newShift?.badge,
+          oldTimings: oldTimingLabel,
+          newTimings: timingLabel,
         },
       };
       setNotifications((prev) => [notif, ...prev]);

@@ -27,6 +27,7 @@ export type AutoSyncActionType =
   | 'HELP_REQUEST_ADDED'
   | 'HELP_REQUEST_STATUS'
   | 'ACTIVE_COMPANY_CHANGED'
+  | 'APP_TOGGLES_CHANGED'
   | 'FULL_DATA_SYNC';
 
 export interface AutoSyncMessage {

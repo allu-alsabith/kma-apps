@@ -38,10 +38,12 @@ import {
   Server,
   Globe,
   Tag,
-  PlusCircle
+  PlusCircle,
+  Sun,
+  Moon
 } from 'lucide-react';
 import QRCode from 'qrcode';
-import { Company, Employee, AttendanceRecord, AppPortal, HelpRequest, Shift, LeaveRequest, StaffNotification, DEFAULT_DEPARTMENTS, SUGGESTED_DEPARTMENTS } from '../types';
+import { Company, Employee, AttendanceRecord, AppPortal, HelpRequest, Shift, LeaveRequest, StaffNotification, DEFAULT_DEPARTMENTS, SUGGESTED_DEPARTMENTS, AppToggles, DEFAULT_APP_TOGGLES } from '../types';
 import { soundService } from '../services/sound';
 import { AppInstallTarget } from './InstallModal';
 import { signInWithGoogle, signOutUser, subscribeToAuth, syncAllDataToFirestore, type User as FirebaseUser } from '../services/firebase';
@@ -66,6 +68,8 @@ interface AppsManagerProps {
   helpRequests?: HelpRequest[];
   onUpdateHelpRequestStatus?: (id: string, status: HelpRequest['status']) => void;
   onDeleteHelpRequest?: (id: string) => void;
+  appToggles?: AppToggles;
+  onUpdateAppToggle?: (key: keyof AppToggles, value: boolean) => void;
 }
 
 // Reusable selector for store department floor coverage and custom coverage zones
@@ -250,6 +254,8 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
   helpRequests = [],
   onUpdateHelpRequestStatus,
   onDeleteHelpRequest,
+  appToggles: externalAppToggles,
+  onUpdateAppToggle: externalOnUpdateAppToggle,
 }) => {
   // Master Apps Manager selected company for preview and app provisioning
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(() => {
@@ -355,57 +361,58 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
   const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
+  // Independent Light/Dark Mode for Apps Manager / Master Control Hub (Local only, not synced across apps)
+  const [isManagerDark, setIsManagerDark] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('attendo_theme_manager') === 'dark';
+    }
+    return false;
+  });
+
+  const toggleManagerTheme = () => {
+    setIsManagerDark((prev) => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('attendo_theme_manager', next ? 'dark' : 'light');
+      }
+      soundService.playSuccessChime();
+      return next;
+    });
+  };
+
   // QR Code Generation Modal
   const [qrModalApp, setQrModalApp] = useState<{ name: string; url: string; target: string } | null>(null);
   const [generatedQrDataUrl, setGeneratedQrDataUrl] = useState<string>('');
 
-  // Per-company App Access Toggles (Stored in localStorage for persistence)
-  const [appToggles, setAppToggles] = useState<{
-    allowMobileGeoPunch: boolean;
-    allowStaffLeaves: boolean;
-    staffShiftAlerts: boolean;
-    kioskStrictBiometrics: boolean;
-    kioskAudioFeedback: boolean;
-    kioskBackupPin: boolean;
-    adminPayrollEnabled: boolean;
-    adminLiveSplitEnabled: boolean;
-    managerSelfRegisterEnabled: boolean;
-    managerPinRequired: boolean;
-    managerCloudSyncAuditEnabled: boolean;
-  }>(() => {
+  // Per-company App Access Toggles (Synchronized across Master Control Hub and Web Address Apps)
+  const [localAppToggles, setLocalAppToggles] = useState<AppToggles>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('attendo_app_access_toggles');
       if (saved) {
         try {
-          return JSON.parse(saved);
+          return { ...DEFAULT_APP_TOGGLES, ...JSON.parse(saved) };
         } catch {
           // ignore
         }
       }
     }
-    return {
-      allowMobileGeoPunch: true,
-      allowStaffLeaves: true,
-      staffShiftAlerts: true,
-      kioskStrictBiometrics: true,
-      kioskAudioFeedback: true,
-      kioskBackupPin: true,
-      adminPayrollEnabled: true,
-      adminLiveSplitEnabled: true,
-      managerSelfRegisterEnabled: true,
-      managerPinRequired: true,
-      managerCloudSyncAuditEnabled: true,
-    };
+    return DEFAULT_APP_TOGGLES;
   });
 
-  const updateAppToggle = (key: keyof typeof appToggles, value: boolean) => {
-    setAppToggles((prev) => {
-      const updated = { ...prev, [key]: value };
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('attendo_app_access_toggles', JSON.stringify(updated));
-      }
-      return updated;
-    });
+  const appToggles = externalAppToggles || localAppToggles;
+
+  const updateAppToggle = (key: keyof AppToggles, value: boolean) => {
+    if (externalOnUpdateAppToggle) {
+      externalOnUpdateAppToggle(key, value);
+    } else {
+      setLocalAppToggles((prev) => {
+        const updated = { ...prev, [key]: value };
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('attendo_app_access_toggles', JSON.stringify(updated));
+        }
+        return updated;
+      });
+    }
     soundService.playSuccessChime();
   };
 
@@ -713,7 +720,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
   // APPS MANAGER DASHBOARD (MASTER HUB)
   // ==========================================
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 md:p-6 space-y-6 select-none text-[#1E293B]">
+    <div data-app-theme={isManagerDark ? 'dark' : 'light'} className="w-full max-w-7xl mx-auto p-4 md:p-6 space-y-6 select-none text-[#1E293B]">
       
       {/* Discreet Standalone Bar if launched with ?app=manager */}
       {isStandalone && (
@@ -805,6 +812,27 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
             >
               <Store className="w-3.5 h-3.5 text-[#2563EB]" />
               <span>Launch Store Admin</span>
+            </button>
+
+            {/* Independent Manager Light/Dark Mode Toggle */}
+            <button
+              id="btn-manager-theme-toggle"
+              type="button"
+              onClick={toggleManagerTheme}
+              className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-[#CBD5E1] font-semibold text-[11px] flex items-center gap-1.5 cursor-pointer transition-all shadow-xs"
+              title={isManagerDark ? 'Switch Manager to Light Mode' : 'Switch Manager to Dark Mode'}
+            >
+              {isManagerDark ? (
+                <>
+                  <Sun className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Light</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-3.5 h-3.5 text-slate-600" />
+                  <span>Dark</span>
+                </>
+              )}
             </button>
           </div>
 

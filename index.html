@@ -19,16 +19,17 @@
     <script>
       (function() {
         try {
-          localStorage.removeItem('attendo_theme');
-          localStorage.removeItem('theme');
-          localStorage.removeItem('retailsync_theme');
-          sessionStorage.clear();
+          var saved = localStorage.getItem('attendo_theme_mode');
           var root = document.documentElement;
-          root.classList.remove('dark');
-          root.removeAttribute('data-theme');
-          root.style.backgroundColor = '#F8FAFC';
-          root.style.color = '#1E293B';
-          root.style.colorScheme = 'light';
+          if (saved === 'dark') {
+            root.classList.add('dark');
+            root.setAttribute('data-theme', 'dark');
+            root.style.colorScheme = 'dark';
+          } else {
+            root.classList.remove('dark');
+            root.setAttribute('data-theme', 'light');
+            root.style.colorScheme = 'light';
+          }
         } catch (e) {}
 
         if ('serviceWorker' in navigator) {

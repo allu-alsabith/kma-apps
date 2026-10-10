@@ -11,6 +11,8 @@
         "department": { "type": "string", "description": "Hypermarket department" },
         "phone": { "type": "string", "description": "Contact phone number" },
         "shiftId": { "type": "string", "description": "Assigned shift schedule ID" },
+        "shiftStartTime": { "type": "string", "description": "Shift start time e.g. 09:00 AM" },
+        "shiftEndTime": { "type": "string", "description": "Shift end time e.g. 05:00 PM" },
         "faceTemplate": { "type": "string", "description": "Biometric face vector or enrollment status" },
         "avatar": { "type": "string", "description": "Profile photo or face avatar URL" },
         "pin": { "type": "string", "description": "4-digit security PIN for terminal fallback" },

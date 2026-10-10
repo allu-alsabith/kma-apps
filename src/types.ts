@@ -69,6 +69,8 @@ export interface Employee {
   role: string;
   department: Department;
   shiftId: ShiftId;
+  shiftStartTime?: string; // e.g. "09:00 AM"
+  shiftEndTime?: string;   // e.g. "05:00 PM"
   phone: string;
   email: string;
   pin: string; // 4-digit PIN for backup kiosk punch
@@ -166,3 +168,31 @@ export interface HelpRequest {
   status: 'PENDING' | 'RESOLVED';
   createdAt: string; // ISO string
 }
+
+export interface AppToggles {
+  adminPayrollEnabled: boolean;
+  adminLiveSplitEnabled: boolean;
+  kioskStrictBiometrics: boolean;
+  kioskAudioFeedback: boolean;
+  kioskBackupPin: boolean;
+  allowMobileGeoPunch: boolean;
+  allowStaffLeaves: boolean;
+  staffShiftAlerts: boolean;
+  managerSelfRegisterEnabled: boolean;
+  managerPinRequired: boolean;
+  managerCloudSyncAuditEnabled: boolean;
+}
+
+export const DEFAULT_APP_TOGGLES: AppToggles = {
+  adminPayrollEnabled: true,
+  adminLiveSplitEnabled: true,
+  kioskStrictBiometrics: false,
+  kioskAudioFeedback: true,
+  kioskBackupPin: true,
+  allowMobileGeoPunch: true,
+  allowStaffLeaves: true,
+  staffShiftAlerts: true,
+  managerSelfRegisterEnabled: true,
+  managerPinRequired: false,
+  managerCloudSyncAuditEnabled: true,
+};
