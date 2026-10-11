@@ -60,6 +60,11 @@ export interface Company {
   contactPhone?: string;
   isActive?: boolean;
   departments?: string[]; // Configured department floor coverage for this company
+  googleSheetUrl?: string; // Google Apps Script Web App URL ending in /exec
+  settings?: {
+    googleSheetUrl?: string;
+    [key: string]: any;
+  };
 }
 
 export interface Employee {

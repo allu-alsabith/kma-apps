@@ -44,7 +44,11 @@ import {
   ShieldAlert,
   Camera,
   AlertOctagon,
-  ZoomIn
+  ZoomIn,
+  Settings,
+  ChevronDown,
+  ChevronUp,
+  HelpCircle
 } from 'lucide-react';
 import { Employee, Shift, AttendanceRecord, LeaveRequest, Department, PayBasis, StaffNotification, Company, AppPortal, HelpRequest, DEFAULT_DEPARTMENTS } from '../types';
 import { soundService } from '../services/sound';
@@ -52,7 +56,8 @@ import { FaceEnrollmentScanner } from './FaceEnrollmentScanner';
 import { clearBiometricCache } from '../utils/faceRecognition';
 import { AccountHelpModal } from './AccountHelpModal';
 import { NetworkSyncBadge } from './NetworkSyncBadge';
-import { signInWithGoogle, signOutUser, subscribeToAuth, type User } from '../services/firebase';
+import { signInWithGoogle, signOutUser, subscribeToAuth, saveCompanyGoogleSheetUrl, type User } from '../services/firebase';
+import { isValidGoogleSheetWebAppUrl, testGoogleSheetConnection } from '../services/googleSheets';
 import { 
   formatTime12H, 
   get12HTimeString, 
@@ -131,9 +136,200 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onNavigatePortal,
 }) => {
   const [showAccountHelpModal, setShowAccountHelpModal] = useState<boolean>(false);
-  const [adminTab, setAdminTab] = useState<'OVERVIEW' | 'DIRECTORY' | 'SHIFTS' | 'LEAVES' | 'PAYROLL' | 'SECURITY'>('OVERVIEW');
+  const [adminTab, setAdminTab] = useState<'OVERVIEW' | 'DIRECTORY' | 'SHIFTS' | 'LEAVES' | 'PAYROLL' | 'SECURITY' | 'SETTINGS'>('OVERVIEW');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState<string>('ALL');
+
+  // Google Sheets Integration Settings states
+  const [googleSheetUrlInput, setGoogleSheetUrlInput] = useState<string>(() => {
+    return activeCompany?.googleSheetUrl || activeCompany?.settings?.googleSheetUrl || '';
+  });
+  const [isSavingGoogleSheet, setIsSavingGoogleSheet] = useState<boolean>(false);
+  const [isTestingGoogleSheet, setIsTestingGoogleSheet] = useState<boolean>(false);
+  const [googleSheetFeedback, setGoogleSheetFeedback] = useState<{
+    type: 'success' | 'error' | 'info';
+    message: string;
+  } | null>(null);
+  const [isSetupGuideExpanded, setIsSetupGuideExpanded] = useState<boolean>(true);
+  const [hasCopiedScript, setHasCopiedScript] = useState<boolean>(false);
+
+  const googleAppsScriptTemplate = `function doPost(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    // Add header row automatically if sheet is brand new
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(["Timestamp", "Employee Name", "Employee ID", "Status", "Punch Type", "Department"]);
+    }
+    var data = JSON.parse(e.postData.contents);
+    sheet.appendRow([
+      data.Timestamp || data.timestamp || new Date().toISOString(),
+      data["Employee Name"] || data.employeeName || "Unknown",
+      data["Employee ID"] || data.employeeId || "",
+      data.Status || data.status || "PRESENT",
+      data["Punch Type"] || data.type || "IN",
+      data.Department || data.department || ""
+    ]);
+    return ContentService.createTextOutput(JSON.stringify({ result: "success" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({ result: "error", error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}`;
+
+  const handleCopyScriptTemplate = () => {
+    navigator.clipboard.writeText(googleAppsScriptTemplate);
+    setHasCopiedScript(true);
+    soundService.playSuccessChime();
+    setGoogleSheetFeedback({
+      type: 'success',
+      message: 'Apps Script template copied to clipboard! Paste it into Extensions > Apps Script in your Google Sheet.',
+    });
+    setTimeout(() => {
+      setHasCopiedScript(false);
+    }, 2800);
+  };
+
+  // Sync state whenever activeCompany changes
+  useEffect(() => {
+    setGoogleSheetUrlInput(activeCompany?.googleSheetUrl || activeCompany?.settings?.googleSheetUrl || '');
+    setGoogleSheetFeedback(null);
+  }, [activeCompany?.id, activeCompany?.googleSheetUrl, activeCompany?.settings?.googleSheetUrl]);
+
+  const handleSaveGoogleSheetUrl = async () => {
+    if (!activeCompany) {
+      setGoogleSheetFeedback({ type: 'error', message: 'No active company selected.' });
+      return;
+    }
+
+    const trimmedUrl = googleSheetUrlInput.trim();
+    if (!trimmedUrl) {
+      setGoogleSheetFeedback({
+        type: 'error',
+        message: 'Please paste your Google Apps Script Web App URL.',
+      });
+      return;
+    }
+
+    if (!isValidGoogleSheetWebAppUrl(trimmedUrl)) {
+      setGoogleSheetFeedback({
+        type: 'error',
+        message:
+          'Invalid URL format. The URL must start with https://script.google.com/macros/s/ and end in /exec',
+      });
+      return;
+    }
+
+    setIsSavingGoogleSheet(true);
+    setGoogleSheetFeedback(null);
+
+    try {
+      // 1. Store securely inside the current company's document in Firebase (under companies/{companyId}/settings/googleSheetUrl)
+      await saveCompanyGoogleSheetUrl(activeCompany.id, trimmedUrl);
+
+      // 2. Update local state
+      const updatedCompany: Company = {
+        ...activeCompany,
+        googleSheetUrl: trimmedUrl,
+        settings: {
+          ...(activeCompany.settings || {}),
+          googleSheetUrl: trimmedUrl,
+        },
+      };
+
+      if (onUpdateCompany) {
+        onUpdateCompany(updatedCompany);
+      }
+
+      soundService.playSuccessChime();
+      setGoogleSheetFeedback({
+        type: 'success',
+        message: 'Google Sheet Web App URL saved successfully to company document in Firebase! Live punches will sync in real time.',
+      });
+    } catch (err: any) {
+      soundService.playWarningTone();
+      setGoogleSheetFeedback({
+        type: 'error',
+        message: err?.message || 'Failed to save Google Sheet URL to Firebase.',
+      });
+    } finally {
+      setIsSavingGoogleSheet(false);
+    }
+  };
+
+  const handleDisconnectGoogleSheetUrl = async () => {
+    if (!activeCompany) return;
+
+    setIsSavingGoogleSheet(true);
+    setGoogleSheetFeedback(null);
+
+    try {
+      // 1. Clear URL in Firebase
+      await saveCompanyGoogleSheetUrl(activeCompany.id, null);
+
+      // 2. Update local state
+      const updatedCompany: Company = {
+        ...activeCompany,
+        googleSheetUrl: '',
+        settings: {
+          ...(activeCompany.settings || {}),
+          googleSheetUrl: '',
+        },
+      };
+
+      if (onUpdateCompany) {
+        onUpdateCompany(updatedCompany);
+      }
+
+      setGoogleSheetUrlInput('');
+      soundService.playSuccessChime();
+      setGoogleSheetFeedback({
+        type: 'info',
+        message: 'Google Sheet integration disconnected and removed from company document in Firebase.',
+      });
+    } catch (err: any) {
+      soundService.playWarningTone();
+      setGoogleSheetFeedback({
+        type: 'error',
+        message: err?.message || 'Failed to remove Google Sheet URL from Firebase.',
+      });
+    } finally {
+      setIsSavingGoogleSheet(false);
+    }
+  };
+
+  const handleTestGoogleSheetPing = async () => {
+    const trimmedUrl = googleSheetUrlInput.trim();
+    if (!trimmedUrl) {
+      setGoogleSheetFeedback({
+        type: 'error',
+        message: 'Enter a Google Sheet URL first before testing.',
+      });
+      return;
+    }
+
+    setIsTestingGoogleSheet(true);
+    setGoogleSheetFeedback(null);
+
+    try {
+      const res = await testGoogleSheetConnection(trimmedUrl, activeCompany?.supermarketName || activeCompany?.name);
+      if (res.success) {
+        soundService.playSuccessChime();
+        setGoogleSheetFeedback({ type: 'success', message: res.message });
+      } else {
+        soundService.playWarningTone();
+        setGoogleSheetFeedback({ type: 'error', message: res.message });
+      }
+    } catch (err: any) {
+      soundService.playWarningTone();
+      setGoogleSheetFeedback({
+        type: 'error',
+        message: err?.message || 'Failed to dispatch test ping.',
+      });
+    } finally {
+      setIsTestingGoogleSheet(false);
+    }
+  };
 
   // Real-time Push Notification & Security Inspection States
   const [liveSecurityToast, setLiveSecurityToast] = useState<StaffNotification | null>(null);
@@ -976,6 +1172,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     ? `Security Alerts (${securityAlertNotifications.length})` 
                     : 'Security Alerts' 
               },
+              { id: 'SETTINGS', label: 'Company Settings' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -2365,6 +2562,357 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             )}
           </div>
 
+        </div>
+      )}
+
+      {/* COMPANY SETTINGS & GOOGLE SHEETS INTEGRATION TAB */}
+      {adminTab === 'SETTINGS' && (
+        <div className="space-y-6 text-[#1E293B] animate-fade-in">
+          {/* Header Card */}
+          <div className="bg-white rounded-xl p-6 border border-[#E2E8F0] shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-[#2563EB] shrink-0">
+                <Settings className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-lg font-bold text-[#1E293B] tracking-tight">
+                    Company Settings &amp; External Integrations
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#2563EB] border border-blue-200 font-mono text-[10px] font-bold">
+                    {activeCompany?.code || 'STORE'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+                  Manage configuration for <strong>{activeCompany?.supermarketName || activeCompany?.name || 'Current Company'}</strong>, 
+                  including Google Sheets real-time attendance syncing, store profile, and company security credentials.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 font-medium">Company ID:</span>
+              <code className="px-2 py-1 rounded bg-slate-100 text-slate-700 text-xs font-mono border border-slate-200">
+                {activeCompany?.id || 'N/A'}
+              </code>
+            </div>
+          </div>
+
+          {/* GOOGLE SHEETS LIVE ATTENDANCE INTEGRATION CARD */}
+          <div className="bg-white rounded-xl p-6 border border-[#E2E8F0] shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E2E8F0]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-[#1E293B]">
+                    Google Sheets Attendance Integration
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Automatically sync every staff check-in and check-out to your Google Spreadsheet in real time
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Pill */}
+              <div className="flex items-center gap-2">
+                {activeCompany?.googleSheetUrl || activeCompany?.settings?.googleSheetUrl ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Connected &amp; Live
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold">
+                    <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                    Not Connected
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Feedback Alert Banner */}
+            {googleSheetFeedback && (
+              <div
+                className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 transition-all ${
+                  googleSheetFeedback.type === 'success'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : googleSheetFeedback.type === 'error'
+                    ? 'bg-rose-50 border-rose-200 text-rose-800'
+                    : 'bg-blue-50 border-blue-200 text-blue-800'
+                }`}
+              >
+                {googleSheetFeedback.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                ) : googleSheetFeedback.type === 'error' ? (
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                ) : (
+                  <Activity className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                )}
+                <div className="flex-1 font-medium">{googleSheetFeedback.message}</div>
+                <button
+                  type="button"
+                  onClick={() => setGoogleSheetFeedback(null)}
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Input Form Section */}
+            <div className="space-y-4 max-w-3xl">
+              <div>
+                <label
+                  htmlFor="input-google-sheet-url"
+                  className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5"
+                >
+                  Google Sheet Web App URL
+                </label>
+                <div className="relative">
+                  <input
+                    id="input-google-sheet-url"
+                    type="url"
+                    value={googleSheetUrlInput}
+                    onChange={(e) => {
+                      setGoogleSheetUrlInput(e.target.value);
+                      if (googleSheetFeedback) setGoogleSheetFeedback(null);
+                    }}
+                    placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#CBD5E1] text-xs font-mono text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] transition-all shadow-2xs"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                  Provide your published Google Apps Script Web App URL ending in <code className="px-1 py-0.5 bg-slate-100 rounded text-slate-700 font-mono text-[10px]">/exec</code>. 
+                  Attendance punches (Timestamp, Employee Name, Employee ID, Status) will be securely dispatched via background POST requests.
+                </p>
+              </div>
+
+              {/* Action Buttons: Save, Disconnect/Remove, and Test */}
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <button
+                  id="btn-save-google-sheet-url"
+                  type="button"
+                  onClick={handleSaveGoogleSheetUrl}
+                  disabled={isSavingGoogleSheet || !googleSheetUrlInput.trim()}
+                  className="px-4 py-2 rounded-xl bg-[#2563EB] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all shadow-xs"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{isSavingGoogleSheet ? 'Saving to Firebase...' : 'Save'}</span>
+                </button>
+
+                {(activeCompany?.googleSheetUrl || activeCompany?.settings?.googleSheetUrl || googleSheetUrlInput) && (
+                  <button
+                    id="btn-disconnect-google-sheet-url"
+                    type="button"
+                    onClick={handleDisconnectGoogleSheetUrl}
+                    disabled={isSavingGoogleSheet}
+                    className="px-4 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all shadow-xs"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Disconnect / Remove</span>
+                  </button>
+                )}
+
+                {googleSheetUrlInput.trim() && (
+                  <button
+                    id="btn-test-google-sheet-url"
+                    type="button"
+                    onClick={handleTestGoogleSheetPing}
+                    disabled={isTestingGoogleSheet}
+                    className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all shadow-xs ml-auto"
+                  >
+                    <Activity className={`w-3.5 h-3.5 ${isTestingGoogleSheet ? 'animate-spin' : ''}`} />
+                    <span>{isTestingGoogleSheet ? 'Sending Ping...' : 'Test Connection'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* HOW TO SETUP GOOGLE SHEET INSTRUCTION CARD */}
+            <div className="bg-[#F8FAFC] rounded-2xl border border-[#CBD5E1] overflow-hidden transition-all shadow-xs">
+              {/* Card Header with Expand/Collapse Toggle */}
+              <button
+                type="button"
+                onClick={() => setIsSetupGuideExpanded(!isSetupGuideExpanded)}
+                className="w-full p-4 sm:p-5 flex items-center justify-between text-left hover:bg-slate-100/60 transition-colors cursor-pointer"
+                title={isSetupGuideExpanded ? 'Collapse instructions' : 'Expand instructions'}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-[#2563EB] shrink-0">
+                    <HelpCircle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h5 className="text-sm font-bold text-[#1E293B]">
+                        How to Setup Google Sheet
+                      </h5>
+                      <span className="px-2 py-0.5 rounded-full bg-blue-50 text-[#2563EB] border border-blue-200 font-semibold text-[10px] uppercase tracking-wider">
+                        5 Simple Steps
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Follow these 5 simple steps to connect any Google Spreadsheet for real-time attendance logging.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold shrink-0">
+                  <span className="hidden sm:inline">{isSetupGuideExpanded ? 'Hide Guide' : 'Show Guide'}</span>
+                  {isSetupGuideExpanded ? (
+                    <ChevronUp className="w-4 h-4 text-slate-600" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-600" />
+                  )}
+                </div>
+              </button>
+
+              {/* Expandable Content Area */}
+              {isSetupGuideExpanded && (
+                <div className="px-4 sm:px-6 pb-6 pt-1 border-t border-slate-200/80 space-y-5 animate-fade-in text-xs">
+                  
+                  {/* Step-by-Step Cards Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-3">
+                    {/* Step 1 */}
+                    <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-[#2563EB] text-white font-bold text-[11px] flex items-center justify-center shrink-0">
+                          1
+                        </span>
+                        <h6 className="font-bold text-slate-800 text-xs">Blank Sheet</h6>
+                      </div>
+                      <p className="text-slate-600 text-[11px] leading-relaxed">
+                        Create a blank spreadsheet in Google Sheets (e.g. named <strong className="text-slate-700">Attendo Records</strong>).
+                      </p>
+                    </div>
+
+                    {/* Step 2 */}
+                    <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-[#2563EB] text-white font-bold text-[11px] flex items-center justify-center shrink-0">
+                          2
+                        </span>
+                        <h6 className="font-bold text-slate-800 text-xs">Apps Script</h6>
+                      </div>
+                      <p className="text-slate-600 text-[11px] leading-relaxed">
+                        In the top menu bar, click <strong>Extensions</strong> &gt; <strong>Apps Script</strong> to open the code editor.
+                      </p>
+                    </div>
+
+                    {/* Step 3 */}
+                    <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-[#2563EB] text-white font-bold text-[11px] flex items-center justify-center shrink-0">
+                          3
+                        </span>
+                        <h6 className="font-bold text-slate-800 text-xs">Paste Code</h6>
+                      </div>
+                      <p className="text-slate-600 text-[11px] leading-relaxed">
+                        Click the <strong className="text-[#2563EB]">Copy Script Template</strong> button below and paste it into <code className="text-slate-700 font-mono">Code.gs</code>.
+                      </p>
+                    </div>
+
+                    {/* Step 4 */}
+                    <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-[#2563EB] text-white font-bold text-[11px] flex items-center justify-center shrink-0">
+                          4
+                        </span>
+                        <h6 className="font-bold text-slate-800 text-xs">Deploy Web App</h6>
+                      </div>
+                      <p className="text-slate-600 text-[11px] leading-relaxed">
+                        Click <strong>Deploy &gt; New deployment &gt; Web app</strong>. Set <em>Execute as: Me</em> and <em>Who has access: <strong>Anyone</strong></em>.
+                      </p>
+                    </div>
+
+                    {/* Step 5 */}
+                    <div className="bg-white p-3.5 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0">
+                          5
+                        </span>
+                        <h6 className="font-bold text-slate-800 text-xs">Save /exec URL</h6>
+                      </div>
+                      <p className="text-slate-600 text-[11px] leading-relaxed">
+                        Copy the Web App URL ending in <code className="text-blue-600 font-mono text-[10px]">/exec</code>, paste it in the field above, and click <strong>Save</strong>.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* SCRIPT CODE TEMPLATE CARD WITH COPY SCRIPT BUTTON */}
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+                    <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-amber-500" />
+                        <span className="font-bold text-slate-800 text-xs">
+                          JavaScript Apps Script Template (<code className="font-mono text-slate-600">Code.gs</code>)
+                        </span>
+                      </div>
+
+                      {/* Clean Copy Script Template Button */}
+                      <button
+                        id="btn-copy-script-template"
+                        type="button"
+                        onClick={handleCopyScriptTemplate}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all border shadow-xs ${
+                          hasCopiedScript
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                            : 'bg-[#2563EB] hover:bg-blue-700 text-white border-blue-600'
+                        }`}
+                        title="Copy Apps Script template to clipboard"
+                      >
+                        {hasCopiedScript ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>Copied to Clipboard!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 shrink-0" />
+                            <span>Copy Script Template</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Preformatted Code Block */}
+                    <div className="p-4 bg-slate-900 text-slate-100 overflow-x-auto max-h-56 font-mono text-[11px] leading-relaxed select-all">
+                      <pre><code>{googleAppsScriptTemplate}</code></pre>
+                    </div>
+
+                    <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+                      <span>Columns created automatically: <strong>Timestamp, Employee Name, Employee ID, Status, Punch Type, Department</strong></span>
+                      <span className="text-slate-400 font-mono">POST webhook</span>
+                    </div>
+                  </div>
+
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* STORE PROFILE & CREDENTIALS SUMMARY CARD */}
+          <div className="bg-white rounded-xl p-6 border border-[#E2E8F0] shadow-xs space-y-4">
+            <h4 className="text-sm font-bold text-[#1E293B]">Company Profile &amp; Terminal Credentials</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-[11px] text-slate-500 font-medium block">Supermarket Brand</span>
+                <span className="font-bold text-slate-800 text-sm mt-0.5 block">{activeCompany?.supermarketName || 'N/A'}</span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-[11px] text-slate-500 font-medium block">Legal Company Name</span>
+                <span className="font-bold text-slate-800 text-sm mt-0.5 block">{activeCompany?.name || 'N/A'}</span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-[11px] text-slate-500 font-medium block">Store Code</span>
+                <span className="font-bold text-[#2563EB] font-mono text-sm mt-0.5 block">{activeCompany?.code || 'N/A'}</span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-[11px] text-slate-500 font-medium block">Admin Lock PIN</span>
+                <span className="font-bold text-slate-800 font-mono text-sm mt-0.5 block">{activeCompany?.adminPin || '••••'}</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

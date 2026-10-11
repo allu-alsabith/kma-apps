@@ -50,6 +50,7 @@ import { offlineSyncService } from './services/offlineSync';
 import { autoSyncService } from './services/autoSync';
 import { soundService } from './services/sound';
 import { get12HTimeString } from './utils/formatters';
+import { syncAttendanceToGoogleSheet } from './services/googleSheets';
 import {
   subscribeToEmployees,
   subscribeToAttendanceRecords,
@@ -792,6 +793,16 @@ function AppContent() {
 
     // Cross-tab real-time auto sync
     autoSyncService.broadcast('PUNCH_CREATED', newRecord);
+
+    // Google Sheets Integration: Sync attendance punch details in background directly to company's Google Sheet Web App
+    const targetSheetUrl =
+      companies.find((c) => c.id === companyId)?.googleSheetUrl ||
+      companies.find((c) => c.id === companyId)?.settings?.googleSheetUrl ||
+      (activeCompany?.id === companyId ? activeCompany.googleSheetUrl || activeCompany.settings?.googleSheetUrl : undefined);
+
+    syncAttendanceToGoogleSheet(newRecord, targetSheetUrl).catch((err) => {
+      console.warn('[GoogleSheets] Background sync exception:', err);
+    });
 
     // Update employee status & last punch
     setEmployees((prev) =>

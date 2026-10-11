@@ -626,6 +626,47 @@ export async function syncCompanyToFirestore(company: Company): Promise<void> {
   }
 }
 
+export async function saveCompanyGoogleSheetUrl(
+  companyId: string,
+  url: string | null
+): Promise<void> {
+  if (isFirestoreQuotaExhausted) return;
+  const docPath = `${COMPANIES_COLLECTION}/${companyId}`;
+  try {
+    const docRef = doc(db, COMPANIES_COLLECTION, companyId);
+    const cleanUrl = url ? url.trim() : '';
+    await setDoc(
+      docRef,
+      {
+        googleSheetUrl: cleanUrl,
+        settings: {
+          googleSheetUrl: cleanUrl,
+        },
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, docPath);
+    throw error;
+  }
+}
+
+export async function getCompanyGoogleSheetUrl(companyId: string): Promise<string | null> {
+  if (isFirestoreQuotaExhausted || !companyId) return null;
+  const docPath = `${COMPANIES_COLLECTION}/${companyId}`;
+  try {
+    const docRef = doc(db, COMPANIES_COLLECTION, companyId);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    return data?.settings?.googleSheetUrl || data?.googleSheetUrl || null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, docPath);
+    return null;
+  }
+}
+
 export async function deleteCompanyFromFirestore(companyId: string): Promise<void> {
   if (isFirestoreQuotaExhausted) return;
   const docPath = `${COMPANIES_COLLECTION}/${companyId}`;

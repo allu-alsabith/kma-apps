@@ -116,7 +116,9 @@
         "code": { "type": "string" },
         "password": { "type": "string" },
         "adminPin": { "type": "string" },
-        "createdAt": { "type": "string" }
+        "createdAt": { "type": "string" },
+        "googleSheetUrl": { "type": "string", "description": "Google Apps Script Web App URL ending in /exec for real-time attendance syncing" },
+        "settings": { "type": "object", "description": "Company integration and webhook settings" }
       },
       "required": ["id", "name", "supermarketName", "code", "password"]
     },
