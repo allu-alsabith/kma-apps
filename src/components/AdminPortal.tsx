@@ -98,7 +98,6 @@ interface AdminPortalProps {
   onMarkNotificationAsRead?: (notificationId: string) => void;
   onDeleteNotification?: (notificationId: string) => void;
   onClearAllNotifications?: () => void;
-  onNavigatePortal?: (portal: AppPortal) => void;
 }
 
 export const AdminPortal: React.FC<AdminPortalProps> = ({
@@ -133,7 +132,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onMarkNotificationAsRead,
   onDeleteNotification,
   onClearAllNotifications,
-  onNavigatePortal,
 }) => {
   const [showAccountHelpModal, setShowAccountHelpModal] = useState<boolean>(false);
   const [adminTab, setAdminTab] = useState<'OVERVIEW' | 'DIRECTORY' | 'SHIFTS' | 'LEAVES' | 'PAYROLL' | 'SECURITY' | 'SETTINGS'>('OVERVIEW');
@@ -359,15 +357,14 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     }
   }, [securityAlertNotifications, lastSeenAlertId]);
 
-  // Store Admin Company Session Authentication
+  // Store Admin Company Session Authentication - Strictly checks active authenticated company session in sessionStorage
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      const savedAuth = localStorage.getItem('attendo_admin_session_auth');
-      const savedCompId = localStorage.getItem('attendo_admin_company_id');
-      if (savedAuth === 'true') {
-        if (!savedCompId || !activeCompany || savedCompId === activeCompany.id) {
-          return true;
-        }
+      const savedAuth = sessionStorage.getItem('attendo_admin_session_auth');
+      const savedCompId = sessionStorage.getItem('attendo_admin_company_id');
+      // Strictly require an active authenticated session for the current activeCompany
+      if (savedAuth === 'true' && savedCompId && activeCompany && savedCompId === activeCompany.id) {
+        return true;
       }
     }
     return false;
@@ -404,7 +401,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       if (user) {
         setIsAdminLoggedIn(true);
         if (typeof window !== 'undefined') {
-          localStorage.setItem('attendo_admin_session_auth', 'true');
+          sessionStorage.setItem('attendo_admin_session_auth', 'true');
+          if (activeCompany) {
+            sessionStorage.setItem('attendo_admin_company_id', activeCompany.id);
+          }
         }
         soundService.playSuccessChime();
       }
@@ -487,8 +487,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       onSelectCompany(matchedCompany.id);
     }
     if (typeof window !== 'undefined') {
-      localStorage.setItem('attendo_admin_session_auth', 'true');
-      localStorage.setItem('attendo_admin_company_id', matchedCompany.id);
+      sessionStorage.setItem('attendo_admin_session_auth', 'true');
+      sessionStorage.setItem('attendo_admin_company_id', matchedCompany.id);
       localStorage.setItem('attendo_active_company_id', matchedCompany.id);
     }
     soundService.playSuccessChime();
@@ -499,6 +499,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     setLoginCompanyPassword('');
     setAdminLoginError(null);
     if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('attendo_admin_session_auth');
+      sessionStorage.removeItem('attendo_admin_company_id');
       localStorage.removeItem('attendo_admin_session_auth');
       localStorage.removeItem('attendo_admin_company_id');
     }
@@ -1013,19 +1015,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 <span>Account Help</span>
               </button>
             </div>
-            {onNavigatePortal && (
-              <div className="pt-1 flex items-center justify-center">
-                <button
-                  type="button"
-                  id="btn-admin-back-hub"
-                  onClick={() => onNavigatePortal('APPS_MANAGER')}
-                  className="text-xs text-slate-500 hover:text-[#2563EB] font-medium flex items-center gap-1.5 cursor-pointer transition-colors"
-                >
-                  <Layers className="w-3.5 h-3.5 text-[#2563EB]" />
-                  <span>Return to Apps Manager Hub</span>
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
@@ -1056,44 +1045,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       <div className="bg-white rounded-xl p-5 border border-[#E2E8F0] shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 text-[#1E293B]">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Active Store Switcher Dropdown */}
-            {companies && companies.length > 0 ? (
-              <div className="flex items-center gap-1.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg px-2.5 py-1 text-slate-700">
-                <Store className="w-3.5 h-3.5 text-[#2563EB] shrink-0" />
-                <span className="text-[10px] text-slate-500 font-semibold">Store:</span>
-                <select
-                  id="select-admin-active-company"
-                  value={activeCompany?.id || companies?.[0]?.id || ''}
-                  onChange={(e) => {
-                    const newCompId = e.target.value;
-                    if (onSelectCompany) {
-                      onSelectCompany(newCompId);
-                    }
-                    if (typeof window !== 'undefined') {
-                      localStorage.setItem('attendo_active_company_id', newCompId);
-                      localStorage.setItem('attendo_admin_company_id', newCompId);
-                    }
-                    soundService.playSuccessChime();
-                  }}
-                  className="bg-transparent border-none text-[11px] text-slate-800 font-bold outline-none cursor-pointer"
-                >
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id} className="bg-white text-slate-800 font-medium">
-                      {c.supermarketName} ({c.code})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <span className="text-xs font-mono text-slate-700 font-semibold uppercase tracking-wider flex items-center gap-1.5">
-                <Store className="w-3.5 h-3.5 text-[#2563EB]" /> {activeCompany?.supermarketName || 'Store'} Supermarket &bull; Store HQ
-              </span>
-            )}
+            {/* Active Store Identity Badge (Strictly isolated to authenticated store) */}
+            <span className="text-xs font-mono text-slate-700 font-semibold uppercase tracking-wider flex items-center gap-1.5 bg-[#F8FAFC] border border-[#CBD5E1] rounded-lg px-2.5 py-1">
+              <Store className="w-3.5 h-3.5 text-[#2563EB]" /> {activeCompany?.supermarketName || 'Store'} Supermarket &bull; Store HQ
+            </span>
 
             <NetworkSyncBadge compact />
-            <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-[#E2E8F0] text-slate-700 text-[10px] font-mono font-bold">
-              CODE: {activeCompany?.code || 'STORE'}
-            </span>
 
             {/* Google Auth User Badge */}
             {googleUser && (
@@ -1125,20 +1082,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               <LogOut className="w-3 h-3 text-slate-500" />
               <span>Sign Out</span>
             </button>
-
-            {/* Switch to Apps Manager Hub */}
-            {onNavigatePortal && (
-              <button
-                id="btn-admin-switch-hub"
-                type="button"
-                onClick={() => onNavigatePortal('APPS_MANAGER')}
-                className="px-2.5 py-1 rounded-lg bg-[#F8FAFC] hover:bg-blue-50 text-slate-700 hover:text-[#2563EB] font-semibold text-[11px] flex items-center gap-1.5 cursor-pointer transition-all border border-[#CBD5E1]"
-                title="Switch to Apps Manager Hub"
-              >
-                <Layers className="w-3 h-3 text-[#2563EB]" />
-                <span>Apps Hub</span>
-              </button>
-            )}
           </div>
           <h1 className="text-xl font-bold text-[#1E293B] tracking-tight mt-1.5">
             {activeCompany?.supermarketName || 'Store'} Manager &amp; HR Administration
@@ -2568,36 +2511,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       {/* COMPANY SETTINGS & GOOGLE SHEETS INTEGRATION TAB */}
       {adminTab === 'SETTINGS' && (
         <div className="space-y-6 text-[#1E293B] animate-fade-in">
-          {/* Header Card */}
-          <div className="bg-white rounded-xl p-6 border border-[#E2E8F0] shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-[#2563EB] shrink-0">
-                <Settings className="w-6 h-6" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-lg font-bold text-[#1E293B] tracking-tight">
-                    Company Settings &amp; External Integrations
-                  </h3>
-                  <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#2563EB] border border-blue-200 font-mono text-[10px] font-bold">
-                    {activeCompany?.code || 'STORE'}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
-                  Manage configuration for <strong>{activeCompany?.supermarketName || activeCompany?.name || 'Current Company'}</strong>, 
-                  including Google Sheets real-time attendance syncing, store profile, and company security credentials.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 font-medium">Company ID:</span>
-              <code className="px-2 py-1 rounded bg-slate-100 text-slate-700 text-xs font-mono border border-slate-200">
-                {activeCompany?.id || 'N/A'}
-              </code>
-            </div>
-          </div>
-
           {/* GOOGLE SHEETS LIVE ATTENDANCE INTEGRATION CARD */}
           <div className="bg-white rounded-xl p-6 border border-[#E2E8F0] shadow-xs space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E2E8F0]">
@@ -2888,29 +2801,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* STORE PROFILE & CREDENTIALS SUMMARY CARD */}
-          <div className="bg-white rounded-xl p-6 border border-[#E2E8F0] shadow-xs space-y-4">
-            <h4 className="text-sm font-bold text-[#1E293B]">Company Profile &amp; Terminal Credentials</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-[11px] text-slate-500 font-medium block">Supermarket Brand</span>
-                <span className="font-bold text-slate-800 text-sm mt-0.5 block">{activeCompany?.supermarketName || 'N/A'}</span>
-              </div>
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-[11px] text-slate-500 font-medium block">Legal Company Name</span>
-                <span className="font-bold text-slate-800 text-sm mt-0.5 block">{activeCompany?.name || 'N/A'}</span>
-              </div>
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-[11px] text-slate-500 font-medium block">Store Code</span>
-                <span className="font-bold text-[#2563EB] font-mono text-sm mt-0.5 block">{activeCompany?.code || 'N/A'}</span>
-              </div>
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="text-[11px] text-slate-500 font-medium block">Admin Lock PIN</span>
-                <span className="font-bold text-slate-800 font-mono text-sm mt-0.5 block">{activeCompany?.adminPin || '••••'}</span>
-              </div>
             </div>
           </div>
         </div>

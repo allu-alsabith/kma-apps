@@ -39,7 +39,6 @@ export const isSampleCompany = (c: Partial<Company>): boolean => {
   if (c.supermarketName && sampleNames.includes(c.supermarketName)) return true;
   return false;
 };
-import { CloudOff, ExternalLink, X } from 'lucide-react';
 import { KioskFace } from './components/KioskFace';
 import { EmployeeApp } from './components/EmployeeApp';
 import { AdminPortal } from './components/AdminPortal';
@@ -99,6 +98,9 @@ function AppContent() {
         localStorage.removeItem('attendo_theme_mode');
         sessionStorage.removeItem('attendo_theme');
         sessionStorage.removeItem('theme');
+        // Clear persistent session bypass keys so users must strictly authenticate
+        localStorage.removeItem('attendo_admin_session_auth');
+        localStorage.removeItem('attendo_kiosk_authenticated');
         const root = document.documentElement;
         const body = document.body;
         if (root.classList.contains('dark')) root.classList.remove('dark');
@@ -124,7 +126,7 @@ function AppContent() {
     return () => observer.disconnect();
   }, []);
 
-  // App Portal Mode detection: 'STAFF' (Employee Phone), 'KIOSK' (Door Tablet), 'ADMIN' (Manager HR), 'MANAGER' (Apps Manager)
+  // App Portal Mode detection: 'STAFF' (Employee Phone), 'KIOSK' (Door Tablet), 'ADMIN' (Manager HR), 'MANAGER' (Apps Manager Master)
   const [standaloneMode, setStandaloneMode] = useState<'STAFF' | 'KIOSK' | 'ADMIN' | 'MANAGER'>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -132,7 +134,7 @@ function AppContent() {
       if (app === 'employee' || app === 'staff') return 'STAFF';
       if (app === 'kiosk' || app === 'face') return 'KIOSK';
       if (app === 'admin') return 'ADMIN';
-      if (app === 'manager' || app === 'apps' || app === 'appsmanager' || app === 'apps_manager') return 'MANAGER';
+      if (app === 'master' || app === 'manager' || app === 'apps' || app === 'appsmanager' || app === 'apps_manager') return 'MANAGER';
     }
     return 'MANAGER';
   });
@@ -144,7 +146,7 @@ function AppContent() {
       if (portal === 'employee' || portal === 'staff') return 'EMPLOYEE_APP';
       if (portal === 'kiosk' || portal === 'face') return 'KIOSK_FACE';
       if (portal === 'admin') return 'ADMIN_PORTAL';
-      if (portal === 'manager' || portal === 'apps' || portal === 'appsmanager' || portal === 'apps_manager') return 'APPS_MANAGER';
+      if (portal === 'master' || portal === 'manager' || portal === 'apps' || portal === 'appsmanager' || portal === 'apps_manager') return 'APPS_MANAGER';
     }
     return 'APPS_MANAGER';
   });
@@ -163,6 +165,9 @@ function AppContent() {
       } else if (app === 'admin') {
         setStandaloneMode('ADMIN');
         setCurrentPortal('ADMIN_PORTAL');
+      } else if (app === 'master' || app === 'manager' || app === 'apps' || app === 'appsmanager' || app === 'apps_manager') {
+        setStandaloneMode('MANAGER');
+        setCurrentPortal('APPS_MANAGER');
       } else {
         setStandaloneMode('MANAGER');
         setCurrentPortal('APPS_MANAGER');
@@ -1161,42 +1166,6 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-[#1E293B] flex flex-col relative selection:bg-[#2563EB] selection:text-white">
-      {/* Informative Quota Limit Notification Banner (Autonomous Offline Mode) */}
-      {isQuotaExhausted && !isQuotaBannerDismissed && (
-        <aside
-          role="status"
-          aria-live="polite"
-          className="w-full bg-amber-50 border-b border-amber-200 px-3.5 py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-amber-900 z-40 transition-all shadow-xs"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <CloudOff className="w-4 h-4 text-amber-600 shrink-0" />
-            <p className="leading-snug">
-              <strong className="font-semibold text-amber-950">Firestore Free Tier Quota Reached:</strong> Attendo is operating in <strong>Autonomous Offline-First Mode</strong>. All face punches, PIN clockings, and rosters are safely saved on this device and will auto-sync when daily quota resets tomorrow.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-            <a
-              href="https://console.firebase.google.com/project/plasma-envoy-qpqwl/firestore/databases/ai-studio-testremix2attend-770b42bd-2afa-4943-870f-11b29a02e21d/data?openUpgradeDialog=true"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-2.5 py-1 rounded-md bg-amber-600 hover:bg-amber-700 text-white font-medium flex items-center gap-1 transition-colors text-[11px] shadow-xs"
-              title="Open Firebase Console to view database or enable billing"
-            >
-              <span>Upgrade Quota</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
-            <button
-              onClick={() => setIsQuotaBannerDismissed(true)}
-              className="p-1 rounded-md hover:bg-amber-100 text-amber-700 transition-colors cursor-pointer"
-              aria-label="Dismiss quota notice"
-              title="Dismiss notice"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </aside>
-      )}
-
       {/* Main Active Portal Render */}
       <main className="flex-1 flex flex-col items-center justify-start pb-12 w-full bg-[#F8FAFC] text-[#1E293B]">
         {currentPortal === 'ADMIN_PORTAL' && (

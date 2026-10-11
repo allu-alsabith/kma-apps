@@ -280,6 +280,8 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
     setCurrentEmployeeId(found.id);
     setStaffCompanyId(targetCompany.id);
     if (typeof window !== 'undefined') {
+      sessionStorage.setItem('attendo_staff_session_id', found.id);
+      sessionStorage.setItem('attendo_staff_company_id', targetCompany.id);
       localStorage.setItem('attendo_staff_session_id', found.id);
       localStorage.setItem('attendo_staff_company_id', targetCompany.id);
       localStorage.removeItem('attendo_staff_company_name');
@@ -302,6 +304,9 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
     setLoginCompanyPassword('');
     setLoginError(null);
     if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('attendo_staff_session_id');
+      sessionStorage.removeItem('attendo_staff_company_name');
+      sessionStorage.removeItem('attendo_staff_company_id');
       localStorage.removeItem('attendo_staff_session_id');
       localStorage.removeItem('attendo_staff_company_name');
       localStorage.removeItem('attendo_staff_company_id');

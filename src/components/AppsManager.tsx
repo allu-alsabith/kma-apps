@@ -1024,7 +1024,6 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                           if (typeof window !== 'undefined') {
                             localStorage.setItem('attendo_active_company_id', company.id);
                             localStorage.setItem('attendo_admin_company_id', company.id);
-                            localStorage.setItem('attendo_admin_session_auth', 'true');
                           }
                           if (onLaunchPortal) onLaunchPortal('ADMIN_PORTAL');
                           else window.location.href = getAppLaunchUrl('admin', company.code);
@@ -1041,7 +1040,6 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
                           if (typeof window !== 'undefined') {
                             localStorage.setItem('attendo_kiosk_company_id', company.id);
                             localStorage.setItem('attendo_active_company_id', company.id);
-                            localStorage.setItem('attendo_kiosk_authenticated', 'true');
                           }
                           if (onLaunchPortal) onLaunchPortal('KIOSK_FACE');
                           else window.location.href = getAppLaunchUrl('kiosk', company.code);

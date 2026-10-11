@@ -77,10 +77,10 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   // ==========================================
   const [isKioskLoggedIn, setIsKioskLoggedIn] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      const savedAuth = localStorage.getItem('attendo_kiosk_authenticated');
-      const savedCompId = localStorage.getItem('attendo_kiosk_company_id');
-      if (savedAuth === 'true') {
-        if (!savedCompId || !activeCompany || savedCompId === activeCompany.id) {
+      const savedAuth = sessionStorage.getItem('attendo_kiosk_authenticated');
+      const savedCompId = sessionStorage.getItem('attendo_kiosk_company_id');
+      if (savedAuth === 'true' && savedCompId) {
+        if (!activeCompany || savedCompId === activeCompany.id) {
           return true;
         }
       }
@@ -174,7 +174,8 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
     setKioskCompanyPassword('');
 
     if (typeof window !== 'undefined') {
-      localStorage.setItem('attendo_kiosk_authenticated', 'true');
+      sessionStorage.setItem('attendo_kiosk_authenticated', 'true');
+      sessionStorage.setItem('attendo_kiosk_company_id', matched.id);
       localStorage.setItem('attendo_kiosk_company_id', matched.id);
     }
 
@@ -200,7 +201,10 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
     stopCamera();
     setIsKioskLoggedIn(false);
     if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('attendo_kiosk_authenticated');
+      sessionStorage.removeItem('attendo_kiosk_company_id');
       localStorage.removeItem('attendo_kiosk_authenticated');
+      localStorage.removeItem('attendo_kiosk_company_id');
     }
     soundService.playNotificationTone();
   };
@@ -744,30 +748,6 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
             <Store className="w-3.5 h-3.5 shrink-0 text-[#2563EB]" />
             {companySupermarketName}
           </span>
-          {companies && companies.length > 1 && (
-            <select
-              id="select-kiosk-store"
-              value={connectedCompany?.id}
-              onChange={(e) => {
-                const targetId = e.target.value;
-                setTerminalCompanyId(targetId);
-                if (onSelectCompany) onSelectCompany(targetId);
-                if (typeof window !== 'undefined') {
-                  localStorage.setItem('attendo_kiosk_company_id', targetId);
-                  localStorage.setItem('attendo_active_company_id', targetId);
-                }
-                soundService.playSuccessChime();
-              }}
-              className="bg-white border border-[#CBD5E1] rounded-lg px-2 py-0.5 text-[10px] text-[#1E293B] font-bold outline-none cursor-pointer hover:border-slate-400 shadow-xs"
-              title="Switch terminal to another registered supermarket store"
-            >
-              {companies.map((c) => (
-                <option key={c.id} value={c.id} className="bg-white text-[#1E293B] font-normal">
-                  {c.supermarketName} ({c.code})
-                </option>
-              ))}
-            </select>
-          )}
           <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono text-[10px] font-bold border border-slate-200">
             {connectedCompany?.code || 'STORE'}
           </span>
