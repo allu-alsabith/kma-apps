@@ -887,6 +887,11 @@ function AppContent() {
     const now = new Date();
     const shiftEval = evaluateShiftPunch(employee, punchType, now, shifts);
 
+    const actionLabel = 
+      punchType === 'IN' ? 'Clock In' :
+      punchType === 'OUT' ? 'Clock Out' :
+      punchType === 'BREAK_START' ? 'Break Start' : 'Break End';
+
     handleNewPunch({
       companyId: employee.companyId || activeCompany?.id,
       employeeId: employee.id,
@@ -901,7 +906,7 @@ function AppContent() {
       scheduledTime: shiftEval.scheduledTime,
       actualTime: shiftEval.actualTime,
       delayMins: shiftEval.delayMins,
-      notes: `Biometric face scan verified on mobile device (${punchType === 'IN' ? 'Clock In' : 'Clock Out'}). ${shiftEval.varianceNote || ''}`.trim(),
+      notes: `Biometric face scan verified on mobile device (${actionLabel}). ${shiftEval.varianceNote || ''}`.trim(),
     });
   };
 

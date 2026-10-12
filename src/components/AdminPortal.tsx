@@ -156,18 +156,18 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     // Add header row automatically if sheet is brand new
     if (sheet.getLastRow() === 0) {
-      sheet.appendRow(["Timestamp", "Employee Name", "Employee ID", "Status", "Punch Type", "Scheduled Time", "Actual Time", "Department"]);
+      sheet.appendRow(["Timestamp", "Employee Name", "Employee ID", "Department", "Punch Type", "Status", "Scheduled Time", "Actual Time"]);
     }
     var data = JSON.parse(e.postData.contents);
     sheet.appendRow([
-      data.Timestamp || data.timestamp || new Date().toISOString(),
+      data["Timestamp"] || data.timestamp || new Date().toISOString(),
       data["Employee Name"] || data.employeeName || "Unknown",
       data["Employee ID"] || data.employeeId || "",
-      data.Status || data.status || "ON_TIME",
-      data["Punch Type"] || data.punchType || data.type || "IN",
+      data["Department"] || data.department || "",
+      data["Punch Type"] || data.punchType || data.type || "PUNCH_IN",
+      data["Status"] || data.status || "ON_TIME",
       data["Scheduled Time"] || data.scheduledTime || "-",
-      data["Actual Time"] || data.actualTime || data.time || "-",
-      data.Department || data.department || ""
+      data["Actual Time"] || data.actualTime || data.time || "-"
     ]);
     return ContentService.createTextOutput(JSON.stringify({ result: "success" }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -2847,7 +2847,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     </div>
 
                     <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-                      <span>Columns created automatically: <strong>Timestamp, Employee Name, Employee ID, Status, Punch Type, Scheduled Time, Actual Time, Department</strong></span>
+                      <span>Columns created automatically: <strong>Timestamp, Employee Name, Employee ID, Department, Punch Type, Status, Scheduled Time, Actual Time</strong></span>
                       <span className="text-slate-400 font-mono">POST webhook</span>
                     </div>
                   </div>

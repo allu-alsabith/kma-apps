@@ -145,7 +145,11 @@ export const BiometricFaceAuthOverlay: React.FC<BiometricFaceAuthOverlayProps> =
               Face ID Terminal
             </h3>
             <span className="text-[10px] text-[#2563EB] font-mono">
-              Biometric {punchType === 'IN' ? 'Clock In' : 'Clock Out'} Scan
+              Biometric {
+                punchType === 'IN' ? 'Clock In' :
+                punchType === 'OUT' ? 'Clock Out' :
+                punchType === 'BREAK_START' ? 'Break Start' : 'Break End'
+              } Scan
             </span>
           </div>
         </div>

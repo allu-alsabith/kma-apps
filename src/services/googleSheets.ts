@@ -64,24 +64,34 @@ export async function syncAttendanceToGoogleSheet(
       ? (record.delayMins > 0 ? `+${record.delayMins}m` : `${record.delayMins}m`)
       : '-';
 
+    // Normalize punch type action to standard enterprise format: PUNCH_IN, PUNCH_OUT, BREAK_START, BREAK_END
+    let explicitPunchType = 'PUNCH_IN';
+    if (record.type === 'IN') explicitPunchType = 'PUNCH_IN';
+    else if (record.type === 'OUT') explicitPunchType = 'PUNCH_OUT';
+    else if (record.type === 'BREAK_START') explicitPunchType = 'BREAK_START';
+    else if (record.type === 'BREAK_END') explicitPunchType = 'BREAK_END';
+    else if (typeof record.type === 'string') explicitPunchType = record.type;
+
     const payload = {
-      // Primary fields explicitly specified by user and Google Apps Script headers:
+      // Complete set of 8 columns requested for supermarket attendance:
       Timestamp: record.timestamp,
       'Employee Name': record.employeeName,
       'Employee ID': record.employeeId,
+      Department: record.department || '',
+      'Punch Type': explicitPunchType,
       Status: statusVal,
-      'Punch Type': record.type,
       'Scheduled Time': scheduledTimeVal,
       'Actual Time': actualTimeVal,
-      Department: record.department || '',
       Delay: delayVal,
 
-      // Normalized lowerCamelCase variants for script flexibility:
+      // Flexible camelCase and raw property mappings:
       timestamp: record.timestamp,
       employeeName: record.employeeName,
       employeeId: record.employeeId,
+      department: record.department || '',
+      punchType: explicitPunchType,
+      type: record.type,
       status: statusVal,
-      punchType: record.type,
       scheduledTime: scheduledTimeVal,
       actualTime: actualTimeVal,
       delayMins: record.delayMins,
@@ -89,8 +99,6 @@ export async function syncAttendanceToGoogleSheet(
       // Contextual attendance info:
       date: record.date || record.timestamp.slice(0, 10),
       time: record.time,
-      type: record.type,
-      department: record.department || '',
       device: record.device || '',
       location: record.kioskLocation || '',
       companyId: record.companyId || '',

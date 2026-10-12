@@ -405,7 +405,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       setSecurityNotice(null);
       setSelectedStaffIdForScan('');
     }, 3400);
-  }, [onNewPunch, connectedCompany, companySupermarketName, isSoundEnabled, shifts]);
+  }, [onNewPunch, connectedCompany, companySupermarketName, isSoundEnabled, appToggles, shifts]);
 
   // Advanced Biometric Face Scan Verification & Security Inspection
   const handleTriggerFaceScan = async (targetedStaff?: Employee) => {

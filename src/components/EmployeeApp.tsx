@@ -1357,6 +1357,24 @@ export const EmployeeApp: React.FC<EmployeeAppProps> = ({
         </div>
       )}
 
+      {/* Biometric Mobile Face ID Punch Overlay */}
+      {activePunchType && currentEmployee && (
+        <BiometricFaceAuthOverlay
+          employee={currentEmployee}
+          punchType={activePunchType}
+          onSuccess={(snapshotUrl) => {
+            const punchType = activePunchType;
+            setActivePunchType(null);
+            if (onMobileGeoPunch) {
+              onMobileGeoPunch(currentEmployee, punchType, snapshotUrl);
+            }
+          }}
+          onCancel={() => {
+            setActivePunchType(null);
+          }}
+        />
+      )}
+
     </div>
   );
 };
