@@ -481,6 +481,10 @@ function AppContent() {
           setHelpRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
           break;
         }
+        case 'NOTIFICATION_CLEARED_ALL': {
+          setNotifications([]);
+          break;
+        }
         default:
           break;
       }
@@ -493,6 +497,8 @@ function AppContent() {
   useEffect(() => {
     testFirestoreConnection().then((ok) => {
       setIsFirebaseLive(ok);
+    }).catch(() => {
+      setIsFirebaseLive(false);
     });
 
     const unsubQuota = subscribeToQuotaStatus((exhausted) => {
@@ -577,38 +583,70 @@ function AppContent() {
 
   // Save changes to localStorage for persistent hypermarket production operations (Fast offline-first cache)
   useEffect(() => {
-    localStorage.setItem('attendo_real_workforce_staff', JSON.stringify(employees));
-    localStorage.setItem('attendo_user_enrolled_staff', JSON.stringify(employees));
+    try {
+      localStorage.setItem('attendo_real_workforce_staff', JSON.stringify(employees));
+      localStorage.setItem('attendo_user_enrolled_staff', JSON.stringify(employees));
+    } catch {
+      // Quota exceeded guard
+    }
   }, [employees]);
 
   useEffect(() => {
-    localStorage.setItem('attendo_real_workforce_logs', JSON.stringify(attendanceLogs));
-    localStorage.setItem('attendo_user_logs', JSON.stringify(attendanceLogs));
+    try {
+      localStorage.setItem('attendo_real_workforce_logs', JSON.stringify(attendanceLogs));
+      localStorage.setItem('attendo_user_logs', JSON.stringify(attendanceLogs));
+    } catch {
+      // Quota exceeded guard
+    }
   }, [attendanceLogs]);
 
   useEffect(() => {
-    localStorage.setItem('attendo_real_workforce_leaves', JSON.stringify(leaveRequests));
-    localStorage.setItem('attendo_user_leaves', JSON.stringify(leaveRequests));
+    try {
+      localStorage.setItem('attendo_real_workforce_leaves', JSON.stringify(leaveRequests));
+      localStorage.setItem('attendo_user_leaves', JSON.stringify(leaveRequests));
+    } catch {
+      // Quota exceeded guard
+    }
   }, [leaveRequests]);
 
   useEffect(() => {
-    localStorage.setItem('attendo_staff_notifications', JSON.stringify(notifications));
+    try {
+      localStorage.setItem('attendo_staff_notifications', JSON.stringify(notifications));
+    } catch {
+      // Quota exceeded guard
+    }
   }, [notifications]);
 
   useEffect(() => {
-    localStorage.setItem('attendo_hyper_shifts', JSON.stringify(shifts));
+    try {
+      localStorage.setItem('attendo_hyper_shifts', JSON.stringify(shifts));
+    } catch {
+      // Quota exceeded guard
+    }
   }, [shifts]);
 
   useEffect(() => {
-    localStorage.setItem('attendo_companies', JSON.stringify(companies));
+    try {
+      localStorage.setItem('attendo_companies', JSON.stringify(companies));
+    } catch {
+      // Quota exceeded guard
+    }
   }, [companies]);
 
   useEffect(() => {
-    localStorage.setItem('attendo_active_company_id', activeCompanyId);
+    try {
+      localStorage.setItem('attendo_active_company_id', activeCompanyId);
+    } catch {
+      // Quota exceeded guard
+    }
   }, [activeCompanyId]);
 
   useEffect(() => {
-    localStorage.setItem('attendo_help_requests', JSON.stringify(helpRequests));
+    try {
+      localStorage.setItem('attendo_help_requests', JSON.stringify(helpRequests));
+    } catch {
+      // Quota exceeded guard
+    }
   }, [helpRequests]);
 
   // One-time cleanup: ensure any previously cached mock staff or mock companies are completely removed
@@ -952,9 +990,9 @@ function AppContent() {
     if (activeCompany) {
       const targetEmpIds = new Set<string>(scopedAdminEmployees.map((e) => e.id));
       targetEmpIds.forEach((id: string) => {
-        deleteEmployeeFromFirestore(id);
-        deleteAttendanceByEmployeeInFirestore(id);
-        deleteLeaveRequestsByEmployeeInFirestore(id);
+        deleteEmployeeFromFirestore(id).catch(() => {});
+        deleteAttendanceByEmployeeInFirestore(id).catch(() => {});
+        deleteLeaveRequestsByEmployeeInFirestore(id).catch(() => {});
         autoSyncService.broadcast('EMPLOYEE_DELETED', id);
       });
       setEmployees((prev) => prev.filter((e) => !targetEmpIds.has(e.id)));
@@ -964,8 +1002,8 @@ function AppContent() {
       setEmployees([]);
       setAttendanceLogs([]);
       setLeaveRequests([]);
-      clearAllEmployeesInFirestore();
-      clearAllLeaveRequestsInFirestore();
+      clearAllEmployeesInFirestore().catch(() => {});
+      clearAllLeaveRequestsInFirestore().catch(() => {});
       try {
         localStorage.removeItem('attendo_real_workforce_staff');
         localStorage.removeItem('attendo_user_enrolled_staff');
@@ -991,13 +1029,13 @@ function AppContent() {
   const handleClearAllLeaves = () => {
     if (activeCompany) {
       const targetEmpIds = new Set(scopedAdminEmployees.map((e) => e.id));
-      scopedAdminLeaveRequests.forEach((l) => deleteLeaveRequestFromFirestore(l.id));
+      scopedAdminLeaveRequests.forEach((l) => deleteLeaveRequestFromFirestore(l.id).catch(() => {}));
       setLeaveRequests((prev) =>
         prev.filter((l) => l.companyId !== activeCompany.id && !targetEmpIds.has(l.employeeId))
       );
     } else {
       setLeaveRequests([]);
-      clearAllLeaveRequestsInFirestore();
+      clearAllLeaveRequestsInFirestore().catch(() => {});
       try {
         localStorage.removeItem('attendo_real_workforce_leaves');
         localStorage.removeItem('attendo_user_leaves');
@@ -1016,7 +1054,7 @@ function AppContent() {
       (l) => !enrolledIds.has(l.employeeId) && !enrolledNames.has(l.employeeName.trim().toLowerCase())
     );
     orphaned.forEach((l) => {
-      deleteLeaveRequestFromFirestore(l.id);
+      deleteLeaveRequestFromFirestore(l.id).catch(() => {});
     });
     setLeaveRequests((prev) =>
       prev.filter(
@@ -1070,7 +1108,7 @@ function AppContent() {
     setShifts((prev) =>
       prev.map((s) => (s.id === updatedShift.id ? updatedShift : s))
     );
-    syncShiftToFirestore(updatedShift);
+    syncShiftToFirestore(updatedShift).catch(() => {});
     offlineSyncService.enqueue('SYNC_SHIFT', updatedShift);
     autoSyncService.broadcast('SHIFT_UPDATED', updatedShift);
 
@@ -1091,7 +1129,7 @@ function AppContent() {
       },
     };
     setNotifications((prev) => [notif, ...prev]);
-    syncStaffNotificationToFirestore(notif);
+    syncStaffNotificationToFirestore(notif).catch(() => {});
     autoSyncService.broadcast('NOTIFICATION_ADDED', notif);
     soundService.playNotificationTone();
   };
@@ -1101,7 +1139,7 @@ function AppContent() {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     );
-    updateNotificationReadInFirestore(id, true);
+    updateNotificationReadInFirestore(id, true).catch(() => {});
     autoSyncService.broadcast('NOTIFICATION_READ', id);
   };
 
@@ -1118,7 +1156,7 @@ function AppContent() {
     notifications.forEach((n) => {
       if (!employeeId || n.employeeId === employeeId || n.employeeId === 'ALL') {
         if (!n.read) {
-          updateNotificationReadInFirestore(n.id, true);
+          updateNotificationReadInFirestore(n.id, true).catch(() => {});
           autoSyncService.broadcast('NOTIFICATION_READ', n.id);
         }
       }
@@ -1128,21 +1166,21 @@ function AppContent() {
   // Staff delete notification
   const handleDeleteNotification = (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
-    deleteNotificationFromFirestore(id);
+    deleteNotificationFromFirestore(id).catch(() => {});
     autoSyncService.broadcast('NOTIFICATION_DELETED', id);
   };
 
   // Clear all notifications
   const handleClearAllNotifications = () => {
     setNotifications([]);
-    clearAllNotificationsInFirestore();
+    clearAllNotificationsInFirestore().catch(() => {});
     autoSyncService.broadcast('NOTIFICATION_CLEARED_ALL', null);
   };
 
   // Push Security Alert Notification from Entrance Face Kiosk to Store Admin
   const handleSecurityAlert = (alertNotif: StaffNotification) => {
     setNotifications((prev) => [alertNotif, ...prev]);
-    syncStaffNotificationToFirestore(alertNotif);
+    syncStaffNotificationToFirestore(alertNotif).catch(() => {});
     autoSyncService.broadcast('NOTIFICATION_ADDED', alertNotif);
     soundService.playSecurityAlertTone();
   };

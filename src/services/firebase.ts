@@ -26,6 +26,7 @@ import {
   deleteDoc, 
   onSnapshot, 
   getDoc,
+  getDocFromServer,
   query,
   limit,
   writeBatch,
@@ -80,13 +81,21 @@ export async function signInWithGoogle(): Promise<User> {
       lastLoginAt: new Date().toISOString(),
       createdAt: new Date().toISOString(),
     };
-    await syncUserProfileToFirestore(profile);
+    try {
+      await syncUserProfileToFirestore(profile);
+    } catch (err) {
+      console.warn('[Auth] Non-fatal user profile sync error:', err);
+    }
   }
   return result.user;
 }
 
 export async function signOutUser(): Promise<void> {
-  await signOut(auth);
+  try {
+    await signOut(auth);
+  } catch (err) {
+    console.warn('[Auth] Sign out warning:', err);
+  }
 }
 
 export function subscribeToAuth(callback: (user: User | null) => void): () => void {
@@ -273,17 +282,24 @@ let isConnected = false;
 export async function testFirestoreConnection(): Promise<boolean> {
   if (isConnected) return true;
   try {
-    const res = await getDoc(doc(db, 'test', 'connection'));
+    await getDocFromServer(doc(db, 'test', 'connection'));
     isConnected = true;
     return true;
   } catch (error: unknown) {
     const err = error as { code?: string; message?: string };
     if (err?.code === 'unavailable' || (err?.message && err.message.includes('offline'))) {
       console.info("Firestore is currently operating in offline-first cached mode; will synchronize once online.");
-    } else {
-      console.info("Firestore status check completed:", err?.message || 'ready');
+      return false;
     }
-    return false;
+    // Secondary probe with cached getDoc
+    try {
+      await getDoc(doc(db, 'test', 'connection'));
+      isConnected = true;
+      return true;
+    } catch {
+      console.info("Firestore status check completed:", err?.message || 'ready');
+      return false;
+    }
   }
 }
 
@@ -426,69 +442,83 @@ export function subscribeToLeaveRequests(
 }
 
 // Fast Non-blocking Asynchronous Operations with error handling
-export async function syncEmployeeToFirestore(employee: Employee): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function syncEmployeeToFirestore(employee: Employee): Promise<boolean> {
+  if (isFirestoreQuotaExhausted) return false;
   const docPath = `${EMPLOYEES_COLLECTION}/${employee.id}`;
   try {
     const docRef = doc(db, EMPLOYEES_COLLECTION, employee.id);
     await setDoc(docRef, employee, { merge: true });
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, docPath);
+    return false;
   }
 }
 
-export async function deleteEmployeeFromFirestore(employeeId: string): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function deleteEmployeeFromFirestore(employeeId: string): Promise<boolean> {
+  if (isFirestoreQuotaExhausted || !employeeId) return false;
   const docPath = `${EMPLOYEES_COLLECTION}/${employeeId}`;
   try {
     const docRef = doc(db, EMPLOYEES_COLLECTION, employeeId);
     await deleteDoc(docRef);
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, docPath);
+    return false;
   }
 }
 
-export async function clearAllEmployeesInFirestore(): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function clearAllEmployeesInFirestore(): Promise<boolean> {
+  if (isFirestoreQuotaExhausted) return false;
   try {
     const snapshot = await getDocs(collection(db, EMPLOYEES_COLLECTION));
-    const batch = writeBatch(db);
-    snapshot.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
-    await batch.commit();
+    if (snapshot.empty) return true;
+    const docs = snapshot.docs;
+    const chunkSize = 450;
+    for (let i = 0; i < docs.length; i += chunkSize) {
+      const chunk = docs.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      chunk.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, EMPLOYEES_COLLECTION);
+    return false;
   }
 }
 
-export async function syncAttendanceRecordToFirestore(record: AttendanceRecord): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function syncAttendanceRecordToFirestore(record: AttendanceRecord): Promise<boolean> {
+  if (isFirestoreQuotaExhausted) return false;
   const docPath = `${ATTENDANCE_COLLECTION}/${record.id}`;
   try {
     const docRef = doc(db, ATTENDANCE_COLLECTION, record.id);
     await setDoc(docRef, record, { merge: true });
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, docPath);
+    return false;
   }
 }
 
-export async function syncLeaveRequestToFirestore(leave: LeaveRequest): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function syncLeaveRequestToFirestore(leave: LeaveRequest): Promise<boolean> {
+  if (isFirestoreQuotaExhausted) return false;
   const docPath = `${LEAVES_COLLECTION}/${leave.id}`;
   try {
     const docRef = doc(db, LEAVES_COLLECTION, leave.id);
     await setDoc(docRef, leave, { merge: true });
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, docPath);
+    return false;
   }
 }
 
 export async function updateLeaveStatusInFirestore(
   leaveId: string, 
   status: 'APPROVED' | 'REJECTED'
-): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+): Promise<boolean> {
+  if (isFirestoreQuotaExhausted || !leaveId) return false;
   const docPath = `${LEAVES_COLLECTION}/${leaveId}`;
   try {
     const docRef = doc(db, LEAVES_COLLECTION, leaveId);
@@ -496,133 +526,161 @@ export async function updateLeaveStatusInFirestore(
       status, 
       reviewedAt: new Date().toISOString() 
     }, { merge: true });
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, docPath);
+    return false;
   }
 }
 
-export async function deleteLeaveRequestFromFirestore(leaveId: string): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function deleteLeaveRequestFromFirestore(leaveId: string): Promise<boolean> {
+  if (isFirestoreQuotaExhausted || !leaveId) return false;
   const docPath = `${LEAVES_COLLECTION}/${leaveId}`;
   try {
     const docRef = doc(db, LEAVES_COLLECTION, leaveId);
     await deleteDoc(docRef);
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, docPath);
+    return false;
   }
 }
 
-export async function deleteLeaveRequestsByEmployeeInFirestore(employeeId: string, employeeName?: string): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function deleteLeaveRequestsByEmployeeInFirestore(employeeId: string, employeeName?: string): Promise<boolean> {
+  if (isFirestoreQuotaExhausted || !employeeId) return false;
   try {
     const snapshot = await getDocs(collection(db, LEAVES_COLLECTION));
-    const batch = writeBatch(db);
-    let count = 0;
-    snapshot.forEach((d) => {
+    if (snapshot.empty) return true;
+    const docsToDelete = snapshot.docs.filter((d) => {
       const data = d.data() as LeaveRequest;
-      if (data.employeeId === employeeId || (employeeName && data.employeeName === employeeName)) {
-        batch.delete(d.ref);
-        count++;
-      }
+      return data.employeeId === employeeId || (employeeName && data.employeeName === employeeName);
     });
-    if (count > 0) {
+    const chunkSize = 450;
+    for (let i = 0; i < docsToDelete.length; i += chunkSize) {
+      const chunk = docsToDelete.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      chunk.forEach((d) => batch.delete(d.ref));
       await batch.commit();
     }
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, LEAVES_COLLECTION);
+    return false;
   }
 }
 
-export async function clearAllLeaveRequestsInFirestore(): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function clearAllLeaveRequestsInFirestore(): Promise<boolean> {
+  if (isFirestoreQuotaExhausted) return false;
   try {
     const snapshot = await getDocs(collection(db, LEAVES_COLLECTION));
-    const batch = writeBatch(db);
-    snapshot.forEach((d) => {
-      batch.delete(d.ref);
-    });
-    await batch.commit();
+    if (snapshot.empty) return true;
+    const docs = snapshot.docs;
+    const chunkSize = 450;
+    for (let i = 0; i < docs.length; i += chunkSize) {
+      const chunk = docs.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      chunk.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, LEAVES_COLLECTION);
+    return false;
   }
 }
 
-export async function deleteAttendanceByEmployeeInFirestore(employeeId: string): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function deleteAttendanceByEmployeeInFirestore(employeeId: string): Promise<boolean> {
+  if (isFirestoreQuotaExhausted || !employeeId) return false;
   try {
     const snapshot = await getDocs(collection(db, ATTENDANCE_COLLECTION));
-    const batch = writeBatch(db);
-    let count = 0;
-    snapshot.forEach((d) => {
+    if (snapshot.empty) return true;
+    const docsToDelete = snapshot.docs.filter((d) => {
       const data = d.data() as AttendanceRecord;
-      if (data.employeeId === employeeId) {
-        batch.delete(d.ref);
-        count++;
-      }
+      return data.employeeId === employeeId;
     });
-    if (count > 0) {
+    const chunkSize = 450;
+    for (let i = 0; i < docsToDelete.length; i += chunkSize) {
+      const chunk = docsToDelete.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      chunk.forEach((d) => batch.delete(d.ref));
       await batch.commit();
     }
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, ATTENDANCE_COLLECTION);
+    return false;
   }
 }
 
-export async function syncStaffNotificationToFirestore(notification: StaffNotification): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function syncStaffNotificationToFirestore(notification: StaffNotification): Promise<boolean> {
+  if (isFirestoreQuotaExhausted) return false;
   const docPath = `${NOTIFICATIONS_COLLECTION}/${notification.id}`;
   try {
     const docRef = doc(db, NOTIFICATIONS_COLLECTION, notification.id);
     await setDoc(docRef, notification, { merge: true });
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, docPath);
+    return false;
   }
 }
 
-export async function updateNotificationReadInFirestore(notificationId: string, read: boolean): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function updateNotificationReadInFirestore(notificationId: string, read: boolean): Promise<boolean> {
+  if (isFirestoreQuotaExhausted || !notificationId) return false;
   const docPath = `${NOTIFICATIONS_COLLECTION}/${notificationId}`;
   try {
     const docRef = doc(db, NOTIFICATIONS_COLLECTION, notificationId);
     await setDoc(docRef, { read }, { merge: true });
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, docPath);
+    return false;
   }
 }
 
-export async function deleteNotificationFromFirestore(notificationId: string): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function deleteNotificationFromFirestore(notificationId: string): Promise<boolean> {
+  if (isFirestoreQuotaExhausted || !notificationId) return false;
   const docPath = `${NOTIFICATIONS_COLLECTION}/${notificationId}`;
   try {
     const docRef = doc(db, NOTIFICATIONS_COLLECTION, notificationId);
     await deleteDoc(docRef);
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, docPath);
+    return false;
   }
 }
 
-export async function clearAllNotificationsInFirestore(): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function clearAllNotificationsInFirestore(): Promise<boolean> {
+  if (isFirestoreQuotaExhausted) return false;
   try {
     const snapshot = await getDocs(collection(db, NOTIFICATIONS_COLLECTION));
-    const batch = writeBatch(db);
-    snapshot.forEach((d) => {
-      batch.delete(d.ref);
-    });
-    await batch.commit();
+    if (snapshot.empty) return true;
+    const docs = snapshot.docs;
+    const chunkSize = 450;
+    for (let i = 0; i < docs.length; i += chunkSize) {
+      const chunk = docs.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      chunk.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, NOTIFICATIONS_COLLECTION);
+    return false;
   }
 }
 
-export async function syncCompanyToFirestore(company: Company): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function syncCompanyToFirestore(company: Company): Promise<boolean> {
+  if (isFirestoreQuotaExhausted) return false;
   const docPath = `${COMPANIES_COLLECTION}/${company.id}`;
   try {
     const docRef = doc(db, COMPANIES_COLLECTION, company.id);
     await setDoc(docRef, company, { merge: true });
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, docPath);
+    return false;
   }
 }
 
@@ -630,7 +688,12 @@ export async function saveCompanyGoogleSheetUrl(
   companyId: string,
   url: string | null
 ): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+  if (isFirestoreQuotaExhausted) {
+    throw new Error('Firestore daily write quota reached on Free Tier. Settings preserved locally.');
+  }
+  if (!companyId) {
+    throw new Error('Company ID is required to configure Google Sheet URL.');
+  }
   const docPath = `${COMPANIES_COLLECTION}/${companyId}`;
   try {
     const docRef = doc(db, COMPANIES_COLLECTION, companyId);
@@ -667,14 +730,16 @@ export async function getCompanyGoogleSheetUrl(companyId: string): Promise<strin
   }
 }
 
-export async function deleteCompanyFromFirestore(companyId: string): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function deleteCompanyFromFirestore(companyId: string): Promise<boolean> {
+  if (isFirestoreQuotaExhausted || !companyId) return false;
   const docPath = `${COMPANIES_COLLECTION}/${companyId}`;
   try {
     const docRef = doc(db, COMPANIES_COLLECTION, companyId);
     await deleteDoc(docRef);
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, docPath);
+    return false;
   }
 }
 
@@ -703,36 +768,42 @@ export function subscribeToHelpRequests(
   );
 }
 
-export async function syncHelpRequestToFirestore(request: HelpRequest): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function syncHelpRequestToFirestore(request: HelpRequest): Promise<boolean> {
+  if (isFirestoreQuotaExhausted) return false;
   const docPath = `${HELP_REQUESTS_COLLECTION}/${request.id}`;
   try {
     const docRef = doc(db, HELP_REQUESTS_COLLECTION, request.id);
     await setDoc(docRef, request, { merge: true });
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, docPath);
+    return false;
   }
 }
 
-export async function updateHelpRequestStatusInFirestore(requestId: string, status: 'PENDING' | 'RESOLVED'): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function updateHelpRequestStatusInFirestore(requestId: string, status: 'PENDING' | 'RESOLVED'): Promise<boolean> {
+  if (isFirestoreQuotaExhausted || !requestId) return false;
   const docPath = `${HELP_REQUESTS_COLLECTION}/${requestId}`;
   try {
     const docRef = doc(db, HELP_REQUESTS_COLLECTION, requestId);
     await setDoc(docRef, { status }, { merge: true });
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, docPath);
+    return false;
   }
 }
 
-export async function deleteHelpRequestFromFirestore(requestId: string): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function deleteHelpRequestFromFirestore(requestId: string): Promise<boolean> {
+  if (isFirestoreQuotaExhausted || !requestId) return false;
   const docPath = `${HELP_REQUESTS_COLLECTION}/${requestId}`;
   try {
     const docRef = doc(db, HELP_REQUESTS_COLLECTION, requestId);
     await deleteDoc(docRef);
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, docPath);
+    return false;
   }
 }
 
@@ -761,25 +832,29 @@ export function subscribeToShifts(
   );
 }
 
-export async function syncShiftToFirestore(shift: Shift): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function syncShiftToFirestore(shift: Shift): Promise<boolean> {
+  if (isFirestoreQuotaExhausted) return false;
   const docPath = `${SHIFTS_COLLECTION}/${shift.id}`;
   try {
     const docRef = doc(db, SHIFTS_COLLECTION, shift.id);
     await setDoc(docRef, shift, { merge: true });
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, docPath);
+    return false;
   }
 }
 
-export async function deleteShiftFromFirestore(shiftId: string): Promise<void> {
-  if (isFirestoreQuotaExhausted) return;
+export async function deleteShiftFromFirestore(shiftId: string): Promise<boolean> {
+  if (isFirestoreQuotaExhausted || !shiftId) return false;
   const docPath = `${SHIFTS_COLLECTION}/${shiftId}`;
   try {
     const docRef = doc(db, SHIFTS_COLLECTION, shiftId);
     await deleteDoc(docRef);
+    return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, docPath);
+    return false;
   }
 }
 

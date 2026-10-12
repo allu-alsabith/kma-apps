@@ -213,54 +213,59 @@ class OfflineSyncManager {
     let errors = 0;
     const remainingQueue: OfflineQueueItem[] = [];
 
-    for (const item of queue) {
+    for (let i = 0; i < queue.length; i++) {
+      const item = queue[i];
+      if (getIsQuotaExhausted()) {
+        remainingQueue.push(...queue.slice(i));
+        break;
+      }
       try {
         let success = true;
         switch (item.type) {
           case 'SYNC_PUNCH':
-            await syncAttendanceRecordToFirestore(item.payload as AttendanceRecord);
+            success = await syncAttendanceRecordToFirestore(item.payload as AttendanceRecord);
             break;
           case 'SYNC_EMPLOYEE':
-            await syncEmployeeToFirestore(item.payload as Employee);
+            success = await syncEmployeeToFirestore(item.payload as Employee);
             break;
           case 'SYNC_DELETE_EMPLOYEE':
-            await deleteEmployeeFromFirestore(item.payload as string);
+            success = await deleteEmployeeFromFirestore(item.payload as string);
             break;
           case 'SYNC_LEAVE':
-            await syncLeaveRequestToFirestore(item.payload as LeaveRequest);
+            success = await syncLeaveRequestToFirestore(item.payload as LeaveRequest);
             break;
           case 'SYNC_LEAVE_STATUS':
-            await updateLeaveStatusInFirestore(item.payload.id, item.payload.status);
+            success = await updateLeaveStatusInFirestore(item.payload.id, item.payload.status);
             break;
           case 'SYNC_DELETE_LEAVE':
-            await deleteLeaveRequestFromFirestore(item.payload as string);
+            success = await deleteLeaveRequestFromFirestore(item.payload as string);
             break;
           case 'SYNC_COMPANY':
-            await syncCompanyToFirestore(item.payload as Company);
+            success = await syncCompanyToFirestore(item.payload as Company);
             break;
           case 'SYNC_DELETE_COMPANY':
-            await deleteCompanyFromFirestore(item.payload as string);
+            success = await deleteCompanyFromFirestore(item.payload as string);
             break;
           case 'SYNC_HELP_REQUEST':
-            await syncHelpRequestToFirestore(item.payload as HelpRequest);
+            success = await syncHelpRequestToFirestore(item.payload as HelpRequest);
             break;
           case 'SYNC_HELP_STATUS':
-            await updateHelpRequestStatusInFirestore(item.payload.id, item.payload.status);
+            success = await updateHelpRequestStatusInFirestore(item.payload.id, item.payload.status);
             break;
           case 'SYNC_DELETE_HELP_REQUEST':
-            await deleteHelpRequestFromFirestore(item.payload as string);
+            success = await deleteHelpRequestFromFirestore(item.payload as string);
             break;
           case 'SYNC_NOTIFICATION':
-            await syncStaffNotificationToFirestore(item.payload as StaffNotification);
+            success = await syncStaffNotificationToFirestore(item.payload as StaffNotification);
             break;
           case 'SYNC_NOTIFICATION_READ':
-            await updateNotificationReadInFirestore(item.payload.id, item.payload.read);
+            success = await updateNotificationReadInFirestore(item.payload.id, item.payload.read);
             break;
           case 'SYNC_SHIFT':
-            await syncShiftToFirestore(item.payload as Shift);
+            success = await syncShiftToFirestore(item.payload as Shift);
             break;
           case 'SYNC_DELETE_SHIFT':
-            await deleteShiftFromFirestore(item.payload as string);
+            success = await deleteShiftFromFirestore(item.payload as string);
             break;
           default:
             break;
@@ -268,6 +273,18 @@ class OfflineSyncManager {
 
         if (success) {
           syncedCount++;
+        } else {
+          errors++;
+          if (getIsQuotaExhausted()) {
+            remainingQueue.push(...queue.slice(i));
+            break;
+          }
+          if (item.retryCount < 5) {
+            remainingQueue.push({
+              ...item,
+              retryCount: item.retryCount + 1,
+            });
+          }
         }
       } catch (err) {
         console.warn(`[OfflineSync] Failed to process queue item ${item.id}`, err);

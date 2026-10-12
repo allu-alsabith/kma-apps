@@ -83,15 +83,24 @@ export async function syncAttendanceToGoogleSheet(
     };
 
     // 3. Send HTTP POST request in the background
-    // Note: mode: 'no-cors' allows browser to post to Google Apps Script without CORS redirect blockage
-    await fetch(targetUrl.trim(), {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+    // Note: mode: 'no-cors' with 'text/plain;charset=utf-8' allows browser to post to Google Apps Script
+    // without CORS redirect blockage or Content-Type restriction errors in modern browsers
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 15000) : null;
+
+    try {
+      await fetch(targetUrl.trim(), {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
+        body: JSON.stringify(payload),
+        signal: controller?.signal,
+      });
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
 
     return { success: true, urlUsed: targetUrl };
   } catch (err: any) {
@@ -127,14 +136,18 @@ export async function testGoogleSheetConnection(
     notes: `Test connection from ${companyName || 'Store Admin'}`,
   };
 
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), 15000) : null;
+
   try {
     await fetch(url.trim(), {
       method: 'POST',
       mode: 'no-cors',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'text/plain;charset=utf-8',
       },
       body: JSON.stringify(testPayload),
+      signal: controller?.signal,
     });
     return {
       success: true,
@@ -144,7 +157,9 @@ export async function testGoogleSheetConnection(
   } catch (err: any) {
     return {
       success: false,
-      message: err?.message || 'Failed to connect to Google Sheet URL',
+      message: err?.name === 'AbortError' ? 'Connection timed out while reaching Google Apps Script' : (err?.message || 'Failed to connect to Google Sheet URL'),
     };
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
 }

@@ -176,7 +176,31 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 }`;
 
   const handleCopyScriptTemplate = () => {
-    navigator.clipboard.writeText(googleAppsScriptTemplate);
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(googleAppsScriptTemplate).catch(() => {
+          try {
+            const textArea = document.createElement('textarea');
+            textArea.value = googleAppsScriptTemplate;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+          } catch {
+            // ignore
+          }
+        });
+      } else if (typeof document !== 'undefined') {
+        const textArea = document.createElement('textarea');
+        textArea.value = googleAppsScriptTemplate;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+    } catch {
+      // ignore
+    }
     setHasCopiedScript(true);
     soundService.playSuccessChime();
     setGoogleSheetFeedback({
@@ -381,10 +405,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   // Sync login fields when active company updates
   useEffect(() => {
     if (activeCompany) {
-      if (!loginCompanyCode) setLoginCompanyCode(activeCompany.code || '');
-      if (!loginCompanyName) setLoginCompanyName(activeCompany.supermarketName || activeCompany.name || '');
+      setLoginCompanyCode(activeCompany.code || '');
+      setLoginCompanyName(activeCompany.supermarketName || activeCompany.name || '');
     }
-  }, [activeCompany, loginCompanyCode, loginCompanyName]);
+  }, [activeCompany?.id, activeCompany?.code, activeCompany?.supermarketName, activeCompany?.name]);
+
+  // Synchronize authenticated state if active company loads or changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && activeCompany) {
+      const savedAuth = sessionStorage.getItem('attendo_admin_session_auth');
+      const savedCompId = sessionStorage.getItem('attendo_admin_company_id');
+      if (savedAuth === 'true' && savedCompId === activeCompany.id) {
+        setIsAdminLoggedIn(true);
+      } else if (savedCompId && savedCompId !== activeCompany.id) {
+        setIsAdminLoggedIn(false);
+      }
+    }
+  }, [activeCompany?.id]);
 
   useEffect(() => {
     const unsub = subscribeToAuth((user) => {
@@ -498,6 +535,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     setIsAdminLoggedIn(false);
     setLoginCompanyPassword('');
     setAdminLoginError(null);
+    signOutUser().catch(() => {});
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('attendo_admin_session_auth');
       sessionStorage.removeItem('attendo_admin_company_id');
@@ -799,28 +837,35 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   };
 
   const exportAttendanceCSV = () => {
-    const headers = ['Record ID', 'Employee ID', 'Name', 'Department', 'Date', 'Time', 'Punch Type', 'Device', 'Status'];
-    const rows = attendanceLogs.map(log => [
-      log.id,
-      log.employeeId,
-      `"${log.employeeName}"`,
-      `"${log.department}"`,
-      log.date,
-      log.time,
-      log.type,
-      log.device,
-      log.status,
-    ]);
+    try {
+      const headers = ['Record ID', 'Employee ID', 'Name', 'Department', 'Date', 'Time', 'Punch Type', 'Device', 'Status'];
+      const rows = attendanceLogs.map(log => [
+        log.id,
+        log.employeeId,
+        `"${(log.employeeName || '').replace(/"/g, '""')}"`,
+        `"${(log.department || '').replace(/"/g, '""')}"`,
+        log.date,
+        log.time,
+        log.type,
+        log.device,
+        log.status,
+      ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    const csvFileName = `${(activeCompany?.supermarketName || 'Supermarket').replace(/\s+/g, '_')}_Attendance_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.setAttribute('download', csvFileName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const csvString = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      const csvFileName = `${(activeCompany?.supermarketName || 'Supermarket').replace(/\s+/g, '_')}_Attendance_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.setAttribute('download', csvFileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      soundService.playSuccessChime();
+    } catch (err) {
+      console.warn('Failed to export CSV:', err);
+    }
   };
 
   // ==========================================
