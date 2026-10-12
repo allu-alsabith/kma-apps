@@ -105,8 +105,11 @@ export interface AttendanceRecord {
   kioskLocation: string;
   confidenceScore?: number; // 0.0 - 1.0 (e.g. 0.98)
   snapshotUrl?: string; // photo proof captured during scan
-  status: 'ON_TIME' | 'LATE' | 'OVERTIME' | 'EARLY_DEPARTURE' | 'NORMAL';
+  status: 'ON_TIME' | 'LATE' | 'OVERTIME' | 'EARLY_DEPARTURE' | 'EARLY_LEAVE' | 'NORMAL' | string;
   notes?: string;
+  scheduledTime?: string; // e.g. "09:00 AM"
+  actualTime?: string;    // e.g. "09:18 AM"
+  delayMins?: number;
 }
 
 export interface LeaveRequest {

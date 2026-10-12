@@ -33,15 +33,17 @@ import {
   CameraOff
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { Employee, AttendanceRecord, PunchType, Company, HelpRequest, StaffNotification, AppToggles } from '../types';
+import { Employee, AttendanceRecord, PunchType, Company, HelpRequest, StaffNotification, AppToggles, Shift } from '../types';
 import { soundService } from '../services/sound';
 import { formatTime12H, get12HTimeString } from '../utils/formatters';
 import { matchFaceAgainstEnrolledStaff } from '../utils/faceRecognition';
+import { evaluateShiftPunch } from '../utils/shiftEvaluation';
 import { AccountHelpModal } from './AccountHelpModal';
 import { NetworkSyncBadge } from './NetworkSyncBadge';
 
 interface KioskFaceProps {
   employees: Employee[];
+  shifts?: Shift[];
   attendanceLogs?: AttendanceRecord[];
   onNewPunch: (record: Omit<AttendanceRecord, 'id' | 'timestamp' | 'date' | 'time'>) => void;
   kioskName?: string;
@@ -56,6 +58,7 @@ interface KioskFaceProps {
 
 export const KioskFace: React.FC<KioskFaceProps> = ({
   employees,
+  shifts = [],
   attendanceLogs = [],
   onNewPunch,
   kioskName = 'Entrance Face Kiosk',
@@ -329,8 +332,8 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
     confidence = 0.985,
     snapshotUrl?: string
   ) => {
-    const isLate = Math.random() > 0.88;
-    const status = isLate ? 'LATE' : 'ON_TIME';
+    const shiftEval = evaluateShiftPunch(employee, typeToPunch, new Date(), shifts);
+    const status = shiftEval.status;
 
     onNewPunch({
       companyId: employee.companyId || connectedCompany?.id,
@@ -343,7 +346,10 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       confidenceScore: confidence,
       snapshotUrl: snapshotUrl || employee.avatar,
       status: status,
-      notes: `${typeToPunch} punch processed via Biometric FaceID.`,
+      scheduledTime: shiftEval.scheduledTime,
+      actualTime: shiftEval.actualTime,
+      delayMins: shiftEval.delayMins,
+      notes: `${typeToPunch} punch processed via Biometric FaceID. ${shiftEval.varianceNote || ''}`.trim(),
     });
 
     const now = new Date();
@@ -399,7 +405,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       setSecurityNotice(null);
       setSelectedStaffIdForScan('');
     }, 3400);
-  }, [onNewPunch, connectedCompany, companySupermarketName, isSoundEnabled]);
+  }, [onNewPunch, connectedCompany, companySupermarketName, isSoundEnabled, shifts]);
 
   // Advanced Biometric Face Scan Verification & Security Inspection
   const handleTriggerFaceScan = async (targetedStaff?: Employee) => {
@@ -1311,7 +1317,17 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                 <span className="text-slate-500">at {formatTime12H(lastPunchAudit.time, true)}</span>
               </div>
             </div>
-            <span className="text-[10px] px-2.5 py-0.5 rounded-md font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span className={`text-[10px] px-2.5 py-0.5 rounded-md font-mono font-bold ${
+              lastPunchAudit.status === 'ON_TIME'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                : lastPunchAudit.status.startsWith('LATE')
+                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                : lastPunchAudit.status === 'OVERTIME'
+                ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                : lastPunchAudit.status === 'EARLY_LEAVE'
+                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+            }`}>
               {lastPunchAudit.status}
             </span>
           </div>

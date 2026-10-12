@@ -49,6 +49,7 @@ import { offlineSyncService } from './services/offlineSync';
 import { autoSyncService } from './services/autoSync';
 import { soundService } from './services/sound';
 import { get12HTimeString } from './utils/formatters';
+import { evaluateShiftPunch } from './utils/shiftEvaluation';
 import { syncAttendanceToGoogleSheet } from './services/googleSheets';
 import {
   subscribeToEmployees,
@@ -819,6 +820,14 @@ function AppContent() {
     const emp = employees.find((e) => e.id === punchData.employeeId);
     const companyId = punchData.companyId || emp?.companyId || activeCompany?.id || activeCompanyId;
 
+    // Evaluate shift timing rules (grace period buffer for IN, early leave / overtime for OUT)
+    const shiftEval = evaluateShiftPunch(emp, punchData.type, now, shifts);
+
+    // Keep punchData.status if explicitly supplied (e.g., from kiosk or manual punch), otherwise use evaluated status
+    const finalStatus = punchData.status && punchData.status !== 'ON_TIME' && !punchData.status.startsWith('LATE')
+      ? punchData.status
+      : (shiftEval.status || punchData.status || 'ON_TIME');
+
     const newRecord: AttendanceRecord = {
       ...punchData,
       companyId,
@@ -826,6 +835,11 @@ function AppContent() {
       timestamp: now.toISOString(),
       date: now.toISOString().slice(0, 10),
       time: get12HTimeString(now, true),
+      status: finalStatus,
+      scheduledTime: punchData.scheduledTime || shiftEval.scheduledTime,
+      actualTime: punchData.actualTime || shiftEval.actualTime,
+      delayMins: punchData.delayMins !== undefined ? punchData.delayMins : shiftEval.delayMins,
+      notes: punchData.notes || shiftEval.varianceNote,
     };
 
     // Instant local UI response
@@ -870,6 +884,9 @@ function AppContent() {
     punchType: PunchType = 'IN',
     snapshotUrl?: string
   ) => {
+    const now = new Date();
+    const shiftEval = evaluateShiftPunch(employee, punchType, now, shifts);
+
     handleNewPunch({
       companyId: employee.companyId || activeCompany?.id,
       employeeId: employee.id,
@@ -880,8 +897,11 @@ function AppContent() {
       kioskLocation: 'Mobile Staff App (Store Geofence Aisle 4)',
       confidenceScore: 0.998,
       snapshotUrl: snapshotUrl || employee.avatar,
-      status: 'ON_TIME',
-      notes: `Biometric face scan verified on mobile device (${punchType === 'IN' ? 'Clock In' : 'Clock Out'}). Store geofence confirmed.`,
+      status: shiftEval.status,
+      scheduledTime: shiftEval.scheduledTime,
+      actualTime: shiftEval.actualTime,
+      delayMins: shiftEval.delayMins,
+      notes: `Biometric face scan verified on mobile device (${punchType === 'IN' ? 'Clock In' : 'Clock Out'}). ${shiftEval.varianceNote || ''}`.trim(),
     });
   };
 
@@ -1243,6 +1263,7 @@ function AppContent() {
         {currentPortal === 'KIOSK_FACE' && (
           <KioskFace
             employees={employees}
+            shifts={shifts}
             attendanceLogs={attendanceLogs}
             companies={companies}
             activeCompany={activeCompany}

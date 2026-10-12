@@ -156,15 +156,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     // Add header row automatically if sheet is brand new
     if (sheet.getLastRow() === 0) {
-      sheet.appendRow(["Timestamp", "Employee Name", "Employee ID", "Status", "Punch Type", "Department"]);
+      sheet.appendRow(["Timestamp", "Employee Name", "Employee ID", "Status", "Punch Type", "Scheduled Time", "Actual Time", "Department"]);
     }
     var data = JSON.parse(e.postData.contents);
     sheet.appendRow([
       data.Timestamp || data.timestamp || new Date().toISOString(),
       data["Employee Name"] || data.employeeName || "Unknown",
       data["Employee ID"] || data.employeeId || "",
-      data.Status || data.status || "PRESENT",
-      data["Punch Type"] || data.type || "IN",
+      data.Status || data.status || "ON_TIME",
+      data["Punch Type"] || data.punchType || data.type || "IN",
+      data["Scheduled Time"] || data.scheduledTime || "-",
+      data["Actual Time"] || data.actualTime || data.time || "-",
       data.Department || data.department || ""
     ]);
     return ContentService.createTextOutput(JSON.stringify({ result: "success" }))
@@ -838,7 +840,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
   const exportAttendanceCSV = () => {
     try {
-      const headers = ['Record ID', 'Employee ID', 'Name', 'Department', 'Date', 'Time', 'Punch Type', 'Device', 'Status'];
+      const headers = ['Record ID', 'Employee ID', 'Name', 'Department', 'Date', 'Time', 'Punch Type', 'Device', 'Status', 'Scheduled Time', 'Actual Time'];
       const rows = attendanceLogs.map(log => [
         log.id,
         log.employeeId,
@@ -848,7 +850,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         log.time,
         log.type,
         log.device,
-        log.status,
+        `"${(log.status || '').replace(/"/g, '""')}"`,
+        `"${(log.scheduledTime || '-').replace(/"/g, '""')}"`,
+        `"${(log.actualTime || log.time || '-').replace(/"/g, '""')}"`,
       ]);
 
       const csvString = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -1462,8 +1466,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full border whitespace-nowrap ${
                           log.status === 'ON_TIME'
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : log.status === 'LATE'
+                            : log.status.startsWith('LATE')
                             ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                            : log.status === 'OVERTIME'
+                            ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                            : log.status === 'EARLY_LEAVE'
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
                             : 'bg-slate-100 text-slate-700 border-[#E2E8F0]'
                         }`}>
                           {log.status}
@@ -2839,7 +2847,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     </div>
 
                     <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-                      <span>Columns created automatically: <strong>Timestamp, Employee Name, Employee ID, Status, Punch Type, Department</strong></span>
+                      <span>Columns created automatically: <strong>Timestamp, Employee Name, Employee ID, Status, Punch Type, Scheduled Time, Actual Time, Department</strong></span>
                       <span className="text-slate-400 font-mono">POST webhook</span>
                     </div>
                   </div>

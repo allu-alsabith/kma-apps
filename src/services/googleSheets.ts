@@ -57,29 +57,44 @@ export async function syncAttendanceToGoogleSheet(
     }
 
     // 2. Prepare attendance details payload with primary requested fields + flexible mappings
-    const statusVal = record.status || (record.type === 'IN' ? 'PRESENT' : 'COMPLETED');
+    const statusVal = record.status || (record.type === 'IN' ? 'ON_TIME' : 'COMPLETED');
+    const scheduledTimeVal = record.scheduledTime || '-';
+    const actualTimeVal = record.actualTime || record.time || '-';
+    const delayVal = record.delayMins !== undefined
+      ? (record.delayMins > 0 ? `+${record.delayMins}m` : `${record.delayMins}m`)
+      : '-';
+
     const payload = {
-      // Primary fields explicitly specified by user:
+      // Primary fields explicitly specified by user and Google Apps Script headers:
       Timestamp: record.timestamp,
       'Employee Name': record.employeeName,
       'Employee ID': record.employeeId,
       Status: statusVal,
+      'Punch Type': record.type,
+      'Scheduled Time': scheduledTimeVal,
+      'Actual Time': actualTimeVal,
+      Department: record.department || '',
+      Delay: delayVal,
 
       // Normalized lowerCamelCase variants for script flexibility:
       timestamp: record.timestamp,
       employeeName: record.employeeName,
       employeeId: record.employeeId,
       status: statusVal,
+      punchType: record.type,
+      scheduledTime: scheduledTimeVal,
+      actualTime: actualTimeVal,
+      delayMins: record.delayMins,
 
       // Contextual attendance info:
       date: record.date || record.timestamp.slice(0, 10),
       time: record.time,
-      punchType: record.type,
       type: record.type,
       department: record.department || '',
       device: record.device || '',
       location: record.kioskLocation || '',
       companyId: record.companyId || '',
+      notes: record.notes || '',
     };
 
     // 3. Send HTTP POST request in the background
