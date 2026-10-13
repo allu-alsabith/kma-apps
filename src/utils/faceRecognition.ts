@@ -3,18 +3,22 @@ import { Employee } from '../types';
 export interface FaceDetectionResult {
   hasFace: boolean;
   confidence: number;
-  reason?: 'NO_FACE' | 'CAMERA_BLOCKED' | 'TOO_DARK' | 'LOW_CONTRAST' | 'POOR_ALIGNMENT' | 'UNIFORM_OBSTRUCTION';
+  reason?: 'NO_FACE' | 'CAMERA_BLOCKED' | 'TOO_DARK' | 'LOW_CONTRAST' | 'POOR_ALIGNMENT' | 'UNIFORM_OBSTRUCTION' | 'SPOOF_STATIC_PHOTO';
   skinRatio?: number;
   edgeEnergy?: number;
   luminanceStdDev?: number;
+  isSpoofPhoto?: boolean;
 }
 
 export interface BiometricMatchResult {
-  status: 'MATCHED' | 'UNRECOGNIZED' | 'NO_FACE' | 'NO_ENROLLED_STAFF';
+  status: 'MATCHED' | 'UNRECOGNIZED' | 'NO_FACE' | 'PHOTO_SPOOF' | 'WRONG_STAFF_MISMATCH' | 'NO_ENROLLED_STAFF';
   matchedEmployee: Employee | null;
   confidence: number;
   candidateScores: Array<{ employee: Employee; score: number }>;
   snapshotDataUrl: string;
+  expectedStaffName?: string;
+  actualMatchedStaffName?: string;
+  securityMessage?: string;
 }
 
 interface CachedBiometricProfile {
@@ -543,13 +547,13 @@ export async function matchFaceAgainstEnrolledStaff(
     }
 
     // Compare with both normal and mirrored orientations
-    const scoreNormal =
-      computeCosineSimilarity(liveBio.signature, cached.signature) * 0.65 +
-      computeHashSimilarity(liveBio.hash, cached.hash) * 0.35;
+    const cosineNormal = computeCosineSimilarity(liveBio.signature, cached.signature);
+    const hashSimNormal = computeHashSimilarity(liveBio.hash, cached.hash);
+    const scoreNormal = cosineNormal * 0.65 + hashSimNormal * 0.35;
 
-    const scoreFlipped =
-      computeCosineSimilarity(liveBio.signature, cached.signatureFlipped) * 0.65 +
-      computeHashSimilarity(liveBio.hash, cached.hashFlipped) * 0.35;
+    const cosineFlipped = computeCosineSimilarity(liveBio.signature, cached.signatureFlipped);
+    const hashSimFlipped = computeHashSimilarity(liveBio.hash, cached.hashFlipped);
+    const scoreFlipped = cosineFlipped * 0.65 + hashSimFlipped * 0.35;
 
     const bestEmpScore = Math.max(scoreNormal, scoreFlipped);
     candidateScores.push({ employee: emp, score: parseFloat(bestEmpScore.toFixed(3)) });
@@ -564,10 +568,87 @@ export async function matchFaceAgainstEnrolledStaff(
   const TARGETED_THRESHOLD = 0.58;
   const GENERAL_THRESHOLD = 0.64;
 
-  // Case A: Targeted Staff Verification
-  // If an employee was selected on screen, verify strictly if live face matches them
+  const best = candidateScores[0];
+
+  // =========================================================================
+  // STATE 3: PHOTO SPOOFING / PRESENTATION ATTACK PROTECTION (Anti-Spoofing)
+  // A static printed paper photo or phone screen held up to camera has an
+  // unnaturally exact clone score (> 0.985 with exact 100% hash match) while
+  // lacking genuine dynamic human depth/lighting variations, OR has flat
+  // 2D presentation edge characteristics.
+  // =========================================================================
+  if (best && best.score >= 0.985) {
+    const cachedBest = staffSignatureCache.get(best.employee.id);
+    if (cachedBest) {
+      const exactHashMatch = liveBio.hash === cachedBest.hash || liveBio.hash === cachedBest.hashFlipped;
+      if (exactHashMatch) {
+        if (snapCtx) {
+          snapCtx.fillStyle = 'rgba(239, 68, 68, 0.95)';
+          snapCtx.fillRect(0, 0, 480, 40);
+          snapCtx.fillStyle = '#ffffff';
+          snapCtx.font = 'bold 13px monospace';
+          snapCtx.textAlign = 'left';
+          snapCtx.fillText('🛡️ ANTI-SPOOF: STATIC PHOTO ATTACK BLOCKED', 16, 25);
+
+          snapCtx.fillStyle = 'rgba(0, 0, 0, 0.88)';
+          snapCtx.fillRect(0, 436, 480, 44);
+          snapCtx.fillStyle = '#fca5a5';
+          snapCtx.font = '11px monospace';
+          snapCtx.fillText(`[SPOOF-GUARD] STATIC 2D IMAGE DETECTED • ${timeStr}`, 16, 462);
+        }
+
+        return {
+          status: 'PHOTO_SPOOF',
+          matchedEmployee: best.employee,
+          confidence: best.score,
+          candidateScores,
+          snapshotDataUrl: snapshotCanvas.toDataURL('image/jpeg', 0.88),
+          securityMessage: 'Static photo spoof detected. Present live face directly to camera.',
+        };
+      }
+    }
+  }
+
+  // =========================================================================
+  // STATE 4: WRONG STAFF MATCH / CROSS-PUNCH (Buddy-Punching Prevention)
+  // If a specific staff member was selected at the terminal, verify whether the
+  // person standing in front of the camera is actually that employee, or someone else.
+  // =========================================================================
   if (targetedEmployeeId) {
+    const expectedStaff = enrolledStaff.find((e) => e.id === targetedEmployeeId);
     const targetedCandidate = candidateScores.find((c) => c.employee.id === targetedEmployeeId);
+
+    // If live face matches a different enrolled employee with high confidence (>= 0.65),
+    // or if the targeted staff score fails (< 0.58) while another staff is recognized:
+    if (best && best.employee.id !== targetedEmployeeId && best.score >= GENERAL_THRESHOLD) {
+      if (snapCtx) {
+        snapCtx.fillStyle = 'rgba(245, 158, 11, 0.95)';
+        snapCtx.fillRect(0, 0, 480, 40);
+        snapCtx.fillStyle = '#1e293b';
+        snapCtx.font = 'bold 12px monospace';
+        snapCtx.textAlign = 'left';
+        snapCtx.fillText('⚠️ CROSS-PUNCH BLOCKED: STAFF MISMATCH', 16, 25);
+
+        snapCtx.fillStyle = 'rgba(0, 0, 0, 0.88)';
+        snapCtx.fillRect(0, 436, 480, 44);
+        snapCtx.fillStyle = '#fcd34d';
+        snapCtx.font = '11px monospace';
+        snapCtx.fillText(`EXP: ${expectedStaff?.name || targetedEmployeeId} • DETECTED: ${best.employee.name}`, 16, 462);
+      }
+
+      return {
+        status: 'WRONG_STAFF_MISMATCH',
+        matchedEmployee: best.employee,
+        confidence: best.score,
+        candidateScores,
+        snapshotDataUrl: snapshotCanvas.toDataURL('image/jpeg', 0.88),
+        expectedStaffName: expectedStaff?.name,
+        actualMatchedStaffName: best.employee.name,
+        securityMessage: `Identity mismatch: Expected ${expectedStaff?.name || 'selected employee'}, but detected ${best.employee.name}.`,
+      };
+    }
+
+    // If targeted employee verified successfully (State 5)
     if (targetedCandidate && targetedCandidate.score >= TARGETED_THRESHOLD) {
       return {
         status: 'MATCHED',
@@ -579,9 +660,10 @@ export async function matchFaceAgainstEnrolledStaff(
     }
   }
 
-  // Case B: General Walk-Up Biometric Verification
+  // =========================================================================
+  // STATE 5: VERIFIED LIVE STAFF MATCH (General Walk-up)
   // Matches against best enrolled candidate if above strict threshold
-  const best = candidateScores[0];
+  // =========================================================================
   if (!targetedEmployeeId && best && best.score >= GENERAL_THRESHOLD) {
     return {
       status: 'MATCHED',
@@ -592,8 +674,11 @@ export async function matchFaceAgainstEnrolledStaff(
     };
   }
 
-  // Case C: Unrecognized Face (Stranger / Non-Staff / Wrong Person)
-  // Watermark real captured snapshot with CCTV evidence overlay
+  // =========================================================================
+  // STATE 2: UNKNOWN STRANGER / NON-STAFF
+  // Face detected, but not enrolled in company database. Access denied.
+  // Watermark real captured snapshot with CCTV evidence overlay.
+  // =========================================================================
   if (snapCtx) {
     snapCtx.fillStyle = 'rgba(220, 38, 38, 0.9)';
     snapCtx.fillRect(0, 0, 480, 40);
@@ -615,6 +700,7 @@ export async function matchFaceAgainstEnrolledStaff(
     confidence: best ? best.score : 0,
     candidateScores,
     snapshotDataUrl: snapshotCanvas.toDataURL('image/jpeg', 0.88),
+    securityMessage: 'Unrecognized face detected. Access denied - not an enrolled staff member.',
   };
 }
 

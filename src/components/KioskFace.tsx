@@ -220,9 +220,9 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isSoundEnabled, setIsSoundEnabled] = useState<boolean>(true);
 
-  // Scanning & Punch Execution States
+  // Scanning & Punch Execution States (The 5-State Biometric Security Engine)
   const [scanningStatus, setScanningStatus] = useState<
-    'IDLE' | 'DETECTING' | 'MATCHED' | 'FAILED' | 'NO_FACE' | 'UNRECOGNIZED'
+    'IDLE' | 'DETECTING' | 'MATCHED' | 'FAILED' | 'NO_FACE' | 'UNRECOGNIZED' | 'PHOTO_SPOOF' | 'WRONG_STAFF_MISMATCH'
   >('IDLE');
   const [matchedEmployee, setMatchedEmployee] = useState<Employee | null>(null);
   const [matchScore, setMatchScore] = useState<number>(0);
@@ -233,7 +233,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   // Dynamic Options State for Staff punch
   const [staffPunchOptions, setStaffPunchOptions] = useState<{
     employee: Employee;
-    currentState: 'NOT_PUNCHED_IN' | 'ON_SHIFT' | 'ON_BREAK';
+    currentState: 'NOT_PUNCHED_IN' | 'ON_SHIFT' | 'ON_BREAK' | 'COMPLETED_SHIFT';
     lastPunchTime?: string;
   } | null>(null);
 
@@ -306,7 +306,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
 
   // Determine current punch status for an employee on today's date
   const getStaffCurrentTodayState = useCallback((employee: Employee): {
-    currentState: 'NOT_PUNCHED_IN' | 'ON_SHIFT' | 'ON_BREAK';
+    currentState: 'NOT_PUNCHED_IN' | 'ON_SHIFT' | 'ON_BREAK' | 'COMPLETED_SHIFT';
     lastPunchTime?: string;
   } => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -314,9 +314,13 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       (l) => l.employeeId === employee.id && (l.date === todayStr || l.timestamp?.startsWith(todayStr))
     );
 
+    if (todayLogs.length === 0) {
+      return { currentState: 'NOT_PUNCHED_IN' };
+    }
+
     const latestLog = todayLogs[0];
-    if (!latestLog || latestLog.type === 'OUT') {
-      return { currentState: 'NOT_PUNCHED_IN', lastPunchTime: latestLog?.time };
+    if (latestLog.type === 'OUT') {
+      return { currentState: 'COMPLETED_SHIFT', lastPunchTime: latestLog.time };
     }
     if (latestLog.type === 'BREAK_START') {
       return { currentState: 'ON_BREAK', lastPunchTime: latestLog.time };
@@ -445,14 +449,14 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
         targetEmpId
       );
 
-      // SECURITY CHECK 1: NO HUMAN FACE PRESENT IN RETICLE (e.g. camera covered, empty room, dark)
+      // STATE 1: NO FACE DETECTED (Camera empty or lighting poor)
       if (matchResult.status === 'NO_FACE') {
         setScanningStatus('NO_FACE');
         setMatchedEmployee(null);
-        setSecurityNotice('No face detected in screen. Please align your face inside the camera reticle.');
+        setSecurityNotice('Position your face in front of the camera.');
         if (isSoundEnabled) {
           soundService.playWarningTone();
-          soundService.speakWarning('No face detected in screen. Please look directly into the camera.');
+          soundService.speakWarning('Position your face in front of the camera.');
         }
 
         if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
@@ -464,7 +468,102 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
         return;
       }
 
-      // SECURITY CHECK 2: UNRECOGNIZED FACE (Non-staff / Stranger / Intruder)
+      // STATE 3: PHOTO SPOOFING / PRESENTATION ATTACK PROTECTION
+      if (matchResult.status === 'PHOTO_SPOOF') {
+        setScanningStatus('PHOTO_SPOOF');
+        setMatchedEmployee(null);
+        setUnrecognizedSnapshot(matchResult.snapshotDataUrl);
+        setSecurityNotice(matchResult.securityMessage || 'Photo spoof detected. Present real face directly to camera.');
+
+        if (isSoundEnabled) {
+          soundService.playWarningBuzz();
+          soundService.speakWarning('Photo spoofing attempt detected. Access blocked. Present your real face.');
+        }
+
+        if (onSecurityAlert && connectedCompany) {
+          const now = new Date();
+          const securityAlertNotification: StaffNotification = {
+            id: `notif-sec-spoof-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            companyId: connectedCompany.id,
+            employeeId: 'ADMIN',
+            employeeName: 'Security Anti-Spoof Guard',
+            title: '🛡️ Presentation Attack Blocked (Photo Spoof)',
+            message: `A static photo spoofing attempt was detected and blocked at "${companySupermarketName} • Staff Entrance Terminal". Incident snapshot captured.`,
+            type: 'SECURITY_ALERT',
+            timestamp: now.toISOString(),
+            timeFormatted: get12HTimeString(now, false),
+            read: false,
+            photoUrl: matchResult.snapshotDataUrl,
+            meta: {
+              capturedPhoto: matchResult.snapshotDataUrl,
+              kioskLocation: `${companySupermarketName} • Staff Entrance Terminal`,
+              alertType: 'SPOOF_ATTEMPT',
+            },
+          };
+          onSecurityAlert(securityAlertNotification);
+        }
+
+        if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+        resetTimerRef.current = setTimeout(() => {
+          setScanningStatus('IDLE');
+          setUnrecognizedSnapshot(null);
+          setSecurityNotice(null);
+          setSelectedStaffIdForScan('');
+        }, 4600);
+        return;
+      }
+
+      // STATE 4: WRONG STAFF MATCH / CROSS-PUNCH (Buddy-Punching Prevention)
+      if (matchResult.status === 'WRONG_STAFF_MISMATCH') {
+        setScanningStatus('WRONG_STAFF_MISMATCH');
+        setMatchedEmployee(null);
+        setUnrecognizedSnapshot(matchResult.snapshotDataUrl);
+        setSecurityNotice(
+          matchResult.securityMessage ||
+          `Cross-punch prevented: Expected ${matchResult.expectedStaffName || 'selected employee'}, but detected ${matchResult.actualMatchedStaffName || 'different staff member'}.`
+        );
+
+        if (isSoundEnabled) {
+          soundService.playWarningBuzz();
+          soundService.speakWarning(
+            `Staff mismatch. You are detected as ${matchResult.actualMatchedStaffName || 'another employee'}, not ${matchResult.expectedStaffName || 'the selected staff'}. Cross-punch blocked.`
+          );
+        }
+
+        if (onSecurityAlert && connectedCompany) {
+          const now = new Date();
+          const securityAlertNotification: StaffNotification = {
+            id: `notif-sec-crosspunch-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            companyId: connectedCompany.id,
+            employeeId: 'ADMIN',
+            employeeName: 'Buddy-Punch Prevention',
+            title: '⚠️ Buddy Punching / Staff Mismatch Prevented',
+            message: `Cross-punch blocked at Entrance Kiosk. Expected ${matchResult.expectedStaffName || 'selected employee'}, but live face matched ${matchResult.actualMatchedStaffName || 'a different staff member'}.`,
+            type: 'SECURITY_ALERT',
+            timestamp: now.toISOString(),
+            timeFormatted: get12HTimeString(now, false),
+            read: false,
+            photoUrl: matchResult.snapshotDataUrl,
+            meta: {
+              capturedPhoto: matchResult.snapshotDataUrl,
+              kioskLocation: `${companySupermarketName} • Staff Entrance Terminal`,
+              alertType: 'UNRECOGNIZED_FACE',
+            },
+          };
+          onSecurityAlert(securityAlertNotification);
+        }
+
+        if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+        resetTimerRef.current = setTimeout(() => {
+          setScanningStatus('IDLE');
+          setUnrecognizedSnapshot(null);
+          setSecurityNotice(null);
+          setSelectedStaffIdForScan('');
+        }, 4800);
+        return;
+      }
+
+      // STATE 2: UNKNOWN STRANGER / NON-STAFF
       if (matchResult.status === 'UNRECOGNIZED' || !matchResult.matchedEmployee) {
         setScanningStatus('UNRECOGNIZED');
         setMatchedEmployee(null);
@@ -510,7 +609,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
         return;
       }
 
-      // SECURITY CHECK 3: VERIFIED & CONFIRMED STORE STAFF
+      // STATE 5: VERIFIED LIVE STAFF MATCH (Face-Driven Contextual Action Flow)
       const targetEmp = matchResult.matchedEmployee;
       const score = matchResult.confidence;
       setMatchScore(score);
@@ -520,11 +619,18 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       const firstName = targetEmp.name.split(' ')[0];
 
       if (currentState === 'NOT_PUNCHED_IN') {
-        // If not punched in: automatically record Punch IN and announce welcome!
+        // Flow A: If not yet punched in today: Show Punch In only
         setScanningStatus('MATCHED');
-        executePunch(targetEmp, 'IN', 'KIOSK_FACE', score, matchResult.snapshotDataUrl);
+        setStaffPunchOptions({
+          employee: targetEmp,
+          currentState: 'NOT_PUNCHED_IN',
+        });
+        if (isSoundEnabled) {
+          soundService.playNotificationTone();
+          soundService.speakConfirmation(`Welcome ${firstName}! Tap Punch In to start your shift.`);
+        }
       } else if (currentState === 'ON_SHIFT') {
-        // If already punched in: show options like start break and punch out
+        // Flow B: If currently punched in: Show Start Break and Punch Out
         setScanningStatus('MATCHED');
         setStaffPunchOptions({
           employee: targetEmp,
@@ -536,7 +642,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           soundService.speakConfirmation(`${firstName} verified. Please select Start Break or Punch Out.`);
         }
       } else if (currentState === 'ON_BREAK') {
-        // If already started break: show options end break only
+        // Flow C: If currently on break: Show End Break only
         setScanningStatus('MATCHED');
         setStaffPunchOptions({
           employee: targetEmp,
@@ -546,6 +652,18 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
         if (isSoundEnabled) {
           soundService.playNotificationTone();
           soundService.speakConfirmation(`Welcome back ${firstName}. Tap End Break to resume shift.`);
+        }
+      } else if (currentState === 'COMPLETED_SHIFT') {
+        // Flow D: If already completed shift today: Show Punch In (for overtime/return)
+        setScanningStatus('MATCHED');
+        setStaffPunchOptions({
+          employee: targetEmp,
+          currentState: 'COMPLETED_SHIFT',
+          lastPunchTime,
+        });
+        if (isSoundEnabled) {
+          soundService.playNotificationTone();
+          soundService.speakConfirmation(`Welcome back ${firstName}. Tap Punch In to log return or overtime.`);
         }
       }
     } catch {
@@ -842,6 +960,10 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                 ? 'border-2 border-dashed border-sky-400 shadow-[0_0_40px_rgba(56,189,248,0.4)] animate-pulse'
                 : scanningStatus === 'NO_FACE'
                 ? 'border-3 border-amber-400 shadow-[0_0_50px_rgba(245,158,11,0.6)] animate-pulse'
+                : scanningStatus === 'PHOTO_SPOOF'
+                ? 'border-4 border-red-600 shadow-[0_0_60px_rgba(220,38,38,0.8)] animate-shake'
+                : scanningStatus === 'WRONG_STAFF_MISMATCH'
+                ? 'border-4 border-amber-500 shadow-[0_0_50px_rgba(245,158,11,0.7)] animate-shake'
                 : scanningStatus === 'UNRECOGNIZED'
                 ? 'border-4 border-red-500 shadow-[0_0_60px_rgba(239,68,68,0.7)] animate-shake'
                 : scanningStatus === 'FAILED'
@@ -851,16 +973,16 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           >
             {/* Crosshairs */}
             <div className={`absolute top-4 left-6 w-5 h-5 border-t-2 border-l-2 rounded-tl-lg ${
-              scanningStatus === 'UNRECOGNIZED' ? 'border-red-500' : scanningStatus === 'NO_FACE' ? 'border-amber-500' : 'border-[#2563EB]'
+              scanningStatus === 'UNRECOGNIZED' || scanningStatus === 'PHOTO_SPOOF' ? 'border-red-500' : scanningStatus === 'NO_FACE' || scanningStatus === 'WRONG_STAFF_MISMATCH' ? 'border-amber-500' : 'border-[#2563EB]'
             }`}></div>
             <div className={`absolute top-4 right-6 w-5 h-5 border-t-2 border-r-2 rounded-tr-lg ${
-              scanningStatus === 'UNRECOGNIZED' ? 'border-red-500' : scanningStatus === 'NO_FACE' ? 'border-amber-500' : 'border-[#2563EB]'
+              scanningStatus === 'UNRECOGNIZED' || scanningStatus === 'PHOTO_SPOOF' ? 'border-red-500' : scanningStatus === 'NO_FACE' || scanningStatus === 'WRONG_STAFF_MISMATCH' ? 'border-amber-500' : 'border-[#2563EB]'
             }`}></div>
             <div className={`absolute bottom-4 left-6 w-5 h-5 border-b-2 border-l-2 rounded-bl-lg ${
-              scanningStatus === 'UNRECOGNIZED' ? 'border-red-500' : scanningStatus === 'NO_FACE' ? 'border-amber-500' : 'border-[#2563EB]'
+              scanningStatus === 'UNRECOGNIZED' || scanningStatus === 'PHOTO_SPOOF' ? 'border-red-500' : scanningStatus === 'NO_FACE' || scanningStatus === 'WRONG_STAFF_MISMATCH' ? 'border-amber-500' : 'border-[#2563EB]'
             }`}></div>
             <div className={`absolute bottom-4 right-6 w-5 h-5 border-b-2 border-r-2 rounded-br-lg ${
-              scanningStatus === 'UNRECOGNIZED' ? 'border-red-500' : scanningStatus === 'NO_FACE' ? 'border-amber-500' : 'border-[#2563EB]'
+              scanningStatus === 'UNRECOGNIZED' || scanningStatus === 'PHOTO_SPOOF' ? 'border-red-500' : scanningStatus === 'NO_FACE' || scanningStatus === 'WRONG_STAFF_MISMATCH' ? 'border-amber-500' : 'border-[#2563EB]'
             }`}></div>
 
             {/* Scanning Laser Beam */}
@@ -883,6 +1005,20 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
               <div className="w-20 h-20 rounded-full bg-amber-50 backdrop-blur-xl border-2 border-amber-400 flex flex-col items-center justify-center text-amber-700 animate-scale-in shadow-md">
                 <UserX className="w-10 h-10" />
                 <span className="text-[9px] font-black uppercase mt-0.5 tracking-wider">No Face</span>
+              </div>
+            )}
+
+            {scanningStatus === 'PHOTO_SPOOF' && (
+              <div className="w-20 h-20 rounded-full bg-rose-50 backdrop-blur-xl border-2 border-red-600 flex flex-col items-center justify-center text-rose-700 animate-scale-in shadow-md">
+                <AlertOctagon className="w-10 h-10 animate-bounce" />
+                <span className="text-[8px] font-black uppercase mt-0.5 tracking-wider">Spoof Block</span>
+              </div>
+            )}
+
+            {scanningStatus === 'WRONG_STAFF_MISMATCH' && (
+              <div className="w-20 h-20 rounded-full bg-amber-50 backdrop-blur-xl border-2 border-amber-500 flex flex-col items-center justify-center text-amber-800 animate-scale-in shadow-md">
+                <AlertTriangle className="w-10 h-10 animate-bounce" />
+                <span className="text-[8px] font-black uppercase mt-0.5 tracking-wider">Mismatch</span>
               </div>
             )}
 
@@ -915,12 +1051,22 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
             ) : scanningStatus === 'NO_FACE' ? (
               <>
                 <UserX className="w-3.5 h-3.5 text-amber-600 animate-pulse" />
-                <span className="text-amber-800 font-bold">No Face Detected &bull; Look Into Camera Frame</span>
+                <span className="text-amber-800 font-bold">Position your face in front of the camera</span>
+              </>
+            ) : scanningStatus === 'PHOTO_SPOOF' ? (
+              <>
+                <AlertOctagon className="w-3.5 h-3.5 text-rose-600 animate-bounce" />
+                <span className="text-rose-800 font-bold">Photo Spoofing Detected &bull; Attack Blocked</span>
+              </>
+            ) : scanningStatus === 'WRONG_STAFF_MISMATCH' ? (
+              <>
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 animate-bounce" />
+                <span className="text-amber-800 font-bold">Cross-Punch Blocked &bull; Staff Mismatch</span>
               </>
             ) : scanningStatus === 'UNRECOGNIZED' ? (
               <>
                 <ShieldAlert className="w-3.5 h-3.5 text-rose-600 animate-ping" />
-                <span className="text-rose-800 font-bold">Unrecognized Face &bull; Alert Pushed to Admin</span>
+                <span className="text-rose-800 font-bold">Unrecognized Visitor &bull; Access Denied</span>
               </>
             ) : companyEmployees.length === 0 ? (
               <>
@@ -930,7 +1076,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
             ) : (
               <>
                 <ScanFace className="w-3.5 h-3.5 text-[#2563EB]" />
-                <span className="text-slate-700 font-medium">Look at camera and press Verify &amp; Punch</span>
+                <span className="text-slate-700 font-medium">Position your face in front of the camera</span>
               </>
             )}
           </div>
@@ -967,15 +1113,77 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           </div>
         )}
 
+        {/* Security Alert: Photo Spoofing Presentation Attack Overlay Card */}
+        {scanningStatus === 'PHOTO_SPOOF' && unrecognizedSnapshot && (
+          <div className="absolute inset-x-4 bottom-24 sm:bottom-28 z-40 mx-auto max-w-md bg-white rounded-xl p-4 border border-rose-400 shadow-xl animate-shake text-[#1E293B]">
+            <div className="flex items-center gap-3.5">
+              <div className="relative shrink-0">
+                <img
+                  src={unrecognizedSnapshot}
+                  alt="Spoof Attempt"
+                  className="w-16 h-16 rounded-xl object-cover border-2 border-red-500 shadow-xs"
+                />
+                <span className="absolute -bottom-1.5 -right-1 px-1.5 py-0.2 rounded bg-red-700 text-[8px] font-black uppercase text-white font-mono shadow">
+                  SPOOF ATTACK
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 text-rose-700 font-bold text-xs uppercase tracking-wide">
+                  <AlertOctagon className="w-4 h-4 shrink-0 animate-bounce text-red-600" />
+                  <span>Anti-Spoofing: Static Image Blocked</span>
+                </div>
+                <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+                  Static photo presentation detected. Access blocked to protect terminal integrity.
+                </p>
+                <div className="flex items-center gap-1.5 mt-1 text-[10px] text-red-600 font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping"></span>
+                  <span>Security log recorded • Present genuine live face</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Security Alert: Wrong Staff Match / Buddy-Punching Prevention Overlay Card */}
+        {scanningStatus === 'WRONG_STAFF_MISMATCH' && unrecognizedSnapshot && (
+          <div className="absolute inset-x-4 bottom-24 sm:bottom-28 z-40 mx-auto max-w-md bg-white rounded-xl p-4 border border-amber-400 shadow-xl animate-shake text-[#1E293B]">
+            <div className="flex items-center gap-3.5">
+              <div className="relative shrink-0">
+                <img
+                  src={unrecognizedSnapshot}
+                  alt="Staff Mismatch"
+                  className="w-16 h-16 rounded-xl object-cover border-2 border-amber-500 shadow-xs"
+                />
+                <span className="absolute -bottom-1.5 -right-1 px-1.5 py-0.2 rounded bg-amber-600 text-[8px] font-black uppercase text-white font-mono shadow">
+                  MISMATCH
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 text-amber-700 font-bold text-xs uppercase tracking-wide">
+                  <AlertTriangle className="w-4 h-4 shrink-0 animate-bounce text-amber-600" />
+                  <span>Cross-Punch Prevented: Staff Mismatch</span>
+                </div>
+                <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+                  {securityNotice || 'A different staff member is standing at the terminal than selected.'}
+                </p>
+                <div className="flex items-center gap-1.5 mt-1 text-[10px] text-amber-700 font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+                  <span>Buddy punching blocked • Select your own name to verify</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Notice: No Face Detected in Screen */}
         {scanningStatus === 'NO_FACE' && (
           <div className="absolute inset-x-4 bottom-24 sm:bottom-28 z-40 mx-auto max-w-sm bg-white rounded-xl p-3.5 border border-amber-300 shadow-lg animate-fade-in text-[#1E293B] text-center">
             <div className="flex items-center justify-center gap-2 text-amber-600 font-bold text-xs">
               <UserX className="w-4 h-4 shrink-0" />
-              <span>No Face Detected In Screen</span>
+              <span>Position your face in front of the camera</span>
             </div>
             <p className="text-[11px] text-slate-600 mt-1">
-              Please position your face directly inside the camera reticle before pressing verify.
+              Ensure proper lighting and stand directly inside the camera reticle frame.
             </p>
           </div>
         )}
@@ -1020,16 +1228,31 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
 
               {/* Status Note */}
               <div className="mt-2.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-[11px] text-slate-700">
-                {staffPunchOptions.currentState === 'ON_SHIFT' ? (
+                {staffPunchOptions.currentState === 'NOT_PUNCHED_IN' ? (
+                  <span className="text-[#2563EB] font-semibold">Not yet punched in today</span>
+                ) : staffPunchOptions.currentState === 'ON_SHIFT' ? (
                   <span>Currently on shift {staffPunchOptions.lastPunchTime ? `since ${formatTime12H(staffPunchOptions.lastPunchTime, true)}` : ''}</span>
-                ) : (
+                ) : staffPunchOptions.currentState === 'ON_BREAK' ? (
                   <span className="text-amber-800 font-semibold">Currently on break {staffPunchOptions.lastPunchTime ? `since ${formatTime12H(staffPunchOptions.lastPunchTime, true)}` : ''}</span>
+                ) : (
+                  <span className="text-slate-600 font-medium">Shift completed today {staffPunchOptions.lastPunchTime ? `at ${formatTime12H(staffPunchOptions.lastPunchTime, true)}` : ''}</span>
                 )}
               </div>
 
-              {/* ACTION CHOICES */}
+              {/* DYNAMIC CONTEXTUAL ACTION FLOW */}
               <div className="w-full mt-5 space-y-2.5">
-                {staffPunchOptions.currentState === 'ON_SHIFT' ? (
+                {staffPunchOptions.currentState === 'NOT_PUNCHED_IN' ? (
+                  /* 1. If not yet punched in today: Show Punch In only */
+                  <button
+                    id="btn-kiosk-punch-in"
+                    onClick={() => executePunch(staffPunchOptions.employee, 'IN', 'KIOSK_FACE')}
+                    className="w-full py-3.5 px-4 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold text-sm shadow-xs active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <LogIn className="w-4 h-4 text-white" />
+                    <span>Punch In &bull; Start Shift</span>
+                  </button>
+                ) : staffPunchOptions.currentState === 'ON_SHIFT' ? (
+                  /* 2. If currently punched in: Show Start Break and Punch Out */
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       id="btn-kiosk-start-break"
@@ -1049,7 +1272,8 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                       <span>Punch Out</span>
                     </button>
                   </div>
-                ) : (
+                ) : staffPunchOptions.currentState === 'ON_BREAK' ? (
+                  /* 3. If currently on break: Show End Break only */
                   <button
                     id="btn-kiosk-end-break"
                     onClick={() => executePunch(staffPunchOptions.employee, 'BREAK_END', 'KIOSK_FACE')}
@@ -1057,6 +1281,16 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
                   >
                     <Play className="w-4 h-4 text-white" />
                     <span>End Break &bull; Resume Shift</span>
+                  </button>
+                ) : (
+                  /* 4. If already completed shift: Show Punch In (for overtime/return) */
+                  <button
+                    id="btn-kiosk-punch-in-return"
+                    onClick={() => executePunch(staffPunchOptions.employee, 'IN', 'KIOSK_FACE')}
+                    className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <LogIn className="w-4 h-4 text-white" />
+                    <span>Punch In &bull; Log Return / Overtime</span>
                   </button>
                 )}
               </div>

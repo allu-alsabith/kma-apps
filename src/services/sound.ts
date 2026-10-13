@@ -130,6 +130,33 @@ class SoundService {
     }
   }
 
+  // Security warning buzz for spoof attacks, unauthorized access, or buddy punch mismatch
+  playWarningBuzz() {
+    try {
+      this.initCtx();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.setValueAtTime(120, now + 0.1);
+      osc.frequency.setValueAtTime(100, now + 0.2);
+
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.35);
+    } catch {
+      // Silent catch
+    }
+  }
+
   // Security alarm / siren pulse for unauthorized individuals & unrecognized faces
   playSecurityAlertTone() {
     try {
