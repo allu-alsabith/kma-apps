@@ -38,6 +38,7 @@ import { soundService } from '../services/sound';
 import { formatTime12H, get12HTimeString } from '../utils/formatters';
 import { matchFaceAgainstEnrolledStaff } from '../utils/faceRecognition';
 import { evaluateShiftPunch } from '../utils/shiftEvaluation';
+import { syncAttendanceToGoogleSheet } from '../services/googleSheets';
 import { AccountHelpModal } from './AccountHelpModal';
 import { NetworkSyncBadge } from './NetworkSyncBadge';
 
@@ -468,6 +469,13 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
         return;
       }
 
+      // Resolve target Google Sheet Web App URL for incident dispatch
+      const targetSheetUrl =
+        connectedCompany?.googleSheetUrl ||
+        connectedCompany?.settings?.googleSheetUrl ||
+        activeCompany?.googleSheetUrl ||
+        activeCompany?.settings?.googleSheetUrl;
+
       // STATE 3: PHOTO SPOOFING / PRESENTATION ATTACK PROTECTION
       if (matchResult.status === 'PHOTO_SPOOF') {
         setScanningStatus('PHOTO_SPOOF');
@@ -479,6 +487,27 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           soundService.playWarningBuzz();
           soundService.speakWarning('Photo spoofing attempt detected. Access blocked. Present your real face.');
         }
+
+        // Biometric Security Incident Logging to Google Sheet (8-Column format)
+        const spoofNow = new Date();
+        const spoofRecord: AttendanceRecord = {
+          id: `sec-spoof-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          companyId: connectedCompany?.id,
+          employeeId: matchResult.matchedEmployee?.id || 'SUSPECT_SPOOF',
+          employeeName: matchResult.matchedEmployee?.name ? `[SPOOF] ${matchResult.matchedEmployee.name}` : 'Unknown Suspect',
+          department: matchResult.matchedEmployee?.department || 'Store Security & Floor Safety',
+          timestamp: spoofNow.toISOString(),
+          date: spoofNow.toISOString().slice(0, 10),
+          time: get12HTimeString(spoofNow, true),
+          type: 'SECURITY_BLOCK',
+          device: 'KIOSK_FACE',
+          kioskLocation: `${companySupermarketName} • Staff Entrance Terminal`,
+          status: 'SPOOF_ATTEMPT',
+          notes: 'Presentation attack blocked: Static 2D image presented to camera.',
+          snapshotUrl: matchResult.snapshotDataUrl,
+          confidenceScore: matchResult.confidence,
+        };
+        syncAttendanceToGoogleSheet(spoofRecord, targetSheetUrl).catch(() => {});
 
         if (onSecurityAlert && connectedCompany) {
           const now = new Date();
@@ -530,6 +559,29 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           );
         }
 
+        // Biometric Security Incident Logging to Google Sheet (8-Column format)
+        const mismatchNow = new Date();
+        const mismatchRecord: AttendanceRecord = {
+          id: `sec-crosspunch-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          companyId: connectedCompany?.id,
+          employeeId: matchResult.matchedEmployee?.id || targetEmpId || 'MISMATCH',
+          employeeName: matchResult.actualMatchedStaffName 
+            ? `${matchResult.actualMatchedStaffName} (Selected: ${matchResult.expectedStaffName || 'Other'})`
+            : 'Staff Mismatch',
+          department: matchResult.matchedEmployee?.department || 'Store Security & Floor Safety',
+          timestamp: mismatchNow.toISOString(),
+          date: mismatchNow.toISOString().slice(0, 10),
+          time: get12HTimeString(mismatchNow, true),
+          type: 'SECURITY_BLOCK',
+          device: 'KIOSK_FACE',
+          kioskLocation: `${companySupermarketName} • Staff Entrance Terminal`,
+          status: 'CROSS_PUNCH_MISMATCH',
+          notes: `Cross-punch blocked: Expected ${matchResult.expectedStaffName || 'selected staff'} but detected ${matchResult.actualMatchedStaffName || 'different staff'}.`,
+          snapshotUrl: matchResult.snapshotDataUrl,
+          confidenceScore: matchResult.confidence,
+        };
+        syncAttendanceToGoogleSheet(mismatchRecord, targetSheetUrl).catch(() => {});
+
         if (onSecurityAlert && connectedCompany) {
           const now = new Date();
           const securityAlertNotification: StaffNotification = {
@@ -574,6 +626,27 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           soundService.playSecurityAlertTone();
           soundService.speakWarning('Unrecognized face. Access denied. Incident logged to Store Security.');
         }
+
+        // Biometric Security Incident Logging to Google Sheet (8-Column format)
+        const unrecogNow = new Date();
+        const unrecogRecord: AttendanceRecord = {
+          id: `sec-unrecog-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          companyId: connectedCompany?.id,
+          employeeId: 'STRANGER',
+          employeeName: 'Unrecognized Visitor',
+          department: 'Store Security & Floor Safety',
+          timestamp: unrecogNow.toISOString(),
+          date: unrecogNow.toISOString().slice(0, 10),
+          time: get12HTimeString(unrecogNow, true),
+          type: 'SECURITY_BLOCK',
+          device: 'KIOSK_FACE',
+          kioskLocation: `${companySupermarketName} • Staff Entrance Terminal`,
+          status: 'UNRECOGNIZED_FACE',
+          notes: 'Unauthorized visitor face scan blocked at Entrance Kiosk.',
+          snapshotUrl: matchResult.snapshotDataUrl,
+          confidenceScore: matchResult.confidence,
+        };
+        syncAttendanceToGoogleSheet(unrecogRecord, targetSheetUrl).catch(() => {});
 
         // Push real-time security alert with the captured photo to Store Admin App
         if (onSecurityAlert && connectedCompany) {

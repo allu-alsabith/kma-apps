@@ -154,10 +154,21 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const googleAppsScriptTemplate = `function doPost(e) {
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    // Add header row automatically if sheet is brand new
+    var headers = ["Timestamp", "Employee Name", "Employee ID", "Department", "Punch Type", "Status", "Scheduled Time", "Actual Time"];
+    
+    // Smart Header & Sheet Self-Formatting
     if (sheet.getLastRow() === 0) {
-      sheet.appendRow(["Timestamp", "Employee Name", "Employee ID", "Department", "Punch Type", "Status", "Scheduled Time", "Actual Time"]);
+      sheet.appendRow(headers);
+      formatHeaderRow(sheet, 1);
+    } else {
+      var firstCellVal = sheet.getRange(1, 1).getValue();
+      if (String(firstCellVal).trim() !== "Timestamp") {
+        sheet.insertRowBefore(1);
+        sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+        formatHeaderRow(sheet, 1);
+      }
     }
+
     var data = JSON.parse(e.postData.contents);
     sheet.appendRow([
       data["Timestamp"] || data.timestamp || new Date().toISOString(),
@@ -169,12 +180,54 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       data["Scheduled Time"] || data.scheduledTime || "-",
       data["Actual Time"] || data.actualTime || data.time || "-"
     ]);
+
+    // Apply conditional cell styling on newly appended row's Status column (Column 6)
+    var lastRow = sheet.getLastRow();
+    var statusVal = String(data["Status"] || data.status || "").toUpperCase();
+    var statusCell = sheet.getRange(lastRow, 6);
+
+    if (statusVal === "ON_TIME") {
+      // Light green background
+      statusCell.setBackground("#dcfce7").setFontColor("#15803d").setFontWeight("bold");
+    } else if (
+      statusVal.indexOf("LATE") !== -1 ||
+      statusVal === "SPOOF_ATTEMPT" ||
+      statusVal === "UNRECOGNIZED_FACE" ||
+      statusVal === "CROSS_PUNCH_MISMATCH" ||
+      statusVal.indexOf("BLOCK") !== -1
+    ) {
+      // Light red background
+      statusCell.setBackground("#fee2e2").setFontColor("#b91c1c").setFontWeight("bold");
+    } else if (
+      statusVal === "EARLY_LEAVE" ||
+      statusVal === "OVERTIME" ||
+      statusVal.indexOf("EARLY") !== -1
+    ) {
+      // Light amber background
+      statusCell.setBackground("#fef3c7").setFontColor("#b45309").setFontWeight("bold");
+    }
+
     return ContentService.createTextOutput(JSON.stringify({ result: "success" }))
       .setMimeType(ContentService.MimeType.JSON);
   } catch(err) {
     return ContentService.createTextOutput(JSON.stringify({ result: "error", error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function formatHeaderRow(sheet, rowNum) {
+  try {
+    var headerRange = sheet.getRange(rowNum, 1, 1, 8);
+    headerRange.setBackground("#1e293b"); // Dark slate background
+    headerRange.setFontColor("#ffffff");  // Bold white text
+    headerRange.setFontWeight("bold");
+    headerRange.setFontFamily("Roboto");
+    headerRange.setHorizontalAlignment("center");
+    sheet.setFrozenRows(1);
+    for (var col = 1; col <= 8; col++) {
+      sheet.autoResizeColumn(col);
+    }
+  } catch(e) {}
 }`;
 
   const handleCopyScriptTemplate = () => {

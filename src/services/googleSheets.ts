@@ -64,12 +64,13 @@ export async function syncAttendanceToGoogleSheet(
       ? (record.delayMins > 0 ? `+${record.delayMins}m` : `${record.delayMins}m`)
       : '-';
 
-    // Normalize punch type action to standard enterprise format: PUNCH_IN, PUNCH_OUT, BREAK_START, BREAK_END
+    // Normalize punch type action to standard enterprise format: PUNCH_IN, PUNCH_OUT, BREAK_START, BREAK_END, SECURITY_BLOCK
     let explicitPunchType = 'PUNCH_IN';
     if (record.type === 'IN') explicitPunchType = 'PUNCH_IN';
     else if (record.type === 'OUT') explicitPunchType = 'PUNCH_OUT';
     else if (record.type === 'BREAK_START') explicitPunchType = 'BREAK_START';
     else if (record.type === 'BREAK_END') explicitPunchType = 'BREAK_END';
+    else if (record.type === 'SECURITY_BLOCK') explicitPunchType = 'SECURITY_BLOCK';
     else if (typeof record.type === 'string') explicitPunchType = record.type;
 
     const payload = {

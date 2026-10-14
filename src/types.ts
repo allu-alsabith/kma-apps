@@ -40,7 +40,7 @@ export interface Shift {
   gracePeriodMins: number;
 }
 
-export type PunchType = 'IN' | 'OUT' | 'BREAK_START' | 'BREAK_END';
+export type PunchType = 'IN' | 'OUT' | 'BREAK_START' | 'BREAK_END' | 'SECURITY_BLOCK';
 
 export type PayBasis = 'DAILY' | 'WEEKLY' | 'MONTHLY';
 
