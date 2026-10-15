@@ -38,6 +38,61 @@ export function formatLocalDateTime(dateInput?: string | Date | number): string 
 }
 
 /**
+ * Formats a time string, Date, or timestamp into strictly 12-hour AM/PM time format:
+ * e.g., "05:14:41 PM"
+ */
+export function format12HTime(timeInput?: string | Date | number, includeSeconds = true): string {
+  if (!timeInput || timeInput === '-') return '-';
+  try {
+    const str = String(timeInput).trim();
+    if (!str || str === '-') return '-';
+
+    // If it's already a 12-hour time string (e.g. "5:14:41 PM" or "05:14 PM")
+    const match12 = str.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)$/i);
+    if (match12) {
+      const hh = parseInt(match12[1], 10);
+      const mm = match12[2];
+      const ss = match12[3] ? match12[3].padStart(2, '0') : '00';
+      const ampm = match12[4].toUpperCase();
+      const hhStr = String(hh).padStart(2, '0');
+      return includeSeconds ? `${hhStr}:${mm}:${ss} ${ampm}` : `${hhStr}:${mm} ${ampm}`;
+    }
+
+    // If it's an ISO timestamp or Date object
+    const d = new Date(timeInput);
+    if (!isNaN(d.getTime())) {
+      let hours = d.getHours();
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      const seconds = String(d.getSeconds()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      const hhStr = String(hours).padStart(2, '0');
+      return includeSeconds ? `${hhStr}:${minutes}:${seconds} ${ampm}` : `${hhStr}:${minutes} ${ampm}`;
+    }
+
+    // If it's 24H format (e.g. "17:14:41" or "17:14")
+    const parts = str.split(':');
+    if (parts.length >= 2) {
+      const rawHours = parseInt(parts[0], 10);
+      const minutes = parts[1].slice(0, 2).padStart(2, '0');
+      const rawSeconds = parts[2] ? parts[2].slice(0, 2).padStart(2, '0') : '00';
+      if (!isNaN(rawHours)) {
+        const ampm = rawHours >= 12 ? 'PM' : 'AM';
+        let h12 = rawHours % 12;
+        h12 = h12 ? h12 : 12;
+        const hhStr = String(h12).padStart(2, '0');
+        return includeSeconds ? `${hhStr}:${minutes}:${rawSeconds} ${ampm}` : `${hhStr}:${minutes} ${ampm}`;
+      }
+    }
+
+    return str;
+  } catch {
+    return String(timeInput || '-');
+  }
+}
+
+/**
  * Validates whether a provided URL matches a Google Apps Script Web App endpoint (/exec)
  */
 export function isValidGoogleSheetWebAppUrl(url: string): boolean {
@@ -138,8 +193,9 @@ export async function syncAttendanceToGoogleSheet(
       statusVal = rawStatus || 'ON_TIME';
     }
 
-    const scheduledTimeVal = record.scheduledTime || '-';
-    const actualTimeVal = record.actualTime || record.time || '-';
+    const scheduledTimeVal = record.scheduledTime ? format12HTime(record.scheduledTime, false) : '-';
+    const rawActual = record.actualTime || record.time || record.timestamp || new Date().toISOString();
+    const actualTimeVal = format12HTime(rawActual, true);
     const delayVal = record.delayMins !== undefined
       ? (record.delayMins > 0 ? `+${record.delayMins}m` : `${record.delayMins}m`)
       : '-';
@@ -225,6 +281,7 @@ export async function testGoogleSheetConnection(
 
   const rawIso = new Date().toISOString();
   const localTs = formatLocalDateTime(rawIso);
+  const localActualTime = format12HTime(rawIso, true);
 
   const testPayload = {
     Timestamp: localTs,
@@ -235,10 +292,11 @@ export async function testGoogleSheetConnection(
     'Punch Type': 'PUNCH_IN',
     Status: 'TEST_SUCCESS',
     'Scheduled Time': '-',
-    'Actual Time': '-',
+    'Actual Time': localActualTime,
     timestamp: localTs,
     employeeName: 'Test Connection (Attendo)',
     employeeId: 'TEST-000',
+    actualTime: localActualTime,
     status: 'TEST_SUCCESS',
     notes: `Test connection from ${companyName || 'Store Admin'}`,
   };

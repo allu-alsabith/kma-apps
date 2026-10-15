@@ -10,8 +10,16 @@ export function formatTime12H(timeStr?: string | null, includeSeconds = false): 
   const clean = timeStr.trim();
   if (!clean) return '';
 
-  // If already contains AM or PM, return it cleanly
+  // If already contains AM or PM, normalize cleanly with 2-digit hour
   if (/AM|PM/i.test(clean)) {
+    const match = clean.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)$/i);
+    if (match) {
+      const hh = match[1].padStart(2, '0');
+      const mm = match[2];
+      const ss = match[3] ? match[3].padStart(2, '0') : '00';
+      const ampm = match[4].toUpperCase();
+      return includeSeconds ? `${hh}:${mm}:${ss} ${ampm}` : `${hh}:${mm} ${ampm}`;
+    }
     return clean;
   }
 

@@ -173,13 +173,60 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     var data = JSON.parse(e.postData.contents);
     var rawTs = data["Timestamp"] || data.timestamp || new Date().toISOString();
     var formattedTs = String(rawTs);
-    if (typeof rawTs === "string" && rawTs.indexOf("T") !== -1 && rawTs.indexOf("Z") !== -1) {
+
+    // Strict 12-hour AM/PM format for Column A (Timestamp) e.g., "15-Oct-2026, 05:14:41 PM"
+    if (typeof rawTs === "string" && (rawTs.indexOf("T") !== -1 || rawTs.indexOf("Z") !== -1 || rawTs.indexOf("-") !== -1)) {
       try {
         var dateObj = new Date(rawTs);
         if (!isNaN(dateObj.getTime())) {
           formattedTs = Utilities.formatDate(dateObj, Session.getScriptTimeZone(), "dd-MMM-yyyy, hh:mm:ss a");
         }
       } catch(dateErr) {}
+    }
+
+    // Strict 12-hour AM/PM format for Column H (Actual Time) e.g., "05:14:41 PM"
+    var rawActual = data["Actual Time"] || data.actualTime || data.time || "";
+    var formattedActual = String(rawActual).trim();
+    if (formattedActual && formattedActual !== "-") {
+      if (formattedActual.indexOf("T") !== -1 || formattedActual.indexOf("Z") !== -1) {
+        try {
+          var actDateObj = new Date(formattedActual);
+          if (!isNaN(actDateObj.getTime())) {
+            formattedActual = Utilities.formatDate(actDateObj, Session.getScriptTimeZone(), "hh:mm:ss a");
+          }
+        } catch(actErr) {}
+      } else {
+        // Convert 24-hour "HH:mm:ss" or "HH:mm" to 12-hour "hh:mm:ss a"
+        var time24Match = formattedActual.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+        if (time24Match) {
+          var h = parseInt(time24Match[1], 10);
+          var m = time24Match[2];
+          var s = time24Match[3] || "00";
+          var a = h >= 12 ? "PM" : "AM";
+          h = h % 12;
+          h = h ? h : 12;
+          var hStr = (h < 10 ? "0" : "") + h;
+          formattedActual = hStr + ":" + m + ":" + s + " " + a;
+        } else {
+          // Normalize 12-hour format to 2-digit hour e.g. "5:14:41 PM" -> "05:14:41 PM"
+          var match12 = formattedActual.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)$/i);
+          if (match12) {
+            var hh = parseInt(match12[1], 10);
+            var mm = match12[2];
+            var ss = match12[3] || "00";
+            var ampm = match12[4].toUpperCase();
+            var hhStr = (hh < 10 ? "0" : "") + hh;
+            formattedActual = hhStr + ":" + mm + ":" + ss + " " + ampm;
+          }
+        }
+      }
+    } else {
+      // If Actual Time is empty or '-', extract the 12-hour time portion from Column A
+      if (formattedTs && formattedTs.indexOf(",") !== -1) {
+        formattedActual = formattedTs.split(",")[1].trim();
+      } else {
+        formattedActual = "-";
+      }
     }
 
     sheet.appendRow([
@@ -190,7 +237,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       data["Punch Type"] || data.punchType || data.type || "PUNCH_IN",
       data["Status"] || data.status || "ON_TIME",
       data["Scheduled Time"] || data.scheduledTime || "-",
-      data["Actual Time"] || data.actualTime || data.time || "-"
+      formattedActual
     ]);
 
     var newRow = sheet.getLastRow();
