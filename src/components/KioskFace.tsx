@@ -39,6 +39,7 @@ import { formatTime12H, get12HTimeString } from '../utils/formatters';
 import { matchFaceAgainstEnrolledStaff } from '../utils/faceRecognition';
 import { evaluateShiftPunch } from '../utils/shiftEvaluation';
 import { syncAttendanceToGoogleSheet } from '../services/googleSheets';
+import { staffStore } from '../services/staffStore';
 import { AccountHelpModal } from './AccountHelpModal';
 import { NetworkSyncBadge } from './NetworkSyncBadge';
 
@@ -124,13 +125,32 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   const [kioskLoginError, setKioskLoginError] = useState<string | null>(null);
   const [showAccountHelpModal, setShowAccountHelpModal] = useState<boolean>(false);
 
-  // Filter employees belonging to the paired company
+  // Filter employees belonging to the paired company, securely loading persistent directory on startup
+  const persistentStaff = useMemo(() => {
+    if (employees && employees.length > 0) {
+      return employees;
+    }
+    return staffStore.loadPersistentStaff();
+  }, [employees]);
+
   const companyEmployees = useMemo(() => {
-    if (!connectedCompany) return employees;
-    return (employees || []).filter(
+    const sourceStaff = (persistentStaff && persistentStaff.length > 0)
+      ? persistentStaff
+      : staffStore.loadPersistentStaff();
+    if (!connectedCompany) return sourceStaff;
+    return (sourceStaff || []).filter(
       (e) => (e.companyId || connectedCompany.id) === connectedCompany.id
     );
-  }, [employees, connectedCompany]);
+  }, [persistentStaff, connectedCompany]);
+
+  // Securely preload staff biometric face signatures and embeddings into memory cache on startup
+  useEffect(() => {
+    if (companyEmployees && companyEmployees.length > 0) {
+      staffStore.preloadAllStaffBiometrics(companyEmployees).catch((err) => {
+        console.warn('[KioskFace] Non-fatal biometric preloading notice:', err);
+      });
+    }
+  }, [companyEmployees]);
 
   const handleKioskLogin = (e: React.FormEvent) => {
     e.preventDefault();

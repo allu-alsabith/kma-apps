@@ -54,6 +54,7 @@ import { Employee, Shift, AttendanceRecord, LeaveRequest, Department, PayBasis, 
 import { soundService } from '../services/sound';
 import { FaceEnrollmentScanner } from './FaceEnrollmentScanner';
 import { clearBiometricCache } from '../utils/faceRecognition';
+import { staffStore } from '../services/staffStore';
 import { AccountHelpModal } from './AccountHelpModal';
 import { NetworkSyncBadge } from './NetworkSyncBadge';
 import { signInWithGoogle, signOutUser, subscribeToAuth, saveCompanyGoogleSheetUrl, type User } from '../services/firebase';
@@ -842,9 +843,14 @@ function formatHeaderRow(sheet, rowNum) {
       return;
     }
 
-    const finalAvatar =
-      newEmpAvatar.trim() ||
-      `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(trimmedName)}&backgroundColor=0284c7,059669,d97706`;
+    const trimmedAvatar = newEmpAvatar.trim();
+    if (!trimmedAvatar || !staffStore.hasValidFaceBiometrics(trimmedAvatar)) {
+      setEnrollError('Biometric Face Photo Required: Please capture a live face photo or upload a staff portrait before enrolling.');
+      soundService.playWarningTone();
+      return;
+    }
+
+    const finalAvatar = trimmedAvatar;
 
     const rateNum = Number(newEmpWageRate) || 650;
     const computedHourly =
@@ -875,6 +881,11 @@ function formatHeaderRow(sheet, rowNum) {
       allowMobilePunch: newEmpAllowMobilePunch,
       badgeNumber: `BC-${Math.floor(10000 + Math.random() * 90000)}`,
     };
+
+    // Save staff and biometric face embeddings to persistent storage
+    staffStore.saveStaffMember(newEmp).catch((err) => {
+      console.warn('[AdminPortal] Persistent biometric save notice:', err);
+    });
 
     onAddEmployee(newEmp);
     clearBiometricCache(newEmp.id);
@@ -910,6 +921,17 @@ function formatHeaderRow(sheet, rowNum) {
     e.preventDefault();
     if (!editingEmp || !editingEmp.name.trim()) return;
 
+    if (!editingEmp.avatar || !staffStore.hasValidFaceBiometrics(editingEmp.avatar)) {
+      setEnrollError('A valid biometric face photo is required for staff verification.');
+      soundService.playWarningTone();
+      return;
+    }
+
+    // Update in persistent staffStore
+    staffStore.updateStaffMember(editingEmp).catch((err) => {
+      console.warn('[AdminPortal] Persistent biometric update notice:', err);
+    });
+
     onUpdateEmployee(editingEmp);
     clearBiometricCache(editingEmp.id);
     soundService.playSuccessChime();
@@ -923,6 +945,7 @@ function formatHeaderRow(sheet, rowNum) {
       message: `Are you sure you want to remove ${emp.name} (${emp.id}) from the employee directory?`,
       confirmText: 'Remove Staff',
       onConfirm: () => {
+        staffStore.deleteStaffMember(emp.id);
         onDeleteEmployee(emp.id);
         soundService.playSuccessChime();
         setConfirmModal(null);
@@ -936,6 +959,7 @@ function formatHeaderRow(sheet, rowNum) {
       message: 'Clear all demo employees from the roster? This will let you add your own supermarket staff from scratch.',
       confirmText: 'Clear All Staff',
       onConfirm: () => {
+        staffStore.savePersistentStaff([]);
         onClearAllEmployees();
         soundService.playSuccessChime();
         setConfirmModal(null);

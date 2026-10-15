@@ -21,7 +21,7 @@ export interface BiometricMatchResult {
   securityMessage?: string;
 }
 
-interface CachedBiometricProfile {
+export interface CachedBiometricProfile {
   avatarRef: string;
   signature: number[];
   signatureFlipped: number[];
@@ -32,6 +32,14 @@ interface CachedBiometricProfile {
 
 // In-memory cache for enrolled staff face signatures (keyed by employee ID)
 const staffSignatureCache = new Map<string, CachedBiometricProfile>();
+
+export function setCachedBiometricProfile(employeeId: string, profile: CachedBiometricProfile) {
+  staffSignatureCache.set(employeeId, profile);
+}
+
+export function getCachedBiometricProfile(employeeId: string): CachedBiometricProfile | undefined {
+  return staffSignatureCache.get(employeeId);
+}
 
 /**
  * Clear the biometric cache for an employee or all employees
@@ -293,7 +301,7 @@ export async function detectFaceInVideoOrCanvas(
  * Extracts a normalized 64-point mean-centered biometric spatial embedding and a 64-bit dHash
  * from a face canvas or image URL. Supports horizontal flip for mirrored webcam compatibility.
  */
-async function extractBiometricSignature(
+export async function extractBiometricSignature(
   source: CanvasImageSource | string,
   flipHorizontal = false
 ): Promise<{ signature: number[]; hash: string; isFlat: boolean }> {
@@ -527,36 +535,44 @@ export async function matchFaceAgainstEnrolledStaff(
   const candidateScores: Array<{ employee: Employee; score: number }> = [];
 
   for (const emp of enrolledStaff) {
-    if (!emp.avatar) continue;
+    if (!emp || !emp.avatar || typeof emp.avatar !== 'string' || !emp.avatar.trim()) continue;
 
-    // Check if cache entry exists AND matches current avatar URL
-    // If avatar was updated in Admin, immediately recompute signatures!
-    let cached = staffSignatureCache.get(emp.id);
-    if (!cached || cached.avatarRef !== emp.avatar || Date.now() - cached.timestamp > 300000) {
-      const bioNormal = await extractBiometricSignature(emp.avatar, false);
-      const bioFlipped = await extractBiometricSignature(emp.avatar, true);
-      cached = {
-        avatarRef: emp.avatar,
-        signature: bioNormal.signature,
-        signatureFlipped: bioFlipped.signature,
-        hash: bioNormal.hash,
-        hashFlipped: bioFlipped.hash,
-        timestamp: Date.now(),
-      };
-      staffSignatureCache.set(emp.id, cached);
+    try {
+      // Check if cache entry exists AND matches current avatar URL
+      // If avatar was updated in Admin, immediately recompute signatures!
+      let cached = staffSignatureCache.get(emp.id);
+      if (!cached || cached.avatarRef !== emp.avatar || Date.now() - cached.timestamp > 300000) {
+        const bioNormal = await extractBiometricSignature(emp.avatar, false);
+        const bioFlipped = await extractBiometricSignature(emp.avatar, true);
+        cached = {
+          avatarRef: emp.avatar,
+          signature: bioNormal.signature,
+          signatureFlipped: bioFlipped.signature,
+          hash: bioNormal.hash,
+          hashFlipped: bioFlipped.hash,
+          timestamp: Date.now(),
+        };
+        staffSignatureCache.set(emp.id, cached);
+      }
+
+      // If signature is missing or corrupted, skip gracefully
+      if (!cached || !cached.signature || cached.signature.length === 0) continue;
+
+      // Compare with both normal and mirrored orientations
+      const cosineNormal = computeCosineSimilarity(liveBio.signature, cached.signature);
+      const hashSimNormal = computeHashSimilarity(liveBio.hash, cached.hash);
+      const scoreNormal = cosineNormal * 0.65 + hashSimNormal * 0.35;
+
+      const cosineFlipped = computeCosineSimilarity(liveBio.signature, cached.signatureFlipped);
+      const hashSimFlipped = computeHashSimilarity(liveBio.hash, cached.hashFlipped);
+      const scoreFlipped = cosineFlipped * 0.65 + hashSimFlipped * 0.35;
+
+      const bestEmpScore = Math.max(scoreNormal, scoreFlipped);
+      candidateScores.push({ employee: emp, score: parseFloat(bestEmpScore.toFixed(3)) });
+    } catch (empBioErr) {
+      // Gracefully handle any profile lacking biometric data or invalid frame without breaking the security engine
+      console.warn(`[Biometrics] Gracefully handled invalid profile for ${emp?.id || 'unknown'}:`, empBioErr);
     }
-
-    // Compare with both normal and mirrored orientations
-    const cosineNormal = computeCosineSimilarity(liveBio.signature, cached.signature);
-    const hashSimNormal = computeHashSimilarity(liveBio.hash, cached.hash);
-    const scoreNormal = cosineNormal * 0.65 + hashSimNormal * 0.35;
-
-    const cosineFlipped = computeCosineSimilarity(liveBio.signature, cached.signatureFlipped);
-    const hashSimFlipped = computeHashSimilarity(liveBio.hash, cached.hashFlipped);
-    const scoreFlipped = cosineFlipped * 0.65 + hashSimFlipped * 0.35;
-
-    const bestEmpScore = Math.max(scoreNormal, scoreFlipped);
-    candidateScores.push({ employee: emp, score: parseFloat(bestEmpScore.toFixed(3)) });
   }
 
   // Sort descending by biometric similarity
