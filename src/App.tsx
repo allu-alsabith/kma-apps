@@ -820,13 +820,35 @@ function AppContent() {
     const emp = employees.find((e) => e.id === punchData.employeeId);
     const companyId = punchData.companyId || emp?.companyId || activeCompany?.id || activeCompanyId;
 
-    // Evaluate shift timing rules (grace period buffer for IN, early leave / overtime for OUT)
-    const shiftEval = evaluateShiftPunch(emp, punchData.type, now, shifts);
+    // For BREAK_END, calculate break duration if previous punch was BREAK_START
+    let breakDurationMins: number | undefined = undefined;
+    if (punchData.type === 'BREAK_END') {
+      const lastBreakStart = attendanceLogs.find(
+        (log) => log.employeeId === punchData.employeeId && log.type === 'BREAK_START'
+      );
+      if (lastBreakStart && lastBreakStart.timestamp) {
+        const breakStartMs = new Date(lastBreakStart.timestamp).getTime();
+        const durationMs = now.getTime() - breakStartMs;
+        if (durationMs > 0) {
+          breakDurationMins = Math.round(durationMs / 60000);
+        }
+      }
+    }
 
-    // Keep punchData.status if explicitly supplied (e.g., from kiosk or manual punch), otherwise use evaluated status
-    const finalStatus = punchData.status && punchData.status !== 'ON_TIME' && !punchData.status.startsWith('LATE')
-      ? punchData.status
-      : (shiftEval.status || punchData.status || 'ON_TIME');
+    // Evaluate shift timing rules (grace period buffer for IN, early leave / overtime for OUT, break evaluation)
+    const shiftEval = evaluateShiftPunch(emp, punchData.type, now, shifts, undefined, breakDurationMins);
+
+    // Keep punchData.status if explicitly supplied, otherwise use evaluated status
+    let finalStatus = punchData.status;
+    if (!finalStatus || finalStatus === 'NORMAL' || finalStatus === 'COMPLETED') {
+      finalStatus = shiftEval.status || 'ON_TIME';
+    } else if (punchData.type === 'BREAK_START' && finalStatus !== 'ON_BREAK') {
+      finalStatus = 'ON_BREAK';
+    } else if (punchData.type === 'BREAK_END' && finalStatus !== 'OVER_BREAK' && finalStatus !== 'RESUMED_SHIFT') {
+      finalStatus = shiftEval.status || 'RESUMED_SHIFT';
+    } else if (punchData.type === 'IN' && !finalStatus.startsWith('LATE') && finalStatus !== 'ON_TIME') {
+      finalStatus = shiftEval.status || 'ON_TIME';
+    }
 
     const newRecord: AttendanceRecord = {
       ...punchData,

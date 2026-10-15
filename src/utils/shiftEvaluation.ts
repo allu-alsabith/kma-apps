@@ -75,12 +75,22 @@ export function evaluateShiftPunch(
   punchType: PunchType,
   punchDate: Date = new Date(),
   shiftsList: Shift[] = [],
-  customGracePeriod?: number
+  customGracePeriod?: number,
+  breakDurationMins?: number
 ): ShiftEvaluationResult {
   const actualTime = get12HTimeString(punchDate, true);
   const actualMinutes = punchDate.getHours() * 60 + punchDate.getMinutes();
 
   if (!employee) {
+    if (punchType === 'BREAK_START') {
+      return { status: 'ON_BREAK', actualTime };
+    }
+    if (punchType === 'BREAK_END') {
+      return { status: 'RESUMED_SHIFT', actualTime };
+    }
+    if (punchType === 'SECURITY_BLOCK') {
+      return { status: 'UNRECOGNIZED_FACE', actualTime };
+    }
     return {
       status: 'ON_TIME',
       actualTime,
@@ -178,8 +188,36 @@ export function evaluateShiftPunch(
   }
 
   // Break punches
+  if (punchType === 'BREAK_START') {
+    return {
+      status: 'ON_BREAK',
+      actualTime,
+      varianceNote: 'Started break',
+    };
+  }
+
+  if (punchType === 'BREAK_END') {
+    const isOverBreak = breakDurationMins !== undefined && breakDurationMins > 60;
+    return {
+      status: isOverBreak ? 'OVER_BREAK' : 'RESUMED_SHIFT',
+      actualTime,
+      delayMins: breakDurationMins,
+      varianceNote: isOverBreak
+        ? `Exceeded 60-min break limit (${Math.round(breakDurationMins)}m break)`
+        : 'Resumed shift from break',
+    };
+  }
+
+  if (punchType === 'SECURITY_BLOCK') {
+    return {
+      status: 'UNRECOGNIZED_FACE',
+      actualTime,
+      varianceNote: 'Biometric security block incident',
+    };
+  }
+
   return {
-    status: 'NORMAL',
+    status: 'ON_TIME',
     actualTime,
   };
 }

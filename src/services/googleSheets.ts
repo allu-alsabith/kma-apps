@@ -87,21 +87,62 @@ export async function syncAttendanceToGoogleSheet(
     }
 
     // 2. Prepare attendance details payload with primary requested fields + flexible mappings
-    const statusVal = record.status || (record.type === 'IN' ? 'ON_TIME' : 'COMPLETED');
+    // Normalize punch type action to standard enterprise format: PUNCH_IN, PUNCH_OUT, BREAK_START, BREAK_END, SECURITY_BLOCK
+    let explicitPunchType = 'PUNCH_IN';
+    const rawType = String(record.type);
+    if (rawType === 'IN' || rawType === 'PUNCH_IN') explicitPunchType = 'PUNCH_IN';
+    else if (rawType === 'OUT' || rawType === 'PUNCH_OUT') explicitPunchType = 'PUNCH_OUT';
+    else if (rawType === 'BREAK_START') explicitPunchType = 'BREAK_START';
+    else if (rawType === 'BREAK_END') explicitPunchType = 'BREAK_END';
+    else if (rawType === 'SECURITY_BLOCK') explicitPunchType = 'SECURITY_BLOCK';
+    else if (rawType) explicitPunchType = rawType;
+
+    // Resolve Status (Column 6) ensuring it is NEVER empty or blank for any punch type
+    const rawStatus = record.status ? String(record.status).trim() : '';
+    let statusVal = 'ON_TIME';
+
+    if (explicitPunchType === 'BREAK_START') {
+      // If Punch Type is 'BREAK_START', set Status to 'ON_BREAK' (instead of blank or generic 'NORMAL')
+      statusVal = 'ON_BREAK';
+    } else if (explicitPunchType === 'BREAK_END') {
+      // If Punch Type is 'BREAK_END', set Status to 'RESUMED_SHIFT' (or 'OVER_BREAK' if break duration exceeded limit)
+      if (rawStatus === 'OVER_BREAK' || (record.delayMins !== undefined && record.delayMins > 60)) {
+        statusVal = 'OVER_BREAK';
+      } else {
+        statusVal = 'RESUMED_SHIFT';
+      }
+    } else if (explicitPunchType === 'SECURITY_BLOCK') {
+      // If Punch Type is 'SECURITY_BLOCK', ensure Status is 'UNRECOGNIZED_FACE', 'SPOOF_ATTEMPT', or 'CROSS_PUNCH_MISMATCH'
+      if (
+        rawStatus === 'SPOOF_ATTEMPT' ||
+        record.notes?.toLowerCase().includes('spoof')
+      ) {
+        statusVal = 'SPOOF_ATTEMPT';
+      } else if (
+        rawStatus === 'CROSS_PUNCH_MISMATCH' ||
+        record.notes?.toLowerCase().includes('mismatch') ||
+        record.notes?.toLowerCase().includes('cross-punch')
+      ) {
+        statusVal = 'CROSS_PUNCH_MISMATCH';
+      } else {
+        statusVal = 'UNRECOGNIZED_FACE';
+      }
+    } else if (explicitPunchType === 'PUNCH_IN' || explicitPunchType === 'PUNCH_OUT') {
+      // Keep exact shift evaluation statuses ('ON_TIME', 'LATE (X mins)', 'EARLY_LEAVE', 'OVERTIME', etc.), falling back to 'ON_TIME' if empty
+      if (rawStatus && rawStatus !== 'NORMAL' && rawStatus !== 'COMPLETED') {
+        statusVal = rawStatus;
+      } else {
+        statusVal = 'ON_TIME';
+      }
+    } else {
+      statusVal = rawStatus || 'ON_TIME';
+    }
+
     const scheduledTimeVal = record.scheduledTime || '-';
     const actualTimeVal = record.actualTime || record.time || '-';
     const delayVal = record.delayMins !== undefined
       ? (record.delayMins > 0 ? `+${record.delayMins}m` : `${record.delayMins}m`)
       : '-';
-
-    // Normalize punch type action to standard enterprise format: PUNCH_IN, PUNCH_OUT, BREAK_START, BREAK_END, SECURITY_BLOCK
-    let explicitPunchType = 'PUNCH_IN';
-    if (record.type === 'IN') explicitPunchType = 'PUNCH_IN';
-    else if (record.type === 'OUT') explicitPunchType = 'PUNCH_OUT';
-    else if (record.type === 'BREAK_START') explicitPunchType = 'BREAK_START';
-    else if (record.type === 'BREAK_END') explicitPunchType = 'BREAK_END';
-    else if (record.type === 'SECURITY_BLOCK') explicitPunchType = 'SECURITY_BLOCK';
-    else if (typeof record.type === 'string') explicitPunchType = record.type;
 
     const rawIsoTimestamp = record.timestamp || new Date().toISOString();
     const formattedLocalTimestamp = formatLocalDateTime(rawIsoTimestamp);

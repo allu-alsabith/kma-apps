@@ -192,30 +192,71 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       data["Actual Time"] || data.actualTime || data.time || "-"
     ]);
 
-    // Apply conditional cell styling on newly appended row's Status column (Column 6)
-    var lastRow = sheet.getLastRow();
-    var statusVal = String(data["Status"] || data.status || "").toUpperCase();
-    var statusCell = sheet.getRange(lastRow, 6);
+    var newRow = sheet.getLastRow();
 
-    if (statusVal === "ON_TIME") {
-      // Light green background
-      statusCell.setBackground("#dcfce7").setFontColor("#15803d").setFontWeight("bold");
+    // 1. Explicitly reset the entire new row to eliminate color bleeding & font inheritance
+    var newRowRange = sheet.getRange(newRow, 1, 1, 8);
+    newRowRange.setBackground("#ffffff");
+    newRowRange.setFontColor("#0f172a");
+    newRowRange.setFontFamily("Roboto");
+    newRowRange.setFontSize(10);
+    newRowRange.setFontWeight("normal");
+    newRowRange.setVerticalAlignment("middle");
+
+    // Alignments: left for Columns 1, 2, 4; center for Columns 3, 5, 6, 7, 8
+    sheet.getRange(newRow, 1).setHorizontalAlignment("left");
+    sheet.getRange(newRow, 2).setHorizontalAlignment("left");
+    sheet.getRange(newRow, 4).setHorizontalAlignment("left");
+
+    sheet.getRange(newRow, 3).setHorizontalAlignment("center");
+    sheet.getRange(newRow, 5).setHorizontalAlignment("center");
+    sheet.getRange(newRow, 6).setHorizontalAlignment("center");
+    sheet.getRange(newRow, 7).setHorizontalAlignment("center");
+    sheet.getRange(newRow, 8).setHorizontalAlignment("center");
+
+    // 2. Explicitly style the Status cell (Column 6) with bold text and color pairs
+    var statusVal = String(data["Status"] || data.status || "ON_TIME").toUpperCase().trim();
+    var statusCell = sheet.getRange(newRow, 6);
+    statusCell.setFontWeight("bold");
+
+    if (statusVal === "ON_TIME" || statusVal === "RESUMED_SHIFT" || statusVal === "NORMAL") {
+      // Green (bg: '#dcfce7', fg: '#166534')
+      statusCell.setBackground("#dcfce7").setFontColor("#166534");
+    } else if (statusVal === "ON_BREAK") {
+      // Blue (bg: '#dbeafe', fg: '#1e40af')
+      statusCell.setBackground("#dbeafe").setFontColor("#1e40af");
+    } else if (statusVal === "EARLY_LEAVE" || statusVal === "OVERTIME" || statusVal.indexOf("EARLY") !== -1) {
+      // Amber (bg: '#fef3c7', fg: '#92400e')
+      statusCell.setBackground("#fef3c7").setFontColor("#92400e");
     } else if (
       statusVal.indexOf("LATE") !== -1 ||
-      statusVal === "SPOOF_ATTEMPT" ||
+      statusVal === "OVER_BREAK" ||
       statusVal === "UNRECOGNIZED_FACE" ||
+      statusVal === "SPOOF_ATTEMPT" ||
       statusVal === "CROSS_PUNCH_MISMATCH" ||
+      statusVal === "SECURITY_BLOCK" ||
       statusVal.indexOf("BLOCK") !== -1
     ) {
-      // Light red background
-      statusCell.setBackground("#fee2e2").setFontColor("#b91c1c").setFontWeight("bold");
-    } else if (
-      statusVal === "EARLY_LEAVE" ||
-      statusVal === "OVERTIME" ||
-      statusVal.indexOf("EARLY") !== -1
-    ) {
-      // Light amber background
-      statusCell.setBackground("#fef3c7").setFontColor("#b45309").setFontWeight("bold");
+      // Red (bg: '#fee2e2', fg: '#991b1b')
+      statusCell.setBackground("#fee2e2").setFontColor("#991b1b");
+    } else {
+      // Default fallback
+      statusCell.setBackground("#dcfce7").setFontColor("#166534");
+    }
+
+    // 3. Auto-resize columns 1 to 8 so text is never clipped
+    try {
+      if (typeof sheet.autoResizeColumns === "function") {
+        sheet.autoResizeColumns(1, 8);
+      } else {
+        for (var col = 1; col <= 8; col++) {
+          sheet.autoResizeColumn(col);
+        }
+      }
+    } catch(resizeErr) {
+      for (var c = 1; c <= 8; c++) {
+        try { sheet.autoResizeColumn(c); } catch(e) {}
+      }
     }
 
     return ContentService.createTextOutput(JSON.stringify({ result: "success" }))

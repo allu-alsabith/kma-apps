@@ -337,7 +337,20 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
     confidence = 0.985,
     snapshotUrl?: string
   ) => {
-    const shiftEval = evaluateShiftPunch(employee, typeToPunch, new Date(), shifts);
+    let breakDurationMins: number | undefined = undefined;
+    if (typeToPunch === 'BREAK_END') {
+      const lastBreakStart = attendanceLogs.find(
+        (log) => log.employeeId === employee.id && log.type === 'BREAK_START'
+      );
+      if (lastBreakStart && lastBreakStart.timestamp) {
+        const breakStartMs = new Date(lastBreakStart.timestamp).getTime();
+        const durationMs = Date.now() - breakStartMs;
+        if (durationMs > 0) {
+          breakDurationMins = Math.round(durationMs / 60000);
+        }
+      }
+    }
+    const shiftEval = evaluateShiftPunch(employee, typeToPunch, new Date(), shifts, undefined, breakDurationMins);
     const status = shiftEval.status;
 
     onNewPunch({
