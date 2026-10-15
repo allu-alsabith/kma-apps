@@ -170,8 +170,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     }
 
     var data = JSON.parse(e.postData.contents);
+    var rawTs = data["Timestamp"] || data.timestamp || new Date().toISOString();
+    var formattedTs = String(rawTs);
+    if (typeof rawTs === "string" && rawTs.indexOf("T") !== -1 && rawTs.indexOf("Z") !== -1) {
+      try {
+        var dateObj = new Date(rawTs);
+        if (!isNaN(dateObj.getTime())) {
+          formattedTs = Utilities.formatDate(dateObj, Session.getScriptTimeZone(), "dd-MMM-yyyy, hh:mm:ss a");
+        }
+      } catch(dateErr) {}
+    }
+
     sheet.appendRow([
-      data["Timestamp"] || data.timestamp || new Date().toISOString(),
+      formattedTs,
       data["Employee Name"] || data.employeeName || "Unknown",
       data["Employee ID"] || data.employeeId || "",
       data["Department"] || data.department || "",

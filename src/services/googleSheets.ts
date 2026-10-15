@@ -7,6 +7,36 @@ export interface GoogleSheetSyncResult {
   urlUsed?: string;
 }
 
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * Formats a Date or timestamp string into clean human-readable local date & time:
+ * e.g., "15-Oct-2026, 10:33:07 AM" using the device's local timezone.
+ */
+export function formatLocalDateTime(dateInput?: string | Date | number): string {
+  try {
+    const d = dateInput ? new Date(dateInput) : new Date();
+    if (isNaN(d.getTime())) {
+      return String(dateInput || '');
+    }
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = MONTH_NAMES[d.getMonth()];
+    const year = d.getFullYear();
+
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const formattedHours = String(hours).padStart(2, '0');
+
+    return `${day}-${month}-${year}, ${formattedHours}:${minutes}:${seconds} ${ampm}`;
+  } catch {
+    return String(dateInput || '');
+  }
+}
+
 /**
  * Validates whether a provided URL matches a Google Apps Script Web App endpoint (/exec)
  */
@@ -73,9 +103,12 @@ export async function syncAttendanceToGoogleSheet(
     else if (record.type === 'SECURITY_BLOCK') explicitPunchType = 'SECURITY_BLOCK';
     else if (typeof record.type === 'string') explicitPunchType = record.type;
 
+    const rawIsoTimestamp = record.timestamp || new Date().toISOString();
+    const formattedLocalTimestamp = formatLocalDateTime(rawIsoTimestamp);
+
     const payload = {
       // Complete set of 8 columns requested for supermarket attendance:
-      Timestamp: record.timestamp,
+      Timestamp: formattedLocalTimestamp,
       'Employee Name': record.employeeName,
       'Employee ID': record.employeeId,
       Department: record.department || '',
@@ -86,7 +119,8 @@ export async function syncAttendanceToGoogleSheet(
       Delay: delayVal,
 
       // Flexible camelCase and raw property mappings:
-      timestamp: record.timestamp,
+      timestamp: formattedLocalTimestamp,
+      rawIsoTimestamp: rawIsoTimestamp,
       employeeName: record.employeeName,
       employeeId: record.employeeId,
       department: record.department || '',
@@ -98,7 +132,7 @@ export async function syncAttendanceToGoogleSheet(
       delayMins: record.delayMins,
 
       // Contextual attendance info:
-      date: record.date || record.timestamp.slice(0, 10),
+      date: record.date || (record.timestamp ? record.timestamp.slice(0, 10) : ''),
       time: record.time,
       device: record.device || '',
       location: record.kioskLocation || '',
@@ -148,12 +182,20 @@ export async function testGoogleSheetConnection(
     };
   }
 
+  const rawIso = new Date().toISOString();
+  const localTs = formatLocalDateTime(rawIso);
+
   const testPayload = {
-    Timestamp: new Date().toISOString(),
+    Timestamp: localTs,
+    rawIsoTimestamp: rawIso,
     'Employee Name': 'Test Connection (Attendo)',
     'Employee ID': 'TEST-000',
+    Department: 'Administration',
+    'Punch Type': 'PUNCH_IN',
     Status: 'TEST_SUCCESS',
-    timestamp: new Date().toISOString(),
+    'Scheduled Time': '-',
+    'Actual Time': '-',
+    timestamp: localTs,
     employeeName: 'Test Connection (Attendo)',
     employeeId: 'TEST-000',
     status: 'TEST_SUCCESS',
