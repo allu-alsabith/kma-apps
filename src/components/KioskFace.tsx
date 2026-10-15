@@ -36,7 +36,7 @@ import confetti from 'canvas-confetti';
 import { Employee, AttendanceRecord, PunchType, Company, HelpRequest, StaffNotification, AppToggles, Shift } from '../types';
 import { soundService } from '../services/sound';
 import { formatTime12H, get12HTimeString } from '../utils/formatters';
-import { matchFaceAgainstEnrolledStaff } from '../utils/faceRecognition';
+import { matchFaceAgainstEnrolledStaff, verifyFaceWithStabilization } from '../utils/faceRecognition';
 import { evaluateShiftPunch } from '../utils/shiftEvaluation';
 import { syncAttendanceToGoogleSheet } from '../services/googleSheets';
 import { staffStore } from '../services/staffStore';
@@ -476,8 +476,9 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
     const targetEmpId = targetedStaff?.id || selectedStaffIdForScan || undefined;
 
     try {
-      // Analyze live camera feed using high-speed biometric face recognition engine
-      const matchResult = await matchFaceAgainstEnrolledStaff(
+      // Analyze live camera feed using enterprise multi-frame stabilized biometric face recognition engine
+      // (Eliminates false alarms from momentary hand movements, minor head tilts, or brief framing shifts)
+      const matchResult = await verifyFaceWithStabilization(
         video, 
         companyEmployees, 
         targetEmpId
