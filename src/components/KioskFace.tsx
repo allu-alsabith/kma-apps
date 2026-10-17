@@ -860,6 +860,31 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           return;
         }
 
+        // A2. Angled/Tilted Staff Posture Adaptation:
+        // If the detected face resembles any enrolled staff member (candidate score >= 0.36),
+        // it is a registered staff member with a tilted head or posture shift.
+        // Never trigger a SECURITY_BLOCK or accumulate stranger lockout time!
+        const topCandidate = matchResult.candidateScores?.[0];
+        const isAngledStaff = topCandidate && topCandidate.score >= 0.36;
+
+        if (isAngledStaff) {
+          unrecognizedStartTimeRef.current = 0;
+          setScanningStatus('NO_FACE');
+          setMatchedEmployee(null);
+          setStaffPunchOptions(null);
+          setSecurityNotice('Please look directly at the camera.');
+          if (isSoundEnabled) {
+            soundService.speakWarning('Please look directly at the camera.');
+          }
+          if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+          resetTimerRef.current = setTimeout(() => {
+            setScanningStatus('IDLE');
+            setSecurityNotice(null);
+            setSelectedStaffIdForScan('');
+          }, 2400);
+          return;
+        }
+
         // B. Strict 3-Second Unknown Face Persistence Buffer:
         // Ensure that a true SECURITY_BLOCK (Stranger / Unrecognized Face) is only triggered if a valid,
         // distinct human face persists continuously for over 3 seconds (3000ms), entirely preventing false alarm logs

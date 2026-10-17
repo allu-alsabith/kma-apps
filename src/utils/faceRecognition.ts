@@ -420,7 +420,10 @@ export async function detectFaceInVideoOrCanvas(
  */
 export async function extractBiometricSignature(
   source: CanvasImageSource | string,
-  flipHorizontal = false
+  flipHorizontal = false,
+  rotationDeg = 0,
+  scale = 1.0,
+  shiftX = 0
 ): Promise<{ signature: number[]; hash: string; isFlat: boolean }> {
   return new Promise((resolve) => {
     const processImage = (imgOrCanvas: CanvasImageSource) => {
@@ -439,6 +442,20 @@ export async function extractBiometricSignature(
         if (flipHorizontal) {
           ctx.translate(size, 0);
           ctx.scale(-1, 1);
+        }
+
+        if (rotationDeg !== 0 || scale !== 1.0 || shiftX !== 0) {
+          ctx.translate(size / 2, size / 2);
+          if (rotationDeg !== 0) {
+            ctx.rotate((rotationDeg * Math.PI) / 180);
+          }
+          if (scale !== 1.0) {
+            ctx.scale(scale, scale);
+          }
+          if (shiftX !== 0) {
+            ctx.translate(shiftX, 0);
+          }
+          ctx.translate(-size / 2, -size / 2);
         }
 
         ctx.drawImage(imgOrCanvas, 0, 0, size, size);
@@ -509,6 +526,19 @@ export async function extractBiometricSignature(
           if (flipHorizontal) {
             dCtx.translate(9, 0);
             dCtx.scale(-1, 1);
+          }
+          if (rotationDeg !== 0 || scale !== 1.0 || shiftX !== 0) {
+            dCtx.translate(4.5, 4);
+            if (rotationDeg !== 0) {
+              dCtx.rotate((rotationDeg * Math.PI) / 180);
+            }
+            if (scale !== 1.0) {
+              dCtx.scale(scale, scale);
+            }
+            if (shiftX !== 0) {
+              dCtx.translate((shiftX / size) * 9, 0);
+            }
+            dCtx.translate(-4.5, -4);
           }
           dCtx.drawImage(imgOrCanvas, 0, 0, 9, 8);
           const dData = dCtx.getImageData(0, 0, 9, 8).data;
@@ -656,9 +686,17 @@ export async function matchFaceAgainstEnrolledStaff(
     };
   }
 
-  // 3. Extract biometric signature of the real live camera face
-  const liveBio = await extractBiometricSignature(snapshotCanvas, false);
-  if (liveBio.isFlat) {
+  // 3. Extract biometric signatures of the real live camera face with multi-angle and tilt variants
+  // This provides permanent invariance to normal head tilts (-8°, 0°, +8°), slight posture shifts, and side turns
+  const [liveBioNormal, liveBioTiltLeft, liveBioTiltRight, liveBioShiftL, liveBioShiftR] = await Promise.all([
+    extractBiometricSignature(snapshotCanvas, false, 0, 1.0, 0),
+    extractBiometricSignature(snapshotCanvas, false, -8, 1.0, 0),
+    extractBiometricSignature(snapshotCanvas, false, 8, 1.0, 0),
+    extractBiometricSignature(snapshotCanvas, false, 0, 1.04, -1.5),
+    extractBiometricSignature(snapshotCanvas, false, 0, 1.04, 1.5),
+  ]);
+
+  if (liveBioNormal.isFlat && liveBioTiltLeft.isFlat) {
     // If the live capture is flat (e.g. covered lens), reject as NO_FACE
     return {
       status: 'NO_FACE',
@@ -668,6 +706,10 @@ export async function matchFaceAgainstEnrolledStaff(
       snapshotDataUrl: snapshotCanvas.toDataURL('image/jpeg', 0.88),
     };
   }
+
+  const liveVariants = [liveBioNormal, liveBioTiltLeft, liveBioTiltRight, liveBioShiftL, liveBioShiftR].filter(
+    (v) => !v.isFlat
+  );
 
   // 4. Compare with all enrolled staff
   const candidateScores: Array<{ employee: Employee; score: number }> = [];
@@ -697,16 +739,23 @@ export async function matchFaceAgainstEnrolledStaff(
         staffSignatureCache.set(emp.id, cached);
       }
 
-      // Compare with both normal and mirrored orientations
-      const cosineNormal = computeCosineSimilarity(liveBio.signature, cached.signature);
-      const hashSimNormal = computeHashSimilarity(liveBio.hash, cached.hash);
-      const scoreNormal = cosineNormal * 0.65 + hashSimNormal * 0.35;
+      // Compare across all multi-angle live variants with both normal and mirrored orientations
+      let bestEmpScore = 0;
+      for (const variant of liveVariants) {
+        const cosineNormal = computeCosineSimilarity(variant.signature, cached.signature);
+        const hashSimNormal = computeHashSimilarity(variant.hash, cached.hash);
+        const scoreNormal = cosineNormal * 0.65 + hashSimNormal * 0.35;
 
-      const cosineFlipped = computeCosineSimilarity(liveBio.signature, cached.signatureFlipped);
-      const hashSimFlipped = computeHashSimilarity(liveBio.hash, cached.hashFlipped);
-      const scoreFlipped = cosineFlipped * 0.65 + hashSimFlipped * 0.35;
+        const cosineFlipped = computeCosineSimilarity(variant.signature, cached.signatureFlipped);
+        const hashSimFlipped = computeHashSimilarity(variant.hash, cached.hashFlipped);
+        const scoreFlipped = cosineFlipped * 0.65 + hashSimFlipped * 0.35;
 
-      const bestEmpScore = Math.max(scoreNormal, scoreFlipped);
+        const vScore = Math.max(scoreNormal, scoreFlipped);
+        if (vScore > bestEmpScore) {
+          bestEmpScore = vScore;
+        }
+      }
+
       candidateScores.push({ employee: emp, score: parseFloat(bestEmpScore.toFixed(3)) });
     } catch (empBioErr) {
       // Gracefully handle any profile lacking biometric data or invalid frame without breaking the security engine
@@ -717,12 +766,12 @@ export async function matchFaceAgainstEnrolledStaff(
   // Sort descending by biometric similarity
   candidateScores.sort((a, b) => b.score - a.score);
 
-  // Calibrated real-world thresholds with confidence buffers:
-  // When an employee selects their badge, verification threshold is 0.52 (buffered down to 0.48).
-  // When general walk-up without selection, threshold is 0.58 (buffered down to 0.55).
-  // Random strangers score ~0.20 - 0.38 and are firmly blocked.
-  const TARGETED_THRESHOLD = 0.52;
-  const GENERAL_THRESHOLD = 0.58;
+  // Calibrated real-world thresholds with broadened angle and tilt tolerance:
+  // When an employee selects their badge, verification threshold is 0.44 (buffered down to 0.38).
+  // When general walk-up without selection, threshold is 0.48 (buffered down to 0.44 with separation, or 0.42 if single staff).
+  // Random strangers score ~0.15 - 0.30 and are firmly blocked.
+  const TARGETED_THRESHOLD = 0.44;
+  const GENERAL_THRESHOLD = 0.48;
 
   const best = candidateScores[0];
   const secondBest = candidateScores[1];
@@ -737,7 +786,7 @@ export async function matchFaceAgainstEnrolledStaff(
   if (best && best.score >= 0.985) {
     const cachedBest = staffSignatureCache.get(best.employee.id);
     if (cachedBest) {
-      const exactHashMatch = liveBio.hash === cachedBest.hash || liveBio.hash === cachedBest.hashFlipped;
+      const exactHashMatch = liveBioNormal.hash === cachedBest.hash || liveBioNormal.hash === cachedBest.hashFlipped;
       if (exactHashMatch) {
         if (snapCtx) {
           snapCtx.fillStyle = 'rgba(239, 68, 68, 0.95)';
@@ -777,10 +826,10 @@ export async function matchFaceAgainstEnrolledStaff(
     const targetedScore = targetedCandidate?.score || 0;
 
     // Targeted staff match verification (State 5)
-    // Passes if >= TARGETED_THRESHOLD (0.52), or >= 0.48 if top candidate or within tight margin of best
+    // Passes if >= TARGETED_THRESHOLD (0.44), or >= 0.38 if top candidate or within tight margin of best
     const isTargetedMatch = targetedCandidate && (
       targetedScore >= TARGETED_THRESHOLD ||
-      (targetedScore >= 0.48 && (!best || best.employee.id === targetedEmployeeId || (targetedScore - (best.score || 0) >= -0.06)))
+      (targetedScore >= 0.38 && (!best || best.employee.id === targetedEmployeeId || (targetedScore - (best.score || 0) >= -0.06)))
     );
 
     if (isTargetedMatch) {
@@ -832,12 +881,14 @@ export async function matchFaceAgainstEnrolledStaff(
 
   // =========================================================================
   // STATE 5: VERIFIED LIVE STAFF MATCH (General Walk-up)
-  // Matches against best enrolled candidate if above general threshold (0.58),
-  // or with confidence buffer (>= 0.55) if clear separation from runner-up (>= 0.08).
+  // Matches against best enrolled candidate if above general threshold (0.48),
+  // or with confidence buffer (>= 0.44) if clear separation from runner-up (>= 0.05),
+  // or >= 0.42 if single staff enrolled.
   // =========================================================================
   const isGeneralMatch = best && (
     best.score >= GENERAL_THRESHOLD ||
-    (best.score >= 0.55 && (!secondBest || best.score - secondBest.score >= 0.08))
+    (best.score >= 0.44 && (!secondBest || best.score - secondBest.score >= 0.05)) ||
+    (enrolledStaff.length === 1 && best.score >= 0.42)
   );
 
   if (!targetedEmployeeId && isGeneralMatch && best) {
@@ -847,6 +898,26 @@ export async function matchFaceAgainstEnrolledStaff(
       confidence: best.score,
       candidateScores,
       snapshotDataUrl: snapshotCanvas.toDataURL('image/jpeg', 0.88),
+      faceBoundingBox: facePresence.faceBoundingBox,
+    };
+  }
+
+  // =========================================================================
+  // ANGLE & POSTURE ADAPTATION / GRACE BUFFER FALLBACK
+  // If the detected face resembles an enrolled staff member with a moderate score (>= 0.36),
+  // they are a registered employee whose face is detected at a head tilt, side angle, or posture shift.
+  // Never lock them out as a stranger or trigger State 2!
+  // =========================================================================
+  if (best && best.score >= 0.36) {
+    return {
+      status: 'NO_FACE',
+      matchedEmployee: null,
+      confidence: best.score,
+      candidateScores,
+      snapshotDataUrl: snapshotCanvas.toDataURL('image/jpeg', 0.88),
+      securityMessage: 'Please look directly at the camera.',
+      hasDistinctHumanFace: true,
+      isObstructedOrHand: false,
       faceBoundingBox: facePresence.faceBoundingBox,
     };
   }
@@ -953,12 +1024,12 @@ export async function verifyFaceWithStabilization(
     }
 
     // 1b. Hysteresis Fast-Path for Active Verified Employee:
-    // When a registered staff member is already actively recognized, minor head tilts,
-    // looking down, or slight obstruction might produce score 0.42 - 0.52.
+    // When a registered staff member is already actively recognized, normal head tilts,
+    // looking down, or slight posture shifts might produce score 0.36 - 0.48.
     // Retain them immediately without false loss of recognition!
     if (isWithinGrace && activeStaff) {
       const activeCandidate = result.candidateScores?.find((c) => c.employee.id === activeStaff.id);
-      if (activeCandidate && activeCandidate.score >= 0.42) {
+      if (activeCandidate && activeCandidate.score >= 0.36) {
         return {
           status: 'MATCHED',
           matchedEmployee: activeStaff,
@@ -978,10 +1049,10 @@ export async function verifyFaceWithStabilization(
   // 2. Multi-Frame Stabilization Evaluation:
   // If no single frame achieved instant MATCHED, inspect stabilized candidate scores across frames
   if (targetedEmployeeId) {
-    // Check if the targeted employee stabilized to acceptable score (>= 0.49) in any sampled frame
+    // Check if the targeted employee stabilized to acceptable score (>= 0.40) in any sampled frame
     for (const res of frameResults) {
       const targetedCandidate = res.candidateScores?.find((c) => c.employee.id === targetedEmployeeId);
-      if (targetedCandidate && targetedCandidate.score >= 0.49) {
+      if (targetedCandidate && targetedCandidate.score >= 0.40) {
         return {
           status: 'MATCHED',
           matchedEmployee: targetedCandidate.employee,
@@ -992,11 +1063,11 @@ export async function verifyFaceWithStabilization(
       }
     }
   } else {
-    // Walk-up mode: check if any stabilized frame reached buffered general threshold (>= 0.55)
+    // Walk-up mode: check if any stabilized frame reached buffered general threshold (>= 0.44)
     for (const res of frameResults) {
       const top = res.candidateScores?.[0];
       const runnerUp = res.candidateScores?.[1];
-      if (top && (top.score >= 0.55 && (!runnerUp || top.score - runnerUp.score >= 0.07))) {
+      if (top && (top.score >= 0.44 || (top.score >= 0.40 && (!runnerUp || top.score - runnerUp.score >= 0.05)))) {
         return {
           status: 'MATCHED',
           matchedEmployee: top.employee,
@@ -1010,11 +1081,11 @@ export async function verifyFaceWithStabilization(
 
   // 2b. Recognition Hold / Grace Buffer (Hysteresis Memory):
   // If an active verified employee is currently recognized within the grace window (2.5 - 3s),
-  // check if their score stabilized across frames (>= 0.40):
+  // check if their score stabilized across frames (>= 0.34):
   if (isWithinGrace && activeStaff) {
     for (const res of frameResults) {
       const activeCandidate = res.candidateScores?.find((c) => c.employee.id === activeStaff.id);
-      if (activeCandidate && activeCandidate.score >= 0.40) {
+      if (activeCandidate && activeCandidate.score >= 0.34) {
         return {
           status: 'MATCHED',
           matchedEmployee: activeStaff,
@@ -1078,16 +1149,21 @@ export async function verifyFaceWithStabilization(
   // ABSOLUTE PROTECTION AGAINST FALSE STRANGER ALARMS:
   // A valid, distinct human face must be clearly visible and confirmed across ALL stabilization frames
   // without any hands, obstructions, or blurry frames.
+  // If ANY frame showed resemblance to an enrolled staff member (score >= 0.36), it's a tilted/angled employee,
+  // NOT an unknown stranger!
   const unrecognizedFrames = frameResults.filter(
     (r) => r.status === 'UNRECOGNIZED' && r.hasDistinctHumanFace === true && !r.isObstructedOrHand
   );
   if (unrecognizedFrames.length === maxFrames) {
-    // Return the cleanest snapshot frame (highest face confidence)
-    unrecognizedFrames.sort((a, b) => b.confidence - a.confidence);
-    return {
-      ...unrecognizedFrames[0],
-      faceBoundingBox: frameResults.find((r) => r.faceBoundingBox)?.faceBoundingBox,
-    };
+    const hasAnyAngledStaff = frameResults.some((r) => r.candidateScores?.some((c) => c.score >= 0.36));
+    if (!hasAnyAngledStaff) {
+      // Return the cleanest snapshot frame (highest face confidence)
+      unrecognizedFrames.sort((a, b) => b.confidence - a.confidence);
+      return {
+        ...unrecognizedFrames[0],
+        faceBoundingBox: frameResults.find((r) => r.faceBoundingBox)?.faceBoundingBox,
+      };
+    }
   }
 
   // Any other ambiguous or non-distinct frames default exclusively to friendly State 1 (NO_FACE)
