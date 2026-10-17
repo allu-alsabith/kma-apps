@@ -51,6 +51,7 @@ import { soundService } from './services/sound';
 import { get12HTimeString } from './utils/formatters';
 import { evaluateShiftPunch } from './utils/shiftEvaluation';
 import { syncAttendanceToGoogleSheet } from './services/googleSheets';
+import { staffStore } from './services/staffStore';
 import {
   subscribeToEmployees,
   subscribeToAttendanceRecords,
@@ -195,17 +196,10 @@ function AppContent() {
   // Shared Core Hypermarket Database State - 100% clean initial state so user adds all staff information
   const [employees, setEmployees] = useState<Employee[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('attendo_real_workforce_staff');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const filtered = parsed.filter((e) => !isSampleStaff(e));
-            return filtered;
-          }
-        } catch {
-          // fallback to INITIAL_EMPLOYEES
-        }
+      const persistent = staffStore.loadPersistentStaff();
+      if (persistent && persistent.length > 0) {
+        const filtered = persistent.filter((e) => !isSampleStaff(e));
+        if (filtered.length > 0) return filtered;
       }
     }
     return INITIAL_EMPLOYEES;
@@ -585,8 +579,9 @@ function AppContent() {
   // Save changes to localStorage for persistent hypermarket production operations (Fast offline-first cache)
   useEffect(() => {
     try {
-      localStorage.setItem('attendo_real_workforce_staff', JSON.stringify(employees));
-      localStorage.setItem('attendo_user_enrolled_staff', JSON.stringify(employees));
+      if (employees && employees.length > 0) {
+        staffStore.savePersistentStaff(employees);
+      }
     } catch {
       // Quota exceeded guard
     }

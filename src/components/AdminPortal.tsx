@@ -174,8 +174,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     var rawTs = data["Timestamp"] || data.timestamp || new Date().toISOString();
     var formattedTs = String(rawTs);
 
-    // Strict 12-hour AM/PM format for Column A (Timestamp) e.g., "15-Oct-2026, 05:14:41 PM"
-    if (typeof rawTs === "string" && (rawTs.indexOf("T") !== -1 || rawTs.indexOf("Z") !== -1 || rawTs.indexOf("-") !== -1)) {
+    // Strict 12-hour AM/PM format for Column A (Timestamp) e.g., "15-Oct-2026, 05:33:46 PM"
+    if (formattedTs.indexOf("AM") === -1 && formattedTs.indexOf("PM") === -1) {
       try {
         var dateObj = new Date(rawTs);
         if (!isNaN(dateObj.getTime())) {
@@ -250,6 +250,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     newRowRange.setFontSize(10);
     newRowRange.setFontWeight("normal");
     newRowRange.setVerticalAlignment("middle");
+
+    // Force 12-Hour AM/PM text formatting on Column A (Timestamp), Column G (Scheduled Time), and Column H (Actual Time)
+    // so Google Sheets never auto-coerces into 24-hour time or spreadsheet locale defaults
+    sheet.getRange(newRow, 1).setNumberFormat("@");
+    sheet.getRange(newRow, 7).setNumberFormat("@");
+    sheet.getRange(newRow, 8).setNumberFormat("@");
 
     // Alignments: left for Columns 1, 2, 4; center for Columns 3, 5, 6, 7, 8
     sheet.getRange(newRow, 1).setHorizontalAlignment("left");
@@ -366,6 +372,18 @@ function formatHeaderRow(sheet, rowNum) {
       setHasCopiedScript(false);
     }, 2800);
   };
+
+  // Persistent Biometric Rehydration on Cold Boot:
+  // Automatically rehydrate and preload staff profiles and precomputed 64-dimensional face embeddings on startup
+  useEffect(() => {
+    staffStore.rehydrateBiometrics();
+    const currentStaff = (employees && employees.length > 0) ? employees : staffStore.loadPersistentStaff();
+    if (currentStaff.length > 0) {
+      staffStore.preloadAllStaffBiometrics(currentStaff).catch((err) => {
+        console.warn('[AdminPortal] Biometric rehydration notice:', err);
+      });
+    }
+  }, [employees]);
 
   // Sync state whenever activeCompany changes
   useEffect(() => {
@@ -935,7 +953,6 @@ function formatHeaderRow(sheet, rowNum) {
     });
 
     onAddEmployee(newEmp);
-    clearBiometricCache(newEmp.id);
     soundService.playSuccessChime();
     setEnrollSuccessMessage(`Successfully enrolled ${newEmp.name} (${newEmp.id})! Biometrics & ${newEmpPayBasis === 'DAILY' ? 'Daily Wage' : newEmpPayBasis === 'WEEKLY' ? 'Weekly Wage' : 'Monthly Salary'} active.`);
     setTimeout(() => {
@@ -980,7 +997,6 @@ function formatHeaderRow(sheet, rowNum) {
     });
 
     onUpdateEmployee(editingEmp);
-    clearBiometricCache(editingEmp.id);
     soundService.playSuccessChime();
     setShowEditEmpModal(false);
     setEditingEmp(null);

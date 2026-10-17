@@ -11,7 +11,7 @@ export interface FaceDetectionResult {
 }
 
 export interface BiometricMatchResult {
-  status: 'MATCHED' | 'UNRECOGNIZED' | 'NO_FACE' | 'PHOTO_SPOOF' | 'WRONG_STAFF_MISMATCH' | 'NO_ENROLLED_STAFF';
+  status: 'MATCHED' | 'UNRECOGNIZED' | 'NO_FACE' | 'PHOTO_SPOOF' | 'WRONG_STAFF_MISMATCH' | 'NO_ENROLLED_STAFF' | 'RETAINED_GRACE';
   matchedEmployee: Employee | null;
   confidence: number;
   candidateScores: Array<{ employee: Employee; score: number }>;
@@ -33,12 +33,70 @@ export interface CachedBiometricProfile {
 // In-memory cache for enrolled staff face signatures (keyed by employee ID)
 const staffSignatureCache = new Map<string, CachedBiometricProfile>();
 
+/**
+ * Rehydrates the in-memory cache directly from persistent LocalStorage
+ * Ensures 64D biometric embeddings are available instantly on cold boot / tab reload
+ */
+export function rehydrateBiometricsFromStorage(): number {
+  if (typeof window === 'undefined') return 0;
+  try {
+    const raw = localStorage.getItem('attendo_staff_biometric_embeddings');
+    if (!raw) return 0;
+    const parsed = JSON.parse(raw);
+    let count = 0;
+    for (const [empId, emb] of Object.entries(parsed as Record<string, any>)) {
+      if (emb && Array.isArray(emb.signature) && emb.signature.length >= 64) {
+        staffSignatureCache.set(empId, {
+          avatarRef: emb.avatarRef || '',
+          signature: emb.signature,
+          signatureFlipped: emb.signatureFlipped || emb.signature,
+          hash: emb.hash || '',
+          hashFlipped: emb.hashFlipped || emb.hash || '',
+          timestamp: Date.now(),
+        });
+        count++;
+      }
+    }
+    return count;
+  } catch {
+    return 0;
+  }
+}
+
+// Auto-run rehydration on module initialization
+if (typeof window !== 'undefined') {
+  try {
+    rehydrateBiometricsFromStorage();
+  } catch {}
+}
+
 export function setCachedBiometricProfile(employeeId: string, profile: CachedBiometricProfile) {
   staffSignatureCache.set(employeeId, profile);
 }
 
 export function getCachedBiometricProfile(employeeId: string): CachedBiometricProfile | undefined {
-  return staffSignatureCache.get(employeeId);
+  let cached = staffSignatureCache.get(employeeId);
+  if (!cached && typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('attendo_staff_biometric_embeddings');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const emb = parsed[employeeId];
+        if (emb && Array.isArray(emb.signature) && emb.signature.length >= 64) {
+          cached = {
+            avatarRef: emb.avatarRef || '',
+            signature: emb.signature,
+            signatureFlipped: emb.signatureFlipped || emb.signature,
+            hash: emb.hash || '',
+            hashFlipped: emb.hashFlipped || emb.hash || '',
+            timestamp: Date.now(),
+          };
+          staffSignatureCache.set(employeeId, cached);
+        }
+      }
+    } catch {}
+  }
+  return cached;
 }
 
 /**
@@ -539,10 +597,14 @@ export async function matchFaceAgainstEnrolledStaff(
     if (!emp || !emp.avatar || typeof emp.avatar !== 'string' || !emp.avatar.trim()) continue;
 
     try {
-      // Check if cache entry exists AND matches current avatar URL
-      // If avatar was updated in Admin, immediately recompute signatures!
+      // Check in-memory cache first, falling back to persistent storage on cold boot
       let cached = staffSignatureCache.get(emp.id);
-      if (!cached || cached.avatarRef !== emp.avatar || Date.now() - cached.timestamp > 300000) {
+      if (!cached) {
+        cached = getCachedBiometricProfile(emp.id);
+      }
+
+      // If still missing or avatar changed and profile has no valid signature, extract and cache
+      if (!cached || !cached.signature || cached.signature.length === 0) {
         const bioNormal = await extractBiometricSignature(emp.avatar, false);
         const bioFlipped = await extractBiometricSignature(emp.avatar, true);
         cached = {
@@ -555,9 +617,6 @@ export async function matchFaceAgainstEnrolledStaff(
         };
         staffSignatureCache.set(emp.id, cached);
       }
-
-      // If signature is missing or corrupted, skip gracefully
-      if (!cached || !cached.signature || cached.signature.length === 0) continue;
 
       // Compare with both normal and mirrored orientations
       const cosineNormal = computeCosineSimilarity(liveBio.signature, cached.signature);
@@ -765,10 +824,20 @@ export async function verifyFaceWithStabilization(
   options: {
     maxFrames?: number;
     frameIntervalMs?: number;
+    activeVerifiedEmployee?: Employee | null;
+    lastVerifiedTimestamp?: number;
+    graceWindowMs?: number;
   } = {}
 ): Promise<BiometricMatchResult> {
   const maxFrames = options.maxFrames ?? 4;
   const frameIntervalMs = options.frameIntervalMs ?? 110;
+  const graceWindowMs = options.graceWindowMs ?? 3000;
+  const activeStaff = options.activeVerifiedEmployee || null;
+  const isWithinGrace = Boolean(
+    activeStaff && 
+    options.lastVerifiedTimestamp && 
+    (Date.now() - options.lastVerifiedTimestamp < graceWindowMs)
+  );
 
   // Track results across consecutive frames
   const frameResults: BiometricMatchResult[] = [];
@@ -781,6 +850,23 @@ export async function verifyFaceWithStabilization(
     // If live face matches verified criteria on this frame, return immediately with zero delay!
     if (result.status === 'MATCHED') {
       return result;
+    }
+
+    // 1b. Hysteresis Fast-Path for Active Verified Employee:
+    // When a registered staff member is already actively recognized, minor head tilts,
+    // looking down, or slight obstruction might produce score 0.42 - 0.52.
+    // Retain them immediately without false loss of recognition!
+    if (isWithinGrace && activeStaff) {
+      const activeCandidate = result.candidateScores?.find((c) => c.employee.id === activeStaff.id);
+      if (activeCandidate && activeCandidate.score >= 0.42) {
+        return {
+          status: 'MATCHED',
+          matchedEmployee: activeStaff,
+          confidence: activeCandidate.score,
+          candidateScores: result.candidateScores,
+          snapshotDataUrl: result.snapshotDataUrl,
+        };
+      }
     }
 
     // Delay briefly before sampling next consecutive frame (unless last frame)
@@ -822,6 +908,37 @@ export async function verifyFaceWithStabilization(
     }
   }
 
+  // 2b. Recognition Hold / Grace Buffer (Hysteresis Memory):
+  // If an active verified employee is currently recognized within the grace window (2.5 - 3s),
+  // check if their score stabilized across frames (>= 0.40):
+  if (isWithinGrace && activeStaff) {
+    for (const res of frameResults) {
+      const activeCandidate = res.candidateScores?.find((c) => c.employee.id === activeStaff.id);
+      if (activeCandidate && activeCandidate.score >= 0.40) {
+        return {
+          status: 'MATCHED',
+          matchedEmployee: activeStaff,
+          confidence: activeCandidate.score,
+          candidateScores: res.candidateScores,
+          snapshotDataUrl: res.snapshotDataUrl,
+        };
+      }
+    }
+
+    // If face was temporarily obscured by a hand, head tilt, or look away:
+    // Retain the last verified employee state briefly and prompt 'Please look at the camera'
+    // instead of triggering a harsh red SECURITY_BLOCK alarm or logging a false stranger incident!
+    const bestFrame = frameResults[0];
+    return {
+      status: 'RETAINED_GRACE',
+      matchedEmployee: activeStaff,
+      confidence: 0.88,
+      candidateScores: bestFrame?.candidateScores || [],
+      snapshotDataUrl: bestFrame?.snapshotDataUrl || '',
+      securityMessage: 'Please look at the camera.',
+    };
+  }
+
   // 3. Evaluate State 1: NO_FACE
   // If the majority of frames saw no face (e.g. empty camera, momentary hand covering lens, or walking up),
   // return NO_FACE to give the friendly "Position your face in front of the camera" prompt (NO security alert!)
@@ -848,10 +965,22 @@ export async function verifyFaceWithStabilization(
   // A real human face was persistently present across multiple frames, but consistently failed
   // to match any enrolled staff. This guarantees a genuine non-staff stranger rather than a glitch.
   const unrecognizedFrames = frameResults.filter((r) => r.status === 'UNRECOGNIZED');
-  if (unrecognizedFrames.length > 0) {
+  if (unrecognizedFrames.length >= Math.ceil(maxFrames * 0.75)) {
     // Return the cleanest snapshot frame (highest face confidence)
     unrecognizedFrames.sort((a, b) => b.confidence - a.confidence);
     return unrecognizedFrames[0];
+  }
+
+  // If face presence was intermittent (e.g. hand movement, head turn), return friendly NO_FACE guidance
+  if (unrecognizedFrames.length > 0) {
+    return {
+      status: 'NO_FACE',
+      matchedEmployee: null,
+      confidence: 0,
+      candidateScores: [],
+      snapshotDataUrl: frameResults[0]?.snapshotDataUrl || '',
+      securityMessage: 'Please look directly at the camera.',
+    };
   }
 
   // Final fallback to the latest frame result

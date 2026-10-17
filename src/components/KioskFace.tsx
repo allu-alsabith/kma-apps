@@ -76,6 +76,10 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const resetTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastVerifiedEmployeeRef = useRef<Employee | null>(null);
+  const lastVerifiedTimeRef = useRef<number>(0);
+  const graceNoticeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const unrecognizedStartTimeRef = useRef<number>(0);
 
   // ==========================================
   // KIOSK AUTHENTICATION / ACTIVATION SESSION
@@ -138,15 +142,18 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       ? persistentStaff
       : staffStore.loadPersistentStaff();
     if (!connectedCompany) return sourceStaff;
-    return (sourceStaff || []).filter(
-      (e) => (e.companyId || connectedCompany.id) === connectedCompany.id
+    const filtered = (sourceStaff || []).filter(
+      (e) => !e.companyId || e.companyId === connectedCompany.id
     );
+    return filtered.length > 0 ? filtered : sourceStaff;
   }, [persistentStaff, connectedCompany]);
 
-  // Securely preload staff biometric face signatures and embeddings into memory cache on startup
+  // Securely rehydrate & preload staff biometric face signatures and embeddings into memory cache on startup
   useEffect(() => {
-    if (companyEmployees && companyEmployees.length > 0) {
-      staffStore.preloadAllStaffBiometrics(companyEmployees).catch((err) => {
+    staffStore.rehydrateBiometrics();
+    const staffToPreload = companyEmployees.length > 0 ? companyEmployees : staffStore.loadPersistentStaff();
+    if (staffToPreload.length > 0) {
+      staffStore.preloadAllStaffBiometrics(staffToPreload).catch((err) => {
         console.warn('[KioskFace] Non-fatal biometric preloading notice:', err);
       });
     }
@@ -314,6 +321,9 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       if (resetTimerRef.current) {
         clearTimeout(resetTimerRef.current);
       }
+      if (graceNoticeTimeoutRef.current) {
+        clearTimeout(graceNoticeTimeoutRef.current);
+      }
     };
   }, [isKioskLoggedIn, startCamera, stopCamera]);
 
@@ -434,6 +444,9 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
     }
 
     if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    if (graceNoticeTimeoutRef.current) clearTimeout(graceNoticeTimeoutRef.current);
+    lastVerifiedEmployeeRef.current = null;
+    lastVerifiedTimeRef.current = 0;
     resetTimerRef.current = setTimeout(() => {
       setScanningStatus('IDLE');
       setMatchedEmployee(null);
@@ -447,9 +460,18 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
 
   // Advanced Biometric Face Scan Verification & Security Inspection
   const handleTriggerFaceScan = async (targetedStaff?: Employee) => {
-    if (scanningStatus === 'DETECTING' || scanningStatus === 'MATCHED') return;
+    if (scanningStatus === 'DETECTING') return;
     
-    if (companyEmployees.length === 0) {
+    let activeEmployees = companyEmployees;
+    if (activeEmployees.length === 0) {
+      const recovered = staffStore.loadPersistentStaff();
+      if (recovered.length > 0) {
+        activeEmployees = recovered;
+        staffStore.preloadAllStaffBiometrics(recovered).catch(() => {});
+      }
+    }
+
+    if (activeEmployees.length === 0) {
       if (isSoundEnabled) {
         soundService.speakWarning(`No staff enrolled for ${companySupermarketName} yet. Please enroll staff in Store Admin.`);
       }
@@ -475,17 +497,78 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
     const video = videoRef.current;
     const targetEmpId = targetedStaff?.id || selectedStaffIdForScan || undefined;
 
+    // Check if a registered staff member was actively recognized within the strict 3.0s grace window
+    const now = Date.now();
+    const isWithinGrace = Boolean(
+      lastVerifiedEmployeeRef.current && 
+      (now - lastVerifiedTimeRef.current < 3000)
+    );
+    const activeStaff = isWithinGrace ? lastVerifiedEmployeeRef.current : null;
+
     try {
       // Analyze live camera feed using enterprise multi-frame stabilized biometric face recognition engine
-      // (Eliminates false alarms from momentary hand movements, minor head tilts, or brief framing shifts)
+      // with recognition memory and grace buffer (hysteresis)
       const matchResult = await verifyFaceWithStabilization(
         video, 
-        companyEmployees, 
-        targetEmpId
+        activeEmployees, 
+        targetEmpId,
+        {
+          activeVerifiedEmployee: activeStaff,
+          lastVerifiedTimestamp: lastVerifiedTimeRef.current,
+          graceWindowMs: 3000,
+        }
       );
+
+      // STRICT 3-SECOND GRACE WINDOW (HYSTERESIS):
+      // When an active staff member is verified and their face is temporarily obscured (by a hand, head turn,
+      // or brief absence for under 3 seconds), do NOT trigger a red SECURITY_BLOCK or log a stranger incident.
+      // Retain the active staff session in memory, display a gentle prompt 'Please look at the camera',
+      // and allow instant seamless resume when the face re-enters.
+      if (
+        matchResult.status === 'RETAINED_GRACE' ||
+        ((matchResult.status === 'NO_FACE' || matchResult.status === 'UNRECOGNIZED') && isWithinGrace && activeStaff)
+      ) {
+        unrecognizedStartTimeRef.current = 0;
+        setMatchedEmployee(activeStaff);
+        setScanningStatus('MATCHED');
+        const { currentState } = getStaffCurrentTodayState(activeStaff);
+        setStaffPunchOptions({
+          employee: activeStaff,
+          currentState,
+        });
+        setSecurityNotice('Please look at the camera');
+
+        if (isSoundEnabled) {
+          soundService.speakWarning('Please look at the camera');
+        }
+
+        if (graceNoticeTimeoutRef.current) clearTimeout(graceNoticeTimeoutRef.current);
+        graceNoticeTimeoutRef.current = setTimeout(() => {
+          setSecurityNotice(null);
+        }, 2800);
+
+        return;
+      }
 
       // STATE 1: NO FACE DETECTED (Camera empty or lighting poor)
       if (matchResult.status === 'NO_FACE') {
+        if (isWithinGrace && activeStaff) {
+          unrecognizedStartTimeRef.current = 0;
+          setMatchedEmployee(activeStaff);
+          setScanningStatus('MATCHED');
+          const { currentState } = getStaffCurrentTodayState(activeStaff);
+          setStaffPunchOptions({
+            employee: activeStaff,
+            currentState,
+          });
+          setSecurityNotice('Please look at the camera');
+          if (isSoundEnabled) {
+            soundService.speakWarning('Please look at the camera');
+          }
+          return;
+        }
+
+        unrecognizedStartTimeRef.current = 0;
         setScanningStatus('NO_FACE');
         setMatchedEmployee(null);
         setSecurityNotice('Position your face in front of the camera.');
@@ -651,8 +734,66 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
 
       // STATE 2: UNKNOWN STRANGER / NON-STAFF
       if (matchResult.status === 'UNRECOGNIZED' || !matchResult.matchedEmployee) {
+        // A. Strict 3-Second Hysteresis Protection:
+        // When an active staff member is verified and their face is temporarily obscured (by a hand,
+        // head turn, or brief absence for under 3 seconds), do NOT trigger a red SECURITY_BLOCK or log a stranger incident.
+        // Retain the active staff session in memory, display a gentle prompt 'Please look at the camera',
+        // and allow instant seamless resume when the face re-enters.
+        if (isWithinGrace && activeStaff) {
+          unrecognizedStartTimeRef.current = 0;
+          setMatchedEmployee(activeStaff);
+          setScanningStatus('MATCHED');
+          const { currentState } = getStaffCurrentTodayState(activeStaff);
+          setStaffPunchOptions({
+            employee: activeStaff,
+            currentState,
+          });
+          setSecurityNotice('Please look at the camera');
+
+          if (isSoundEnabled) {
+            soundService.speakWarning('Please look at the camera');
+          }
+
+          if (graceNoticeTimeoutRef.current) clearTimeout(graceNoticeTimeoutRef.current);
+          graceNoticeTimeoutRef.current = setTimeout(() => {
+            setSecurityNotice(null);
+          }, 2800);
+
+          return;
+        }
+
+        // B. Strict 3-Second Unknown Face Persistence Buffer:
+        // Ensure that a true SECURITY_BLOCK (Stranger / Unrecognized Face) is only triggered if an unknown face
+        // persists continuously for over 3 seconds (3000ms), entirely preventing false alarm logs from hand movements
+        // or brief framing adjustments.
+        const nowMs = Date.now();
+        if (!unrecognizedStartTimeRef.current || unrecognizedStartTimeRef.current === 0) {
+          unrecognizedStartTimeRef.current = nowMs;
+        }
+
+        const unknownDuration = nowMs - unrecognizedStartTimeRef.current;
+
+        // If unknown face has persisted for LESS than 3 continuous seconds:
+        if (unknownDuration < 3000) {
+          setScanningStatus('NO_FACE');
+          setSecurityNotice('Please look directly at the camera');
+          if (isSoundEnabled) {
+            soundService.speakWarning('Please look directly at the camera');
+          }
+          if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+          resetTimerRef.current = setTimeout(() => {
+            setScanningStatus('IDLE');
+            setSecurityNotice(null);
+          }, 2600);
+          return;
+        }
+
+        // C. TRUE PERSISTENT UNKNOWN STRANGER CONFIRMED (> 3.0 continuous seconds):
+        // Only now trigger the red SECURITY_BLOCK and log to Google Sheets!
+        unrecognizedStartTimeRef.current = 0;
         setScanningStatus('UNRECOGNIZED');
         setMatchedEmployee(null);
+        setStaffPunchOptions(null);
         setUnrecognizedSnapshot(matchResult.snapshotDataUrl);
         setSecurityNotice('Unrecognized face detected. Access denied - not an enrolled staff member.');
 
@@ -676,7 +817,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           device: 'KIOSK_FACE',
           kioskLocation: `${companySupermarketName} • Staff Entrance Terminal`,
           status: 'UNRECOGNIZED_FACE',
-          notes: 'Unauthorized visitor face scan blocked at Entrance Kiosk.',
+          notes: 'Unauthorized visitor face scan blocked at Entrance Kiosk (persisted >3s).',
           snapshotUrl: matchResult.snapshotDataUrl,
           confidenceScore: matchResult.confidence,
         };
@@ -717,10 +858,19 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       }
 
       // STATE 5: VERIFIED LIVE STAFF MATCH (Face-Driven Contextual Action Flow)
+      // Reset any stranger streak on successful staff verification
+      unrecognizedStartTimeRef.current = 0;
+
       const targetEmp = matchResult.matchedEmployee;
       const score = matchResult.confidence;
       setMatchScore(score);
       setMatchedEmployee(targetEmp);
+
+      // Record in recognition memory / grace buffer
+      lastVerifiedEmployeeRef.current = targetEmp;
+      lastVerifiedTimeRef.current = Date.now();
+      setSecurityNotice(null);
+      if (graceNoticeTimeoutRef.current) clearTimeout(graceNoticeTimeoutRef.current);
 
       const { currentState, lastPunchTime } = getStaffCurrentTodayState(targetEmp);
       const firstName = targetEmp.name.split(' ')[0];
@@ -786,10 +936,17 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   // Immediate Dismiss / Reset Scanner
   const handleImmediateDismiss = () => {
     if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    if (graceNoticeTimeoutRef.current) clearTimeout(graceNoticeTimeoutRef.current);
+    unrecognizedStartTimeRef.current = 0;
+    lastVerifiedEmployeeRef.current = null;
+    lastVerifiedTimeRef.current = 0;
     setScanningStatus('IDLE');
     setMatchedEmployee(null);
     setExecutedPunchType(null);
     setStaffPunchOptions(null);
+    setUnrecognizedSnapshot(null);
+    setSecurityNotice(null);
+    setSelectedStaffIdForScan('');
   };
 
   // Manager Unlock Modal Handler
