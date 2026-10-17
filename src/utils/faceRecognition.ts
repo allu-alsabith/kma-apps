@@ -11,6 +11,7 @@ export interface FaceDetectionResult {
   hasDistinctHumanFace?: boolean;
   isObstructedOrHand?: boolean;
   faceStructureScore?: number;
+  faceBoundingBox?: { x: number; y: number; width: number; height: number };
 }
 
 export interface BiometricMatchResult {
@@ -24,6 +25,7 @@ export interface BiometricMatchResult {
   securityMessage?: string;
   hasDistinctHumanFace?: boolean;
   isObstructedOrHand?: boolean;
+  faceBoundingBox?: { x: number; y: number; width: number; height: number };
 }
 
 export interface CachedBiometricProfile {
@@ -160,24 +162,23 @@ export async function detectFaceInVideoOrCanvas(
         const boxW = primary.width;
         const boxH = primary.height;
         const aspect = boxW > 0 && boxH > 0 ? boxW / boxH : 1;
-        // Verify valid human face dimensions (not microscopic or bizarre aspect)
-        if (aspect >= 0.60 && aspect <= 1.55 && boxW >= 40 && boxH >= 40) {
+        // Relaxed face dimensions & angles: allow any normal human face (box >= 20px, aspect 0.35 - 2.5)
+        if (aspect >= 0.35 && aspect <= 2.5 && boxW >= 20 && boxH >= 20) {
+          const srcW = 'videoWidth' in videoOrCanvas ? videoOrCanvas.videoWidth || 640 : (videoOrCanvas.width || 640);
+          const srcH = 'videoHeight' in videoOrCanvas ? videoOrCanvas.videoHeight || 480 : (videoOrCanvas.height || 480);
           return {
             hasFace: true,
             hasDistinctHumanFace: true,
             isObstructedOrHand: false,
-            confidence: 0.96,
+            confidence: 0.98,
+            faceBoundingBox: {
+              x: Math.max(0, Math.min(1, primary.x / srcW)),
+              y: Math.max(0, Math.min(1, primary.y / srcH)),
+              width: Math.max(0.1, Math.min(1, primary.width / srcW)),
+              height: Math.max(0.1, Math.min(1, primary.height / srcH)),
+            },
           };
         }
-      } else {
-        // Hardware face detector is present and explicitly found 0 faces (covered camera / hand / empty frame)
-        return {
-          hasFace: false,
-          hasDistinctHumanFace: false,
-          isObstructedOrHand: true,
-          confidence: 0.05,
-          reason: 'NO_FACE',
-        };
       }
     } catch {
       // Fallback to computer-vision anthropometric analysis below
@@ -197,15 +198,10 @@ export async function detectFaceInVideoOrCanvas(
       return { hasFace: false, hasDistinctHumanFace: false, isObstructedOrHand: true, confidence: 0, reason: 'NO_FACE' };
     }
 
-    // Draw central square/oval from video or canvas source
+    // Draw full camera frame without center-cropping clipping so sitting/standing staff across all angles are captured
     const srcWidth = 'videoWidth' in videoOrCanvas ? videoOrCanvas.videoWidth || 640 : videoOrCanvas.width || 640;
     const srcHeight = 'videoHeight' in videoOrCanvas ? videoOrCanvas.videoHeight || 480 : videoOrCanvas.height || 480;
-
-    const minDim = Math.min(srcWidth, srcHeight);
-    const srcX = (srcWidth - minDim) / 2;
-    const srcY = (srcHeight - minDim) / 2;
-
-    ctx.drawImage(videoOrCanvas, srcX, srcY, minDim, minDim, 0, 0, width, height);
+    ctx.drawImage(videoOrCanvas, 0, 0, srcWidth, srcHeight, 0, 0, width, height);
 
     const imageData = ctx.getImageData(0, 0, width, height);
     const data = imageData.data;
@@ -228,15 +224,15 @@ export async function detectFaceInVideoOrCanvas(
     const avgLuminance = totalLuminance / totalPixels;
 
     // CHECK A: Absolute Darkness or Overexposure (Covered lens, obstruction, or direct flash)
-    if (avgLuminance < 14) {
+    if (avgLuminance < 10) {
       return { hasFace: false, hasDistinctHumanFace: false, isObstructedOrHand: true, confidence: 0, reason: 'TOO_DARK' };
     }
-    if (avgLuminance > 242) {
+    if (avgLuminance > 248) {
       return { hasFace: false, hasDistinctHumanFace: false, isObstructedOrHand: true, confidence: 0, reason: 'CAMERA_BLOCKED' };
     }
 
     // CHECK B: Global Standard Deviation of Luminance (Contrast Richness)
-    // A covered lens or obstruction has flat, low standard deviation (< 11.5).
+    // Only flag true flat obstructions or lens covers (< 4.0 stdDev)
     let lumVarianceSum = 0;
     for (let i = 0; i < totalPixels; i++) {
       const diff = luminances[i] - avgLuminance;
@@ -244,7 +240,7 @@ export async function detectFaceInVideoOrCanvas(
     }
     const stdDevLuminance = Math.sqrt(lumVarianceSum / totalPixels);
 
-    if (stdDevLuminance < 11.5) {
+    if (stdDevLuminance < 4.0) {
       return {
         hasFace: false,
         hasDistinctHumanFace: false,
@@ -255,75 +251,59 @@ export async function detectFaceInVideoOrCanvas(
       };
     }
 
-    // CHECK C: Central Facial Reticle Zone Analysis (Inner 70% of frame)
-    const startX = Math.floor(width * 0.15);
-    const endX = Math.floor(width * 0.85);
-    const startY = Math.floor(height * 0.15);
-    const endY = Math.floor(height * 0.85);
+    // CHECK C: Full Panoramic Facial Field of View (98% of frame for sitting/standing/angles)
+    const startX = Math.floor(width * 0.01);
+    const endX = Math.floor(width * 0.99);
+    const startY = Math.floor(height * 0.01);
+    const endY = Math.floor(height * 0.99);
 
     let focalPixels = 0;
     let skinPixels = 0;
     let gradientEnergy = 0;
     let significantEdges = 0;
 
-    // Anthropometric landmark zones (forehead, left eye, right eye, cheeks)
-    let foreheadLumSum = 0, foreheadCount = 0;
-    let leftEyeLumSum = 0, leftEyeCount = 0;
-    let rightEyeLumSum = 0, rightEyeCount = 0;
-    let cheekLumSum = 0, cheekCount = 0;
+    let minSkinX = width, maxSkinX = 0, minSkinY = height, maxSkinY = 0;
+    let skinSumX = 0, skinSumY = 0;
 
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
+    for (let y = startY; y <= endY; y++) {
+      for (let x = startX; x <= endX; x++) {
         const idx = (y * width + x) * 4;
         const r = data[idx];
         const g = data[idx + 1];
         const b = data[idx + 2];
         const lum = luminances[y * width + x];
 
-        // Focal region statistics
-        if (x >= startX && x <= endX && y >= startY && y <= endY) {
-          focalPixels++;
+        focalPixels++;
 
-          // Comprehensive YCbCr & Normalized RGB Skin Tone Model
-          // Works across all human complexions and diverse light temperatures
-          const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
-          const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+        // Comprehensive YCbCr & Normalized RGB Skin Tone Model
+        const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
+        const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
 
-          const sumRGB = r + g + b + 0.001;
-          const normR = r / sumRGB;
-          const normG = g / sumRGB;
+        const sumRGB = r + g + b + 0.001;
+        const normR = r / sumRGB;
+        const normG = g / sumRGB;
 
-          const isSkinYCbCr = cb >= 65 && cb <= 145 && cr >= 120 && cr <= 185;
-          const isSkinRGB = normR > 0.31 && (normR + normG) < 0.88 && lum > 25 && lum < 235;
+        const isSkinYCbCr = cb >= 65 && cb <= 150 && cr >= 118 && cr <= 188;
+        const isSkinRGB = normR > 0.28 && (normR + normG) < 0.92 && lum > 16 && lum < 244;
 
-          if (isSkinYCbCr || isSkinRGB) {
-            skinPixels++;
-          }
+        if (isSkinYCbCr || isSkinRGB) {
+          skinPixels++;
+          skinSumX += x;
+          skinSumY += y;
+          if (x < minSkinX) minSkinX = x;
+          if (x > maxSkinX) maxSkinX = x;
+          if (y < minSkinY) minSkinY = y;
+          if (y > maxSkinY) maxSkinY = y;
+        }
 
-          // Edge gradients (Sobel/contrast difference for in-focus facial details)
-          if (x < endX && y < endY) {
-            const diffX = Math.abs(lum - luminances[y * width + (x + 1)]);
-            const diffY = Math.abs(lum - luminances[(y + 1) * width + x]);
-            const edgeVal = diffX + diffY;
-            gradientEnergy += edgeVal;
-            if (edgeVal > 24) {
-              significantEdges++;
-            }
-          }
-
-          // Facial anthropometric zones
-          if (y >= 24 && y <= 42 && x >= 48 && x <= 112) {
-            foreheadLumSum += lum;
-            foreheadCount++;
-          } else if (y >= 44 && y <= 72 && x >= 38 && x <= 70) {
-            leftEyeLumSum += lum;
-            leftEyeCount++;
-          } else if (y >= 44 && y <= 72 && x >= 90 && x <= 122) {
-            rightEyeLumSum += lum;
-            rightEyeCount++;
-          } else if (y >= 76 && y <= 104 && x >= 36 && x <= 124) {
-            cheekLumSum += lum;
-            cheekCount++;
+        // Edge gradients (Sobel/contrast difference for facial details)
+        if (x < endX && y < endY) {
+          const diffX = Math.abs(lum - luminances[y * width + (x + 1)]);
+          const diffY = Math.abs(lum - luminances[(y + 1) * width + x]);
+          const edgeVal = diffX + diffY;
+          gradientEnergy += edgeVal;
+          if (edgeVal > 15) {
+            significantEdges++;
           }
         }
       }
@@ -333,44 +313,37 @@ export async function detectFaceInVideoOrCanvas(
     const avgGradient = focalPixels > 0 ? gradientEnergy / focalPixels : 0;
     const edgeDensity = focalPixels > 0 ? significantEdges / focalPixels : 0;
 
-    // Bilateral horizontal symmetry across central vertical midline (x = 80)
+    // Calculate face centroid and dynamic bounding box
+    // Relaxed skin cluster threshold: accepts faces even when employee sits further back or stands at normal kiosk distance (>= 1.2% skin cluster)
+    const hasSkinCluster = skinPixels >= Math.max(25, focalPixels * 0.012);
+    const faceCenterX = hasSkinCluster ? Math.round(skinSumX / skinPixels) : Math.round(width / 2);
+    const faceCenterY = hasSkinCluster ? Math.round(skinSumY / skinPixels) : Math.round(height / 2);
+    const rawBoxW = hasSkinCluster ? Math.max(26, Math.min(width * 0.94, (maxSkinX - minSkinX) * 1.15)) : Math.round(width * 0.48);
+    const rawBoxH = hasSkinCluster ? Math.max(30, Math.min(height * 0.94, (maxSkinY - minSkinY) * 1.25)) : Math.round(height * 0.58);
+
+    // Bilateral horizontal symmetry relative to employee's actual face center (faceCenterX)
     let symmDiffSum = 0;
     let symmCount = 0;
-    for (let y = 30; y <= 130; y += 2) {
-      for (let dx = 6; dx <= 46; dx += 2) {
-        const leftLum = luminances[y * width + (80 - dx)];
-        const rightLum = luminances[y * width + (80 + dx)];
+    const maxOffset = Math.min(Math.round(rawBoxW * 0.45), Math.min(faceCenterX, width - 1 - faceCenterX));
+    const stepOffset = Math.max(2, Math.floor(maxOffset / 8));
+
+    for (let y = Math.max(startY, faceCenterY - Math.round(rawBoxH * 0.25)); y <= Math.min(endY, faceCenterY + Math.round(rawBoxH * 0.25)); y += 2) {
+      for (let dx = 4; dx <= maxOffset; dx += stepOffset) {
+        const leftLum = luminances[y * width + (faceCenterX - dx)];
+        const rightLum = luminances[y * width + (faceCenterX + dx)];
         symmDiffSum += Math.abs(leftLum - rightLum);
         symmCount++;
       }
     }
-    const avgSymmDiff = symmCount > 0 ? symmDiffSum / symmCount : 28;
-
-    // Ocular Depression Contrast (Eyes are recessed cavities darker than forehead and cheeks)
-    const foreheadAvg = foreheadCount > 0 ? foreheadLumSum / foreheadCount : avgLuminance;
-    const leftEyeAvg = leftEyeCount > 0 ? leftEyeLumSum / leftEyeCount : avgLuminance;
-    const rightEyeAvg = rightEyeCount > 0 ? rightEyeLumSum / rightEyeCount : avgLuminance;
-    const cheekAvg = cheekCount > 0 ? cheekLumSum / cheekCount : avgLuminance;
-
-    const eyeAvg = (leftEyeAvg + rightEyeAvg) / 2;
-    const eyeDepression = ((foreheadAvg - eyeAvg) + (cheekAvg - eyeAvg)) / 2;
-    const eyeBalance = Math.abs(leftEyeAvg - rightEyeAvg);
-    const hasDualEyes = eyeDepression > 2.5 && eyeBalance < 26.0;
+    const avgSymmDiff = symmCount > 0 ? symmDiffSum / symmCount : 24;
 
     // CHECK D: Hand, Palm, or Finger Covering Camera
-    // When a hand or palm covers or waves across the lens:
-    // - Skin ratio is high (> 0.55), but ocular depression is absent (no dual eye sockets).
-    // - Or lens cannot focus (edgeDensity < 0.009 or stdDevLuminance < 13.0).
-    // - Or fingers create strong bilateral asymmetry (avgSymmDiff > 29.0).
+    // ONLY flag hand covering if lens is truly covered by flat flesh texture, or zero contrast
     const isHandCovering =
-      (skinRatio > 0.55 && !hasDualEyes) ||
-      (skinRatio > 0.85 && (stdDevLuminance < 14.0 || edgeDensity < 0.015)) ||
-      (skinRatio > 0.38 && avgSymmDiff > 29.0);
+      (skinRatio > 0.86 && stdDevLuminance < 11.0 && edgeDensity < 0.005) ||
+      (avgGradient < 0.65 && edgeDensity < 0.002 && stdDevLuminance < 5.0);
 
-    // CHECK E: Out-of-Focus Blur / Blank View / Lens Obstructed
-    const isBlurredOrObstructed = (avgGradient < 2.2 && edgeDensity < 0.009) || (skinRatio < 0.04);
-
-    if (isHandCovering || isBlurredOrObstructed) {
+    if (isHandCovering) {
       return {
         hasFace: false,
         hasDistinctHumanFace: false,
@@ -382,35 +355,41 @@ export async function detectFaceInVideoOrCanvas(
       };
     }
 
-    // CHECK F: Distinct Human Face Verification Criteria
-    // In-focus face must have healthy skin tone proportion, dual eye depression, and bilateral symmetry
+    // CHECK F: Distinct Human Face Verification Criteria (Relaxed Centering & Sizing)
+    // In-focus face accepts normal camera angles, sitting or standing postures:
+    // - Relaxed skin cluster: >= 1.2% of frame pixels allows employees sitting back or standing at normal distance
+    // - Relaxed bilateral symmetry: avgSymmDiff <= 62 allows side lighting, head turns, 3/4 profiles
+    // - Relaxed edge density & gradient captures real facial features (eyes, nose, mouth) even under soft camera focus
     const hasDistinctHumanFace =
-      !isHandCovering &&
-      !isBlurredOrObstructed &&
-      hasDualEyes &&
-      avgSymmDiff <= 26.0 &&
-      skinRatio >= 0.06 &&
-      skinRatio <= 0.84 &&
-      avgGradient >= 2.4 &&
-      edgeDensity >= 0.009 &&
-      stdDevLuminance >= 13.0;
+      hasSkinCluster &&
+      (avgGradient >= 0.75 || edgeDensity >= 0.002) &&
+      stdDevLuminance >= 4.5 &&
+      avgSymmDiff <= 62.0;
+
+    const normBox = {
+      x: Math.max(0.01, Math.min(0.88, (faceCenterX - rawBoxW / 2) / width)),
+      y: Math.max(0.01, Math.min(0.88, (faceCenterY - rawBoxH / 2) / height)),
+      width: Math.min(0.98, Math.max(0.10, rawBoxW / width)),
+      height: Math.min(0.98, Math.max(0.12, rawBoxH / height)),
+    };
 
     if (!hasDistinctHumanFace) {
       return {
         hasFace: false,
         hasDistinctHumanFace: false,
-        isObstructedOrHand: true,
+        isObstructedOrHand: false,
         confidence: 0.1,
         reason: 'NO_FACE',
         skinRatio,
         edgeEnergy: avgGradient,
         luminanceStdDev: stdDevLuminance,
+        faceBoundingBox: normBox,
       };
     }
 
     const confidence = Math.min(
       0.98,
-      Math.max(0.80, 0.74 + skinRatio * 0.16 + edgeDensity * 1.6)
+      Math.max(0.85, 0.76 + skinRatio * 0.16 + edgeDensity * 1.5)
     );
 
     return {
@@ -421,6 +400,7 @@ export async function detectFaceInVideoOrCanvas(
       skinRatio,
       edgeEnergy: avgGradient,
       luminanceStdDev: stdDevLuminance,
+      faceBoundingBox: normBox,
     };
   } catch {
     // If any error occurs during processing, NEVER assume a face is present!
@@ -634,7 +614,7 @@ export async function matchFaceAgainstEnrolledStaff(
 
   // 1. Check if a real human face is present in front of the camera
   const facePresence = await detectFaceInVideoOrCanvas(videoOrCanvas, snapshotCanvas);
-  if (!facePresence.hasFace || facePresence.isObstructedOrHand || !facePresence.hasDistinctHumanFace) {
+  if (!facePresence.hasFace || facePresence.isObstructedOrHand) {
     return {
       status: 'NO_FACE',
       matchedEmployee: null,
@@ -642,9 +622,27 @@ export async function matchFaceAgainstEnrolledStaff(
       candidateScores: [],
       snapshotDataUrl: snapshotCanvas.toDataURL('image/jpeg', 0.88),
       hasDistinctHumanFace: false,
-      isObstructedOrHand: facePresence.isObstructedOrHand ?? true,
+      isObstructedOrHand: facePresence.isObstructedOrHand ?? false,
       securityMessage: 'Position your face in front of the camera.',
+      faceBoundingBox: facePresence.faceBoundingBox,
     };
+  }
+
+  // If face is detected, dynamically re-center snapshotCanvas around the detected face bounding box
+  // This ensures optimal biometric alignment whether the employee sits, stands, or is positioned at an angle
+  if (snapCtx && facePresence.faceBoundingBox) {
+    const box = facePresence.faceBoundingBox;
+    const boxCenterX = (box.x + box.width / 2) * srcW;
+    const boxCenterY = (box.y + box.height / 2) * srcH;
+    const faceDim = Math.max(box.width * srcW, box.height * srcH) * 1.5;
+    const cropDim = Math.min(srcW, srcH, Math.max(120, faceDim));
+    const startX = Math.max(0, Math.min(srcW - cropDim, boxCenterX - cropDim / 2));
+    const startY = Math.max(0, Math.min(srcH - cropDim, boxCenterY - cropDim / 2));
+    try {
+      snapCtx.drawImage(videoOrCanvas, startX, startY, cropDim, cropDim, 0, 0, 480, 480);
+    } catch {
+      // Retain initial draw
+    }
   }
 
   // 2. Check if supermarket has enrolled staff
@@ -849,6 +847,7 @@ export async function matchFaceAgainstEnrolledStaff(
       confidence: best.score,
       candidateScores,
       snapshotDataUrl: snapshotCanvas.toDataURL('image/jpeg', 0.88),
+      faceBoundingBox: facePresence.faceBoundingBox,
     };
   }
 
@@ -870,6 +869,7 @@ export async function matchFaceAgainstEnrolledStaff(
       securityMessage: 'Position your face in front of the camera.',
       hasDistinctHumanFace: false,
       isObstructedOrHand: true,
+      faceBoundingBox: facePresence.faceBoundingBox,
     };
   }
 
@@ -897,6 +897,7 @@ export async function matchFaceAgainstEnrolledStaff(
     securityMessage: 'Unrecognized face detected. Access denied - not an enrolled staff member.',
     hasDistinctHumanFace: true as boolean,
     isObstructedOrHand: false as boolean,
+    faceBoundingBox: facePresence.faceBoundingBox,
   };
 }
 
@@ -1039,14 +1040,12 @@ export async function verifyFaceWithStabilization(
   }
 
   // 3. Evaluate State 1: NO_FACE & Hand / Lens Obstruction:
-  // If ANY frame had an obstruction or hand covering the lens, or if any frame lacked a distinct human face,
-  // return NO_FACE to give the friendly "Position your face in front of the camera" prompt (ZERO security alert!)
-  const hasObstructedFrame = frameResults.some(
-    (r) => r.isObstructedOrHand || r.hasDistinctHumanFace === false || r.status === 'NO_FACE'
+  // Only return NO_FACE if the majority of frames saw no face or had an actual hand obstruction.
+  // Momentary framing adjustments never cause false 'No Face' drops when the face is clearly present!
+  const noFaceOrObstructedFrames = frameResults.filter(
+    (r) => r.status === 'NO_FACE' || r.isObstructedOrHand
   );
-  const noFaceFrames = frameResults.filter((r) => r.status === 'NO_FACE');
-
-  if (hasObstructedFrame || noFaceFrames.length > 0) {
+  if (noFaceOrObstructedFrames.length >= Math.ceil(maxFrames / 2)) {
     const fallbackSnap = frameResults.find((r) => r.snapshotDataUrl)?.snapshotDataUrl || frameResults[0]?.snapshotDataUrl || '';
     return {
       status: 'NO_FACE',
@@ -1056,7 +1055,8 @@ export async function verifyFaceWithStabilization(
       snapshotDataUrl: fallbackSnap,
       securityMessage: 'Position your face in front of the camera.',
       hasDistinctHumanFace: false,
-      isObstructedOrHand: true,
+      isObstructedOrHand: noFaceOrObstructedFrames.some((r) => r.isObstructedOrHand),
+      faceBoundingBox: frameResults.find((r) => r.faceBoundingBox)?.faceBoundingBox,
     };
   }
 
@@ -1084,7 +1084,10 @@ export async function verifyFaceWithStabilization(
   if (unrecognizedFrames.length === maxFrames) {
     // Return the cleanest snapshot frame (highest face confidence)
     unrecognizedFrames.sort((a, b) => b.confidence - a.confidence);
-    return unrecognizedFrames[0];
+    return {
+      ...unrecognizedFrames[0],
+      faceBoundingBox: frameResults.find((r) => r.faceBoundingBox)?.faceBoundingBox,
+    };
   }
 
   // Any other ambiguous or non-distinct frames default exclusively to friendly State 1 (NO_FACE)
@@ -1096,7 +1099,8 @@ export async function verifyFaceWithStabilization(
     snapshotDataUrl: frameResults[0]?.snapshotDataUrl || '',
     securityMessage: 'Position your face in front of the camera.',
     hasDistinctHumanFace: false,
-    isObstructedOrHand: true,
+    isObstructedOrHand: false,
+    faceBoundingBox: frameResults.find((r) => r.faceBoundingBox)?.faceBoundingBox,
   };
 }
 

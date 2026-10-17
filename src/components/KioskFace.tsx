@@ -36,7 +36,7 @@ import confetti from 'canvas-confetti';
 import { Employee, AttendanceRecord, PunchType, Company, HelpRequest, StaffNotification, AppToggles, Shift } from '../types';
 import { soundService } from '../services/sound';
 import { formatTime12H, get12HTimeString } from '../utils/formatters';
-import { matchFaceAgainstEnrolledStaff, verifyFaceWithStabilization } from '../utils/faceRecognition';
+import { matchFaceAgainstEnrolledStaff, verifyFaceWithStabilization, detectFaceInVideoOrCanvas } from '../utils/faceRecognition';
 import { evaluateShiftPunch } from '../utils/shiftEvaluation';
 import { syncAttendanceToGoogleSheet } from '../services/googleSheets';
 import { staffStore } from '../services/staffStore';
@@ -257,6 +257,12 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
   const [executedPunchType, setExecutedPunchType] = useState<PunchType | null>(null);
   const [unrecognizedSnapshot, setUnrecognizedSnapshot] = useState<string | null>(null);
   const [securityNotice, setSecurityNotice] = useState<string | null>(null);
+  const [detectedFaceBox, setDetectedFaceBox] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
   // Dynamic Options State for Staff punch
   const [staffPunchOptions, setStaffPunchOptions] = useState<{
@@ -326,6 +332,61 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       }
     };
   }, [isKioskLoggedIn, startCamera, stopCamera]);
+
+  // Real-time dynamic face tracking loop for instant face bounding box lock
+  // and seamless transition from NO_FACE warning to active tracking
+  useEffect(() => {
+    if (!hasCamera || !isKioskLoggedIn) return;
+
+    let isSubscribed = true;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    let isProcessing = false;
+
+    const runActiveTracking = async () => {
+      if (!isSubscribed) return;
+      if (isProcessing) {
+        timerId = setTimeout(runActiveTracking, 200);
+        return;
+      }
+
+      if (videoRef.current && (scanningStatus === 'IDLE' || scanningStatus === 'NO_FACE')) {
+        isProcessing = true;
+        try {
+          const res = await detectFaceInVideoOrCanvas(videoRef.current);
+          if (isSubscribed) {
+            if (res.hasFace && res.hasDistinctHumanFace && !res.isObstructedOrHand && res.faceBoundingBox) {
+              setDetectedFaceBox(res.faceBoundingBox);
+              // Cleanly transition out of orange NO_FACE prompt into active tracking ready state!
+              if (scanningStatus === 'NO_FACE') {
+                setScanningStatus('IDLE');
+                setSecurityNotice(null);
+                if (resetTimerRef.current) {
+                  clearTimeout(resetTimerRef.current);
+                }
+              }
+            } else {
+              setDetectedFaceBox(null);
+            }
+          }
+        } catch {
+          // Gracefully continue tracking without disrupting kiosk
+        } finally {
+          isProcessing = false;
+        }
+      }
+
+      if (isSubscribed) {
+        timerId = setTimeout(runActiveTracking, 220);
+      }
+    };
+
+    timerId = setTimeout(runActiveTracking, 300);
+
+    return () => {
+      isSubscribed = false;
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [hasCamera, isKioskLoggedIn, scanningStatus]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -519,6 +580,10 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
           graceWindowMs: 3000,
         }
       );
+
+      if (matchResult.faceBoundingBox) {
+        setDetectedFaceBox(matchResult.faceBoundingBox);
+      }
 
       // STRICT 3-SECOND GRACE WINDOW (HYSTERESIS):
       // When an active staff member is verified and their face is temporarily obscured (by a hand, head turn,
@@ -1225,6 +1290,38 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
 
         <canvas ref={canvasRef} className="hidden" />
 
+        {/* Real-time Dynamic Face Tracking Bounding Box & Centering Landmark Reticle */}
+        {detectedFaceBox && (scanningStatus === 'IDLE' || scanningStatus === 'DETECTING') && (
+          <div
+            className="absolute pointer-events-none transition-all duration-150 ease-out z-20 border-2 border-dashed border-sky-400 rounded-2xl shadow-[0_0_20px_rgba(56,189,248,0.4)]"
+            style={{
+              // Video is horizontally mirrored with scale-x-[-1]
+              left: `${Math.max(2, Math.min(88, (1 - (detectedFaceBox.x + detectedFaceBox.width)) * 100))}%`,
+              top: `${Math.max(2, Math.min(88, detectedFaceBox.y * 100))}%`,
+              width: `${Math.max(10, Math.min(94, detectedFaceBox.width * 100))}%`,
+              height: `${Math.max(12, Math.min(94, detectedFaceBox.height * 100))}%`,
+            }}
+          >
+            {/* Tracking Corner Brackets */}
+            <div className="absolute -top-1 -left-1 w-3.5 h-3.5 border-t-2 border-l-2 border-sky-400 rounded-tl-md" />
+            <div className="absolute -top-1 -right-1 w-3.5 h-3.5 border-t-2 border-r-2 border-sky-400 rounded-tr-md" />
+            <div className="absolute -bottom-1 -left-1 w-3.5 h-3.5 border-b-2 border-l-2 border-sky-400 rounded-bl-md" />
+            <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 border-b-2 border-r-2 border-sky-400 rounded-br-md" />
+
+            {/* Landmark Centering Crosshair */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 flex items-center justify-center">
+              <div className="w-full h-0.5 bg-sky-400/80" />
+              <div className="h-full w-0.5 bg-sky-400/80 absolute" />
+            </div>
+
+            {/* Active Face Lock Badge */}
+            <div className="absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-sky-600/90 text-[10px] font-bold text-white tracking-wider uppercase whitespace-nowrap shadow-xs flex items-center gap-1 backdrop-blur-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span>Face Tracked</span>
+            </div>
+          </div>
+        )}
+
         {/* Camera Standby / Permission Notice */}
         {!hasCamera && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-white/95">
@@ -1370,6 +1467,11 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
               <>
                 <Info className="w-3.5 h-3.5 text-amber-600" />
                 <span className="text-amber-800 font-medium">No staff enrolled yet &bull; Enroll staff in Store Admin</span>
+              </>
+            ) : detectedFaceBox ? (
+              <>
+                <Sparkles className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
+                <span className="text-blue-700 font-semibold">Face Detected &bull; Ready to Verify</span>
               </>
             ) : (
               <>
