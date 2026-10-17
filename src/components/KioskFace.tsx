@@ -486,6 +486,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
     }
 
     if (!videoRef.current) {
+      unrecognizedStartTimeRef.current = 0;
       setScanningStatus('NO_FACE');
       if (isSoundEnabled) {
         soundService.playWarningTone();
@@ -550,8 +551,8 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
         return;
       }
 
-      // STATE 1: NO FACE DETECTED (Camera empty or lighting poor)
-      if (matchResult.status === 'NO_FACE') {
+      // STATE 1: NO FACE DETECTED (Camera empty, lighting poor, hand covering lens, or obstruction)
+      if (matchResult.status === 'NO_FACE' || matchResult.isObstructedOrHand || matchResult.hasDistinctHumanFace === false) {
         if (isWithinGrace && activeStaff) {
           unrecognizedStartTimeRef.current = 0;
           setMatchedEmployee(activeStaff);
@@ -733,7 +734,39 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       }
 
       // STATE 2: UNKNOWN STRANGER / NON-STAFF
+      // ABSOLUTE PROTECTION AGAINST FALSE STRANGER ALARMS:
+      // When a hand covers the camera, the face is fully obscured, or the frame is empty (No Face / Obstructed Lens),
+      // the system must NEVER trigger State 2 (SECURITY_BLOCK / UNRECOGNIZED_FACE) or log a security incident to Google Sheets.
+      // State 2 (Stranger Alert) must be restricted strictly and exclusively to cases where a valid, distinct human face
+      // is clearly visible in the camera view for at least 3 continuous seconds but completely fails database matching.
+      // If there is no face, a hand, or a blocked view, it must default exclusively to State 1 ('No Face Detected' / 'Position your face')
+      // with zero red security alarms.
       if (matchResult.status === 'UNRECOGNIZED' || !matchResult.matchedEmployee) {
+        // Absolute Hand / Obstruction / Non-Distinct Face Filter:
+        // If a hand, blocked view, non-face object, or ambiguous frame reached here, immediately default to State 1.
+        if (
+          Boolean(matchResult.isObstructedOrHand) ||
+          (matchResult.hasDistinctHumanFace as boolean | undefined) !== true ||
+          matchResult.status !== 'UNRECOGNIZED'
+        ) {
+          unrecognizedStartTimeRef.current = 0;
+          setScanningStatus('NO_FACE');
+          setMatchedEmployee(null);
+          setStaffPunchOptions(null);
+          setSecurityNotice('Position your face in front of the camera.');
+          if (isSoundEnabled) {
+            soundService.playWarningTone();
+            soundService.speakWarning('Position your face in front of the camera.');
+          }
+          if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+          resetTimerRef.current = setTimeout(() => {
+            setScanningStatus('IDLE');
+            setSecurityNotice(null);
+            setSelectedStaffIdForScan('');
+          }, 3200);
+          return;
+        }
+
         // A. Strict 3-Second Hysteresis Protection:
         // When an active staff member is verified and their face is temporarily obscured (by a hand,
         // head turn, or brief absence for under 3 seconds), do NOT trigger a red SECURITY_BLOCK or log a stranger incident.
@@ -763,9 +796,9 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
         }
 
         // B. Strict 3-Second Unknown Face Persistence Buffer:
-        // Ensure that a true SECURITY_BLOCK (Stranger / Unrecognized Face) is only triggered if an unknown face
-        // persists continuously for over 3 seconds (3000ms), entirely preventing false alarm logs from hand movements
-        // or brief framing adjustments.
+        // Ensure that a true SECURITY_BLOCK (Stranger / Unrecognized Face) is only triggered if a valid,
+        // distinct human face persists continuously for over 3 seconds (3000ms), entirely preventing false alarm logs
+        // from hand movements or brief framing adjustments.
         const nowMs = Date.now();
         if (!unrecognizedStartTimeRef.current || unrecognizedStartTimeRef.current === 0) {
           unrecognizedStartTimeRef.current = nowMs;
@@ -774,11 +807,12 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
         const unknownDuration = nowMs - unrecognizedStartTimeRef.current;
 
         // If unknown face has persisted for LESS than 3 continuous seconds:
+        // Default exclusively to friendly State 1 guidance with zero red security alarms!
         if (unknownDuration < 3000) {
           setScanningStatus('NO_FACE');
-          setSecurityNotice('Please look directly at the camera');
+          setSecurityNotice('Position your face in front of the camera.');
           if (isSoundEnabled) {
-            soundService.speakWarning('Please look directly at the camera');
+            soundService.speakWarning('Position your face in front of the camera.');
           }
           if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
           resetTimerRef.current = setTimeout(() => {
