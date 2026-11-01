@@ -61,8 +61,16 @@ export interface Company {
   isActive?: boolean;
   departments?: string[]; // Configured department floor coverage for this company
   googleSheetUrl?: string; // Google Apps Script Web App URL ending in /exec
+  googleSpreadsheetId?: string; // Google Sheets Spreadsheet ID
+  googleSpreadsheetUrl?: string; // Full web URL to Google Spreadsheet
+  googleSpreadsheetName?: string; // Name of connected Google Spreadsheet
+  googleConnectedEmail?: string; // Email of the connected Google account
   settings?: {
     googleSheetUrl?: string;
+    googleSpreadsheetId?: string;
+    googleSpreadsheetUrl?: string;
+    googleSpreadsheetName?: string;
+    googleConnectedEmail?: string;
     [key: string]: any;
   };
 }

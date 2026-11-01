@@ -65,12 +65,45 @@ try {
 }
 export const auth = authInstance;
 
-// Google Sign-In Provider
+// Google Sign-In Provider with Google Workspace Scopes
+export const WORKSPACE_SCOPES = [
+  'https://www.googleapis.com/auth/drive',
+  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/drive.readonly',
+  'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/spreadsheets.readonly',
+];
+
 export const googleAuthProvider = new GoogleAuthProvider();
 googleAuthProvider.setCustomParameters({ prompt: 'select_account' });
+WORKSPACE_SCOPES.forEach((scope) => {
+  googleAuthProvider.addScope(scope);
+});
+
+// In-Memory Token Cache (per Workspace Integration Skill guidelines: never persist to storage)
+let cachedGoogleAccessToken: string | null = null;
+let googleTokenExpiry: number | null = null;
+
+export function getCachedGoogleAccessToken(): string | null {
+  if (googleTokenExpiry && Date.now() >= googleTokenExpiry) {
+    cachedGoogleAccessToken = null;
+    googleTokenExpiry = null;
+    return null;
+  }
+  return cachedGoogleAccessToken;
+}
+
+export function setCachedGoogleAccessToken(token: string | null, expiresInSeconds: number = 3600) {
+  cachedGoogleAccessToken = token;
+  googleTokenExpiry = token ? Date.now() + (expiresInSeconds * 1000) : null;
+}
 
 export async function signInWithGoogle(): Promise<User> {
   const result = await signInWithPopup(auth, googleAuthProvider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  if (credential?.accessToken) {
+    setCachedGoogleAccessToken(credential.accessToken);
+  }
   if (result.user) {
     const profile: UserProfile = {
       uid: result.user.uid,
@@ -91,6 +124,7 @@ export async function signInWithGoogle(): Promise<User> {
 }
 
 export async function signOutUser(): Promise<void> {
+  setCachedGoogleAccessToken(null);
   try {
     await signOut(auth);
   } catch (err) {
@@ -100,7 +134,12 @@ export async function signOutUser(): Promise<void> {
 
 export function subscribeToAuth(callback: (user: User | null) => void): () => void {
   try {
-    return onAuthStateChanged(auth, callback);
+    return onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        setCachedGoogleAccessToken(null);
+      }
+      callback(user);
+    });
   } catch {
     callback(null);
     return () => {};
@@ -108,8 +147,9 @@ export function subscribeToAuth(callback: (user: User | null) => void): () => vo
 }
 
 // Use custom database ID if provisioned, or default
-const databaseId = firebaseConfigData.firestoreDatabaseId && firebaseConfigData.firestoreDatabaseId.trim() !== ''
-  ? firebaseConfigData.firestoreDatabaseId
+const configData = firebaseConfigData as Record<string, any>;
+const databaseId = configData.firestoreDatabaseId && typeof configData.firestoreDatabaseId === 'string' && configData.firestoreDatabaseId.trim() !== ''
+  ? configData.firestoreDatabaseId
   : undefined;
 
 // In Firebase v10+, initializeFirestore(app, settings, databaseId?)
@@ -724,6 +764,70 @@ export async function getCompanyGoogleSheetUrl(companyId: string): Promise<strin
     if (!snap.exists()) return null;
     const data = snap.data();
     return data?.settings?.googleSheetUrl || data?.googleSheetUrl || null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, docPath);
+    return null;
+  }
+}
+
+export interface CompanyGoogleSpreadsheetConfig {
+  googleSpreadsheetId?: string;
+  googleSpreadsheetUrl?: string;
+  googleSpreadsheetName?: string;
+  googleConnectedEmail?: string;
+  googleSheetUrl?: string;
+}
+
+export async function saveCompanyGoogleSpreadsheetConfig(
+  companyId: string,
+  config: CompanyGoogleSpreadsheetConfig
+): Promise<void> {
+  if (isFirestoreQuotaExhausted || !companyId) return;
+  const docPath = `${COMPANIES_COLLECTION}/${companyId}`;
+  try {
+    const docRef = doc(db, COMPANIES_COLLECTION, companyId);
+    await setDoc(
+      docRef,
+      {
+        googleSpreadsheetId: config.googleSpreadsheetId ?? '',
+        googleSpreadsheetUrl: config.googleSpreadsheetUrl ?? '',
+        googleSpreadsheetName: config.googleSpreadsheetName ?? '',
+        googleConnectedEmail: config.googleConnectedEmail ?? '',
+        ...(config.googleSheetUrl !== undefined ? { googleSheetUrl: config.googleSheetUrl } : {}),
+        settings: {
+          googleSpreadsheetId: config.googleSpreadsheetId ?? '',
+          googleSpreadsheetUrl: config.googleSpreadsheetUrl ?? '',
+          googleSpreadsheetName: config.googleSpreadsheetName ?? '',
+          googleConnectedEmail: config.googleConnectedEmail ?? '',
+          ...(config.googleSheetUrl !== undefined ? { googleSheetUrl: config.googleSheetUrl } : {}),
+        },
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, docPath);
+    throw error;
+  }
+}
+
+export async function getCompanyGoogleSpreadsheetConfig(
+  companyId: string
+): Promise<CompanyGoogleSpreadsheetConfig | null> {
+  if (isFirestoreQuotaExhausted || !companyId) return null;
+  const docPath = `${COMPANIES_COLLECTION}/${companyId}`;
+  try {
+    const docRef = doc(db, COMPANIES_COLLECTION, companyId);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    return {
+      googleSpreadsheetId: data?.googleSpreadsheetId || data?.settings?.googleSpreadsheetId,
+      googleSpreadsheetUrl: data?.googleSpreadsheetUrl || data?.settings?.googleSpreadsheetUrl,
+      googleSpreadsheetName: data?.googleSpreadsheetName || data?.settings?.googleSpreadsheetName,
+      googleConnectedEmail: data?.googleConnectedEmail || data?.settings?.googleConnectedEmail,
+      googleSheetUrl: data?.googleSheetUrl || data?.settings?.googleSheetUrl,
+    };
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, docPath);
     return null;

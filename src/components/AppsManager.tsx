@@ -2223,7 +2223,7 @@ export const AppsManager: React.FC<AppsManagerProps> = ({
               <div className="p-3 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
                 <span className="text-[10px] text-slate-500 uppercase font-mono block">Firestore Database ID</span>
                 <span className="font-mono text-slate-800 font-semibold text-xs truncate block mt-0.5">
-                  {firebaseConfigData.firestoreDatabaseId || '(default)'}
+                  {(firebaseConfigData as Record<string, any>).firestoreDatabaseId || '(default)'}
                 </span>
               </div>
               <div className="p-3 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
