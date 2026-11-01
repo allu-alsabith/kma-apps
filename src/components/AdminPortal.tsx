@@ -48,10 +48,7 @@ import {
   Settings,
   ChevronDown,
   ChevronUp,
-  HelpCircle,
-  RefreshCw,
-  FolderOpen,
-  UploadCloud
+  HelpCircle
 } from 'lucide-react';
 import { Employee, Shift, AttendanceRecord, LeaveRequest, Department, PayBasis, StaffNotification, Company, AppPortal, HelpRequest, DEFAULT_DEPARTMENTS } from '../types';
 import { soundService } from '../services/sound';
@@ -60,29 +57,8 @@ import { clearBiometricCache } from '../utils/faceRecognition';
 import { staffStore } from '../services/staffStore';
 import { AccountHelpModal } from './AccountHelpModal';
 import { NetworkSyncBadge } from './NetworkSyncBadge';
-import { 
-  signInWithGoogle, 
-  signOutUser, 
-  subscribeToAuth, 
-  saveCompanyGoogleSheetUrl, 
-  saveCompanyGoogleSpreadsheetConfig, 
-  getCachedGoogleAccessToken, 
-  type User 
-} from '../services/firebase';
-import { 
-  isValidGoogleSheetWebAppUrl, 
-  testGoogleSheetConnection,
-  formatLocalDateTime,
-  format12HTime 
-} from '../services/googleSheets';
-import {
-  createAttendanceSpreadsheet,
-  listUserGoogleSpreadsheets,
-  verifySpreadsheetAccess,
-  batchAppendAttendanceRecordsToSpreadsheet,
-  ensureSheetHeadersExist,
-  type DriveSpreadsheetItem
-} from '../services/googleSheetsApi';
+import { signInWithGoogle, signOutUser, subscribeToAuth, saveCompanyGoogleSheetUrl, type User } from '../services/firebase';
+import { isValidGoogleSheetWebAppUrl, testGoogleSheetConnection, setGlobalGoogleSheetUrl } from '../services/googleSheets';
 import { 
   formatTime12H, 
   get12HTimeString, 
@@ -164,25 +140,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [selectedDepartmentFilter, setSelectedDepartmentFilter] = useState<string>('ALL');
 
   // Google Sheets Integration Settings states
-  const [sheetIntegrationMode, setSheetIntegrationMode] = useState<'DIRECT' | 'WEBAPP'>('DIRECT');
-  const [connectedSpreadsheetId, setConnectedSpreadsheetId] = useState<string>(() => {
-    return activeCompany?.googleSpreadsheetId || activeCompany?.settings?.googleSpreadsheetId || '';
-  });
-  const [connectedSpreadsheetUrl, setConnectedSpreadsheetUrl] = useState<string>(() => {
-    return activeCompany?.googleSpreadsheetUrl || activeCompany?.settings?.googleSpreadsheetUrl || '';
-  });
-  const [connectedSpreadsheetName, setConnectedSpreadsheetName] = useState<string>(() => {
-    return activeCompany?.googleSpreadsheetName || activeCompany?.settings?.googleSpreadsheetName || '';
-  });
-  const [isCreatingDirectSheet, setIsCreatingDirectSheet] = useState<boolean>(false);
-  const [isListingDriveSheets, setIsListingDriveSheets] = useState<boolean>(false);
-  const [driveSpreadsheetsList, setDriveSpreadsheetsList] = useState<DriveSpreadsheetItem[]>([]);
-  const [showDrivePickerModal, setShowDrivePickerModal] = useState<boolean>(false);
-  const [driveSearchFilter, setDriveSearchFilter] = useState<string>('');
-  const [manualSpreadsheetInput, setManualSpreadsheetInput] = useState<string>('');
-  const [isSyncingAllLogs, setIsSyncingAllLogs] = useState<boolean>(false);
-  const [isSendingTestRow, setIsSendingTestRow] = useState<boolean>(false);
-
   const [googleSheetUrlInput, setGoogleSheetUrlInput] = useState<string>(() => {
     return activeCompany?.googleSheetUrl || activeCompany?.settings?.googleSheetUrl || '';
   });
@@ -430,22 +387,13 @@ function formatHeaderRow(sheet, rowNum) {
 
   // Sync state whenever activeCompany changes
   useEffect(() => {
-    setGoogleSheetUrlInput(activeCompany?.googleSheetUrl || activeCompany?.settings?.googleSheetUrl || '');
-    setConnectedSpreadsheetId(activeCompany?.googleSpreadsheetId || activeCompany?.settings?.googleSpreadsheetId || '');
-    setConnectedSpreadsheetUrl(activeCompany?.googleSpreadsheetUrl || activeCompany?.settings?.googleSpreadsheetUrl || '');
-    setConnectedSpreadsheetName(activeCompany?.googleSpreadsheetName || activeCompany?.settings?.googleSpreadsheetName || '');
+    const activeUrl = activeCompany?.googleSheetUrl || activeCompany?.settings?.googleSheetUrl || '';
+    setGoogleSheetUrlInput(activeUrl);
+    if (activeUrl) {
+      setGlobalGoogleSheetUrl(activeUrl);
+    }
     setGoogleSheetFeedback(null);
-  }, [
-    activeCompany?.id,
-    activeCompany?.googleSheetUrl,
-    activeCompany?.settings?.googleSheetUrl,
-    activeCompany?.googleSpreadsheetId,
-    activeCompany?.settings?.googleSpreadsheetId,
-    activeCompany?.googleSpreadsheetUrl,
-    activeCompany?.settings?.googleSpreadsheetUrl,
-    activeCompany?.googleSpreadsheetName,
-    activeCompany?.settings?.googleSpreadsheetName,
-  ]);
+  }, [activeCompany?.id, activeCompany?.googleSheetUrl, activeCompany?.settings?.googleSheetUrl]);
 
   const handleSaveGoogleSheetUrl = async () => {
     if (!activeCompany) {
@@ -478,7 +426,10 @@ function formatHeaderRow(sheet, rowNum) {
       // 1. Store securely inside the current company's document in Firebase (under companies/{companyId}/settings/googleSheetUrl)
       await saveCompanyGoogleSheetUrl(activeCompany.id, trimmedUrl);
 
-      // 2. Update local state
+      // 2. Persist in global cache for immediate kiosk offline-first access
+      setGlobalGoogleSheetUrl(trimmedUrl);
+
+      // 3. Update local state
       const updatedCompany: Company = {
         ...activeCompany,
         googleSheetUrl: trimmedUrl,
@@ -518,7 +469,10 @@ function formatHeaderRow(sheet, rowNum) {
       // 1. Clear URL in Firebase
       await saveCompanyGoogleSheetUrl(activeCompany.id, null);
 
-      // 2. Update local state
+      // 2. Clear global cache
+      setGlobalGoogleSheetUrl('');
+
+      // 3. Update local state
       const updatedCompany: Company = {
         ...activeCompany,
         googleSheetUrl: '',
@@ -550,11 +504,16 @@ function formatHeaderRow(sheet, rowNum) {
   };
 
   const handleTestGoogleSheetPing = async () => {
-    const trimmedUrl = googleSheetUrlInput.trim();
+    const trimmedUrl =
+      googleSheetUrlInput.trim() ||
+      activeCompany?.googleSheetUrl ||
+      activeCompany?.settings?.googleSheetUrl ||
+      '';
+
     if (!trimmedUrl) {
       setGoogleSheetFeedback({
         type: 'error',
-        message: 'Enter a Google Sheet URL first before testing.',
+        message: 'Please enter or save your Google Apps Script Web App URL first before testing.',
       });
       return;
     }
@@ -575,462 +534,11 @@ function formatHeaderRow(sheet, rowNum) {
       soundService.playWarningTone();
       setGoogleSheetFeedback({
         type: 'error',
-        message: err?.message || 'Failed to dispatch test ping.',
+        message: err?.message || 'Failed to dispatch test employee log.',
       });
     } finally {
       setIsTestingGoogleSheet(false);
     }
-  };
-
-  // Direct Google Workspace / Drive / Spreadsheets API Handlers
-  const handleConnectGoogleWorkspace = async () => {
-    setIsSavingGoogleSheet(true);
-    setGoogleSheetFeedback(null);
-    try {
-      const user = await signInWithGoogle();
-      if (user) {
-        soundService.playSuccessChime();
-        setGoogleSheetFeedback({
-          type: 'success',
-          message: `Connected as ${user.displayName || user.email} with Google Drive & Spreadsheets access!`,
-        });
-      }
-    } catch (err: any) {
-      soundService.playWarningTone();
-      setGoogleSheetFeedback({
-        type: 'error',
-        message: err?.message || 'Google authorization was cancelled or failed.',
-      });
-    } finally {
-      setIsSavingGoogleSheet(false);
-    }
-  };
-
-  const handleCreateAttendanceSheet = async () => {
-    if (!activeCompany) return;
-    const token = getCachedGoogleAccessToken();
-    if (!token) {
-      setGoogleSheetFeedback({
-        type: 'error',
-        message: 'Google authentication required. Please click "Connect Google Account" first.',
-      });
-      return;
-    }
-
-    setIsCreatingDirectSheet(true);
-    setGoogleSheetFeedback(null);
-
-    try {
-      const sheetTitle = `Attendo Attendance - ${activeCompany.supermarketName || activeCompany.name || 'Store'}`;
-      const res = await createAttendanceSpreadsheet(token, sheetTitle);
-      if (res.success && res.data) {
-        const { spreadsheetId, spreadsheetUrl, title } = res.data;
-        await saveCompanyGoogleSpreadsheetConfig(activeCompany.id, {
-          googleSpreadsheetId: spreadsheetId,
-          googleSpreadsheetUrl: spreadsheetUrl,
-          googleSpreadsheetName: title,
-          googleConnectedEmail: googleUser?.email || '',
-        });
-
-        const updatedCompany: Company = {
-          ...activeCompany,
-          googleSpreadsheetId: spreadsheetId,
-          googleSpreadsheetUrl: spreadsheetUrl,
-          googleSpreadsheetName: title,
-          googleConnectedEmail: googleUser?.email || '',
-          settings: {
-            ...(activeCompany.settings || {}),
-            googleSpreadsheetId: spreadsheetId,
-            googleSpreadsheetUrl: spreadsheetUrl,
-            googleSpreadsheetName: title,
-            googleConnectedEmail: googleUser?.email || '',
-          },
-        };
-
-        if (onUpdateCompany) {
-          onUpdateCompany(updatedCompany);
-        }
-
-        setConnectedSpreadsheetId(spreadsheetId);
-        setConnectedSpreadsheetUrl(spreadsheetUrl);
-        setConnectedSpreadsheetName(title);
-
-        soundService.playSuccessChime();
-        setGoogleSheetFeedback({
-          type: 'success',
-          message: `Created "${title}" in your Google Drive with formatted 8-column attendance table!`,
-        });
-      } else {
-        soundService.playWarningTone();
-        setGoogleSheetFeedback({
-          type: 'error',
-          message: res.error || 'Failed to create Google Spreadsheet. Please verify your permissions.',
-        });
-      }
-    } catch (err: any) {
-      soundService.playWarningTone();
-      setGoogleSheetFeedback({
-        type: 'error',
-        message: err?.message || 'Error creating Google Spreadsheet.',
-      });
-    } finally {
-      setIsCreatingDirectSheet(false);
-    }
-  };
-
-  const handleOpenDrivePicker = async () => {
-    const token = getCachedGoogleAccessToken();
-    if (!token) {
-      setGoogleSheetFeedback({
-        type: 'error',
-        message: 'Google authentication required. Please connect your Google account first.',
-      });
-      return;
-    }
-
-    setIsListingDriveSheets(true);
-    setShowDrivePickerModal(true);
-    setDriveSearchFilter('');
-
-    try {
-      const res = await listUserGoogleSpreadsheets(token);
-      if (res.success && res.data) {
-        setDriveSpreadsheetsList(res.data);
-      } else {
-        setGoogleSheetFeedback({
-          type: 'error',
-          message: res.error || 'Could not fetch spreadsheets from Google Drive.',
-        });
-      }
-    } catch (err: any) {
-      setGoogleSheetFeedback({
-        type: 'error',
-        message: err?.message || 'Failed to list Google Drive files.',
-      });
-    } finally {
-      setIsListingDriveSheets(false);
-    }
-  };
-
-  const handleSelectDriveSpreadsheet = async (sheet: DriveSpreadsheetItem) => {
-    if (!activeCompany) return;
-    const token = getCachedGoogleAccessToken();
-    if (!token) return;
-
-    try {
-      const accessRes = await verifySpreadsheetAccess(token, sheet.id);
-      if (!accessRes.success) {
-        setGoogleSheetFeedback({
-          type: 'error',
-          message: accessRes.error || 'Cannot access this spreadsheet.',
-        });
-        return;
-      }
-
-      await ensureSheetHeadersExist(token, sheet.id);
-
-      const targetUrl = sheet.webViewLink || `https://docs.google.com/spreadsheets/d/${sheet.id}/edit`;
-      await saveCompanyGoogleSpreadsheetConfig(activeCompany.id, {
-        googleSpreadsheetId: sheet.id,
-        googleSpreadsheetUrl: targetUrl,
-        googleSpreadsheetName: sheet.name,
-        googleConnectedEmail: googleUser?.email || '',
-      });
-
-      const updatedCompany: Company = {
-        ...activeCompany,
-        googleSpreadsheetId: sheet.id,
-        googleSpreadsheetUrl: targetUrl,
-        googleSpreadsheetName: sheet.name,
-        googleConnectedEmail: googleUser?.email || '',
-        settings: {
-          ...(activeCompany.settings || {}),
-          googleSpreadsheetId: sheet.id,
-          googleSpreadsheetUrl: targetUrl,
-          googleSpreadsheetName: sheet.name,
-          googleConnectedEmail: googleUser?.email || '',
-        },
-      };
-
-      if (onUpdateCompany) {
-        onUpdateCompany(updatedCompany);
-      }
-
-      setConnectedSpreadsheetId(sheet.id);
-      setConnectedSpreadsheetUrl(targetUrl);
-      setConnectedSpreadsheetName(sheet.name);
-      setShowDrivePickerModal(false);
-
-      soundService.playSuccessChime();
-      setGoogleSheetFeedback({
-        type: 'success',
-        message: `Successfully linked "${sheet.name}" to ${activeCompany.supermarketName || 'supermarket'}!`,
-      });
-    } catch (err: any) {
-      soundService.playWarningTone();
-      setGoogleSheetFeedback({
-        type: 'error',
-        message: err?.message || 'Failed to link spreadsheet.',
-      });
-    }
-  };
-
-  const handleLinkManualSpreadsheet = async () => {
-    if (!activeCompany) return;
-    const trimmed = manualSpreadsheetInput.trim();
-    if (!trimmed) return;
-
-    let extractedId = trimmed;
-    const match = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-    if (match) {
-      extractedId = match[1];
-    }
-
-    const token = getCachedGoogleAccessToken();
-    if (!token) {
-      setGoogleSheetFeedback({
-        type: 'error',
-        message: 'Google authentication required. Please connect your Google account first.',
-      });
-      return;
-    }
-
-    setIsSavingGoogleSheet(true);
-    try {
-      const accessRes = await verifySpreadsheetAccess(token, extractedId);
-      if (!accessRes.success) {
-        soundService.playWarningTone();
-        setGoogleSheetFeedback({
-          type: 'error',
-          message: accessRes.error || 'Could not verify spreadsheet access. Please verify the ID/URL and permissions.',
-        });
-        return;
-      }
-
-      await ensureSheetHeadersExist(token, extractedId);
-      const title = accessRes.data?.title || 'Google Spreadsheet';
-      const webUrl = accessRes.data?.webViewLink || `https://docs.google.com/spreadsheets/d/${extractedId}/edit`;
-
-      await saveCompanyGoogleSpreadsheetConfig(activeCompany.id, {
-        googleSpreadsheetId: extractedId,
-        googleSpreadsheetUrl: webUrl,
-        googleSpreadsheetName: title,
-        googleConnectedEmail: googleUser?.email || '',
-      });
-
-      const updatedCompany: Company = {
-        ...activeCompany,
-        googleSpreadsheetId: extractedId,
-        googleSpreadsheetUrl: webUrl,
-        googleSpreadsheetName: title,
-        googleConnectedEmail: googleUser?.email || '',
-        settings: {
-          ...(activeCompany.settings || {}),
-          googleSpreadsheetId: extractedId,
-          googleSpreadsheetUrl: webUrl,
-          googleSpreadsheetName: title,
-          googleConnectedEmail: googleUser?.email || '',
-        },
-      };
-
-      if (onUpdateCompany) {
-        onUpdateCompany(updatedCompany);
-      }
-
-      setConnectedSpreadsheetId(extractedId);
-      setConnectedSpreadsheetUrl(webUrl);
-      setConnectedSpreadsheetName(title);
-      setManualSpreadsheetInput('');
-
-      soundService.playSuccessChime();
-      setGoogleSheetFeedback({
-        type: 'success',
-        message: `Linked spreadsheet "${title}" successfully!`,
-      });
-    } catch (err: any) {
-      soundService.playWarningTone();
-      setGoogleSheetFeedback({
-        type: 'error',
-        message: err?.message || 'Failed to link spreadsheet.',
-      });
-    } finally {
-      setIsSavingGoogleSheet(false);
-    }
-  };
-
-  const handleDisconnectDirectSheet = async () => {
-    if (!activeCompany) return;
-    setIsSavingGoogleSheet(true);
-    try {
-      await saveCompanyGoogleSpreadsheetConfig(activeCompany.id, {
-        googleSpreadsheetId: '',
-        googleSpreadsheetUrl: '',
-        googleSpreadsheetName: '',
-        googleConnectedEmail: '',
-      });
-
-      const updatedCompany: Company = {
-        ...activeCompany,
-        googleSpreadsheetId: '',
-        googleSpreadsheetUrl: '',
-        googleSpreadsheetName: '',
-        googleConnectedEmail: '',
-        settings: {
-          ...(activeCompany.settings || {}),
-          googleSpreadsheetId: '',
-          googleSpreadsheetUrl: '',
-          googleSpreadsheetName: '',
-          googleConnectedEmail: '',
-        },
-      };
-
-      if (onUpdateCompany) {
-        onUpdateCompany(updatedCompany);
-      }
-
-      setConnectedSpreadsheetId('');
-      setConnectedSpreadsheetUrl('');
-      setConnectedSpreadsheetName('');
-      soundService.playSuccessChime();
-      setGoogleSheetFeedback({
-        type: 'info',
-        message: 'Google Spreadsheet unlinked from this store console.',
-      });
-    } catch (err: any) {
-      soundService.playWarningTone();
-      setGoogleSheetFeedback({
-        type: 'error',
-        message: err?.message || 'Failed to unlink spreadsheet.',
-      });
-    } finally {
-      setIsSavingGoogleSheet(false);
-    }
-  };
-
-  const handleSendDirectTestRow = async () => {
-    if (!connectedSpreadsheetId) return;
-    const token = getCachedGoogleAccessToken();
-    if (!token) {
-      setGoogleSheetFeedback({
-        type: 'error',
-        message: 'Google session expired. Please click Connect Google Account.',
-      });
-      return;
-    }
-
-    setIsSendingTestRow(true);
-    setGoogleSheetFeedback(null);
-
-    try {
-      const now = new Date();
-      const testRecord: AttendanceRecord = {
-        id: `test-${Date.now()}`,
-        companyId: activeCompany?.id,
-        employeeId: 'TEST-001',
-        employeeName: `${activeCompany?.supermarketName || 'Attendo'} Manager`,
-        department: (departmentsList[0] as Department) || 'Management & Front End',
-        timestamp: now.toISOString(),
-        date: now.toISOString().slice(0, 10),
-        time: now.toLocaleTimeString(),
-        type: 'IN',
-        device: 'KIOSK_FACE',
-        kioskLocation: 'Main Entrance Kiosk',
-        status: 'ON_TIME',
-        scheduledTime: '09:00 AM',
-        actualTime: format12HTime(now, true),
-        delayMins: 0,
-        notes: 'Direct Google Sheets REST API test row verified',
-      };
-
-      const res = await batchAppendAttendanceRecordsToSpreadsheet(token, connectedSpreadsheetId, [testRecord]);
-      if (res.success) {
-        soundService.playSuccessChime();
-        setGoogleSheetFeedback({
-          type: 'success',
-          message: 'Test row successfully appended directly to your Google Sheet! Check your spreadsheet.',
-        });
-      } else {
-        soundService.playWarningTone();
-        setGoogleSheetFeedback({
-          type: 'error',
-          message: res.error || 'Failed to append test row to Google Sheet.',
-        });
-      }
-    } catch (err: any) {
-      soundService.playWarningTone();
-      setGoogleSheetFeedback({
-        type: 'error',
-        message: err?.message || 'Failed to dispatch test row.',
-      });
-    } finally {
-      setIsSendingTestRow(false);
-    }
-  };
-
-  const handleSyncAllAttendanceLogs = () => {
-    if (!connectedSpreadsheetId) return;
-    const token = getCachedGoogleAccessToken();
-    if (!token) {
-      setGoogleSheetFeedback({
-        type: 'error',
-        message: 'Google session expired. Please click Connect Google Account.',
-      });
-      return;
-    }
-
-    const logsToSync = attendanceLogs.filter(
-      (l) => !activeCompany?.id || !l.companyId || l.companyId === activeCompany.id
-    );
-
-    if (logsToSync.length === 0) {
-      setGoogleSheetFeedback({
-        type: 'info',
-        message: 'No attendance records available to sync.',
-      });
-      return;
-    }
-
-    setConfirmModal({
-      title: 'Sync All Attendance to Google Sheets',
-      message: `Are you sure you want to append all ${logsToSync.length} attendance record(s) to "${connectedSpreadsheetName || 'Google Sheet'}"? This will batch write the records to your spreadsheet.`,
-      confirmText: `Sync ${logsToSync.length} Record(s)`,
-      confirmBtnClass: 'bg-[#2563EB] hover:bg-blue-700',
-      onConfirm: async () => {
-        setConfirmModal(null);
-        setIsSyncingAllLogs(true);
-        setGoogleSheetFeedback(null);
-        try {
-          const orderedLogs = [...logsToSync].reverse();
-          const res = await batchAppendAttendanceRecordsToSpreadsheet(
-            token,
-            connectedSpreadsheetId,
-            orderedLogs
-          );
-
-          if (res.success) {
-            soundService.playSuccessChime();
-            setGoogleSheetFeedback({
-              type: 'success',
-              message: `Successfully synced ${res.data?.updatedRows || orderedLogs.length} attendance record(s) directly to your Google Spreadsheet!`,
-            });
-          } else {
-            soundService.playWarningTone();
-            setGoogleSheetFeedback({
-              type: 'error',
-              message: res.error || 'Failed to sync records to Google Sheet.',
-            });
-          }
-        } catch (err: any) {
-          soundService.playWarningTone();
-          setGoogleSheetFeedback({
-            type: 'error',
-            message: err?.message || 'Error syncing attendance logs.',
-          });
-        } finally {
-          setIsSyncingAllLogs(false);
-        }
-      },
-    });
   };
 
   // Real-time Push Notification & Security Inspection States
@@ -1296,7 +804,6 @@ function formatHeaderRow(sheet, rowNum) {
     title: string;
     message: string;
     confirmText: string;
-    confirmBtnClass?: string;
     onConfirm: () => void;
   } | null>(null);
 
@@ -2071,8 +1578,21 @@ function formatHeaderRow(sheet, rowNum) {
                   <Activity className="w-4 h-4 text-[#2563EB]" />
                   <h3 className="text-sm font-bold text-[#1E293B]">Live Attendance Punch Feed</h3>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-slate-500 hidden sm:inline">Updating in real-time</span>
+                  {(activeCompany?.googleSheetUrl || activeCompany?.settings?.googleSheetUrl || googleSheetUrlInput.trim()) && (
+                    <button
+                      type="button"
+                      id="btn-overview-test-sheet-sync"
+                      onClick={handleTestGoogleSheetPing}
+                      disabled={isTestingGoogleSheet}
+                      className="px-2.5 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+                      title="Send test employee log (Test User, ID: 999, Status: TEST_CHECK_IN) to Google Sheet"
+                    >
+                      <FileSpreadsheet className={`w-3.5 h-3.5 ${isTestingGoogleSheet ? 'animate-spin' : 'text-emerald-600'}`} />
+                      <span>{isTestingGoogleSheet ? 'Testing...' : 'Test Sheet Sync'}</span>
+                    </button>
+                  )}
                   {attendanceLogs.length > 0 && onClearAttendanceLogs && (
                     <button
                       type="button"
@@ -2097,6 +1617,29 @@ function formatHeaderRow(sheet, rowNum) {
                   )}
                 </div>
               </div>
+
+              {/* Feedback Alert Banner when tested from Overview */}
+              {googleSheetFeedback && adminTab === 'OVERVIEW' && (
+                <div
+                  className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 transition-all ${
+                    googleSheetFeedback.type === 'success'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      : googleSheetFeedback.type === 'error'
+                      ? 'bg-rose-50 border-rose-200 text-rose-800'
+                      : 'bg-blue-50 border-blue-200 text-blue-800'
+                  }`}
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="flex-1 font-medium">{googleSheetFeedback.message}</div>
+                  <button
+                    type="button"
+                    onClick={() => setGoogleSheetFeedback(null)}
+                    className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
 
               {employees.length === 0 && attendanceLogs.length > 0 && (
                 <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-between gap-3 text-xs">
@@ -3283,15 +2826,10 @@ function formatHeaderRow(sheet, rowNum) {
 
               {/* Status Pill */}
               <div className="flex items-center gap-2">
-                {connectedSpreadsheetId ? (
+                {activeCompany?.googleSheetUrl || activeCompany?.settings?.googleSheetUrl ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    Google Drive Sheet Active
-                  </span>
-                ) : activeCompany?.googleSheetUrl || activeCompany?.settings?.googleSheetUrl ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                    Web App Webhook Active
+                    Connected &amp; Live
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold">
@@ -3300,112 +2838,6 @@ function formatHeaderRow(sheet, rowNum) {
                   </span>
                 )}
               </div>
-            </div>
-
-            {/* Google Workspace Account Card */}
-            <div className="bg-[#F8FAFC] rounded-xl p-4 border border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white border border-[#E2E8F0] flex items-center justify-center text-slate-700 shrink-0 shadow-2xs">
-                  {googleUser?.photoURL ? (
-                    <img src={googleUser.photoURL} alt="" className="w-full h-full rounded-full object-cover" />
-                  ) : (
-                    <svg className="w-5 h-5" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                    </svg>
-                  )}
-                </div>
-                <div>
-                  {googleUser ? (
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-[#1E293B]">
-                          {googleUser.displayName || googleUser.email}
-                        </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
-                          Google Drive &amp; Sheets Active
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500">{googleUser.email}</p>
-                    </div>
-                  ) : (
-                    <div>
-                      <h5 className="font-bold text-xs text-[#1E293B]">Google Workspace Account</h5>
-                      <p className="text-[11px] text-slate-500">
-                        Connect with Google to create and sync sheets directly in your Google Drive
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                {googleUser ? (
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleConnectGoogleWorkspace}
-                      className="px-3 py-1.5 rounded-lg bg-white border border-[#CBD5E1] hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Re-authorize</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleGoogleSignOut}
-                      className="px-3 py-1.5 rounded-lg bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleConnectGoogleWorkspace}
-                    disabled={isSavingGoogleSheet}
-                    className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-[#CBD5E1] text-xs font-semibold text-slate-800 flex items-center gap-2 cursor-pointer transition-all shadow-xs"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                    </svg>
-                    <span>Connect Google Account</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Mode Switcher Tabs */}
-            <div className="flex border-b border-[#E2E8F0] gap-4">
-              <button
-                type="button"
-                onClick={() => setSheetIntegrationMode('DIRECT')}
-                className={`pb-2.5 text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors border-b-2 -mb-px ${
-                  sheetIntegrationMode === 'DIRECT'
-                    ? 'border-[#2563EB] text-[#2563EB]'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                <span>Direct Google Sheets (Recommended)</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-100 text-[#2563EB]">API</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSheetIntegrationMode('WEBAPP')}
-                className={`pb-2.5 text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors border-b-2 -mb-px ${
-                  sheetIntegrationMode === 'WEBAPP'
-                    ? 'border-[#2563EB] text-[#2563EB]'
-                    : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <Activity className="w-4 h-4" />
-                <span>Apps Script Webhook (Alternative)</span>
-              </button>
             </div>
 
             {/* Feedback Alert Banner */}
@@ -3437,334 +2869,85 @@ function formatHeaderRow(sheet, rowNum) {
               </div>
             )}
 
-            {/* TAB CONTENT 1: DIRECT GOOGLE SHEETS */}
-            {sheetIntegrationMode === 'DIRECT' && (
-              <div className="space-y-5 animate-fade-in">
-                {connectedSpreadsheetId ? (
-                  /* Connected Active Sheet Details Card */
-                  <div className="bg-emerald-50/60 rounded-2xl p-5 border border-emerald-200/80 space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-emerald-200/60">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                          <FileSpreadsheet className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h5 className="text-sm font-bold text-emerald-950">
-                              {connectedSpreadsheetName || 'Attendo Attendance Logs'}
-                            </h5>
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-200/80 text-emerald-900 font-bold uppercase tracking-wider">
-                              Active Destination
-                            </span>
-                          </div>
-                          <p className="text-xs text-emerald-800/80 font-mono mt-0.5">
-                            Spreadsheet ID: {connectedSpreadsheetId}
-                          </p>
-                        </div>
-                      </div>
+            {/* Input Form Section */}
+            <div className="space-y-4 max-w-3xl">
+              <div>
+                <label
+                  htmlFor="input-google-sheet-url"
+                  className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5"
+                >
+                  Google Sheet Web App URL
+                </label>
+                <div className="relative">
+                  <input
+                    id="input-google-sheet-url"
+                    type="url"
+                    value={googleSheetUrlInput}
+                    onChange={(e) => {
+                      setGoogleSheetUrlInput(e.target.value);
+                      if (googleSheetFeedback) setGoogleSheetFeedback(null);
+                    }}
+                    placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#CBD5E1] text-xs font-mono text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] transition-all shadow-2xs"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                  Provide your published Google Apps Script Web App URL ending in <code className="px-1 py-0.5 bg-slate-100 rounded text-slate-700 font-mono text-[10px]">/exec</code>. 
+                  Attendance punches (Timestamp, Employee Name, Employee ID, Status) will be securely dispatched via background POST requests.
+                </p>
+              </div>
 
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={connectedSpreadsheetUrl || `https://docs.google.com/spreadsheets/d/${connectedSpreadsheetId}/edit`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          <span>Open in Google Sheets</span>
-                        </a>
-                      </div>
-                    </div>
+              {/* Action Buttons: Save, Disconnect/Remove, and Test */}
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <button
+                  id="btn-save-google-sheet-url"
+                  type="button"
+                  onClick={handleSaveGoogleSheetUrl}
+                  disabled={isSavingGoogleSheet || !googleSheetUrlInput.trim()}
+                  className="px-4 py-2 rounded-xl bg-[#2563EB] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all shadow-xs"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{isSavingGoogleSheet ? 'Saving to Firebase...' : 'Save'}</span>
+                </button>
 
-                    {/* Columns Preview Pill Box */}
-                    <div className="bg-white/80 rounded-xl p-3 border border-emerald-200/60 space-y-1.5">
-                      <span className="text-[11px] font-bold text-slate-700 block">
-                        Enterprise 8-Column Format Active:
-                      </span>
-                      <div className="flex flex-wrap gap-1.5 text-[10px]">
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">1. Timestamp</span>
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">2. Employee Name</span>
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">3. Employee ID</span>
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">4. Department</span>
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">5. Punch Type</span>
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">6. Status</span>
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">7. Scheduled Time</span>
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">8. Actual Time</span>
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">+ Delay</span>
-                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">+ Notes</span>
-                      </div>
-                    </div>
+                {(activeCompany?.googleSheetUrl || activeCompany?.settings?.googleSheetUrl || googleSheetUrlInput) && (
+                  <button
+                    id="btn-disconnect-google-sheet-url"
+                    type="button"
+                    onClick={handleDisconnectGoogleSheetUrl}
+                    disabled={isSavingGoogleSheet}
+                    className="px-4 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all shadow-xs"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Disconnect / Remove</span>
+                  </button>
+                )}
 
-                    {/* Operational Action Buttons */}
-                    <div className="flex flex-wrap items-center gap-3 pt-1">
-                      <button
-                        type="button"
-                        onClick={handleSendDirectTestRow}
-                        disabled={isSendingTestRow}
-                        className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-emerald-300 text-emerald-900 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-                      >
-                        <Activity className={`w-3.5 h-3.5 ${isSendingTestRow ? 'animate-spin' : ''}`} />
-                        <span>{isSendingTestRow ? 'Sending Test...' : 'Send Live Test Row'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleSyncAllAttendanceLogs}
-                        disabled={isSyncingAllLogs}
-                        className="px-3.5 py-2 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                      >
-                        <UploadCloud className={`w-4 h-4 ${isSyncingAllLogs ? 'animate-bounce' : ''}`} />
-                        <span>
-                          {isSyncingAllLogs
-                            ? 'Syncing Records...'
-                            : `Sync All Attendance Logs (${attendanceLogs.filter(l => !activeCompany?.id || l.companyId === activeCompany.id).length})`}
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleDisconnectDirectSheet}
-                        disabled={isSavingGoogleSheet}
-                        className="px-3 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer ml-auto"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Unlink Spreadsheet</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  /* No Sheet Connected Yet: Provide 1-Click Create & Drive Picker */
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* 1-Click Create Card */}
-                      <div className="bg-[#F8FAFC] rounded-2xl p-5 border border-[#CBD5E1] space-y-3 flex flex-col justify-between">
-                        <div className="space-y-2">
-                          <div className="w-10 h-10 rounded-xl bg-blue-100 text-[#2563EB] flex items-center justify-center">
-                            <Sparkles className="w-5 h-5" />
-                          </div>
-                          <h5 className="font-bold text-sm text-[#1E293B]">1-Click Create New Attendance Sheet</h5>
-                          <p className="text-xs text-slate-500 leading-relaxed">
-                            Automatically creates a new Google Spreadsheet titled <strong>"Attendo Attendance - {activeCompany?.supermarketName || 'Store'}"</strong> directly in your Google Drive with frozen headers and 8 enterprise columns.
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleCreateAttendanceSheet}
-                          disabled={isCreatingDirectSheet}
-                          className="w-full py-2.5 px-4 rounded-xl bg-[#2563EB] hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
-                        >
-                          <Plus className="w-4 h-4" />
-                          <span>{isCreatingDirectSheet ? 'Creating in Google Drive...' : 'Create Attendance Sheet in Drive'}</span>
-                        </button>
-                      </div>
-
-                      {/* Select from Google Drive Card */}
-                      <div className="bg-[#F8FAFC] rounded-2xl p-5 border border-[#CBD5E1] space-y-3 flex flex-col justify-between">
-                        <div className="space-y-2">
-                          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                            <FolderOpen className="w-5 h-5" />
-                          </div>
-                          <h5 className="font-bold text-sm text-[#1E293B]">Select from Google Drive</h5>
-                          <p className="text-xs text-slate-500 leading-relaxed">
-                            Browse spreadsheets from your Google Drive and select one to link for continuous real-time staff check-in and check-out logs.
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleOpenDrivePicker}
-                          disabled={isListingDriveSheets}
-                          className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-50 border border-[#CBD5E1] text-slate-800 text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
-                        >
-                          <Search className="w-4 h-4 text-slate-500" />
-                          <span>{isListingDriveSheets ? 'Loading Drive Spreadsheets...' : 'Browse Google Drive Spreadsheets'}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Manual Spreadsheet URL or ID paste */}
-                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                      <label className="block text-xs font-bold text-slate-700">
-                        Or Link by Google Spreadsheet URL or ID
-                      </label>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <input
-                          type="text"
-                          value={manualSpreadsheetInput}
-                          onChange={(e) => setManualSpreadsheetInput(e.target.value)}
-                          placeholder="https://docs.google.com/spreadsheets/d/1BxiMVs.../edit or Spreadsheet ID"
-                          className="flex-1 px-3.5 py-2 rounded-xl bg-white border border-[#CBD5E1] text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleLinkManualSpreadsheet}
-                          disabled={isSavingGoogleSheet || !manualSpreadsheetInput.trim()}
-                          className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white text-xs font-semibold shrink-0 cursor-pointer transition-all"
-                        >
-                          Link Spreadsheet
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                {(googleSheetUrlInput.trim() || activeCompany?.googleSheetUrl || activeCompany?.settings?.googleSheetUrl) && (
+                  <button
+                    id="btn-test-sheet-sync"
+                    data-testid="btn-test-sheet-sync"
+                    type="button"
+                    onClick={handleTestGoogleSheetPing}
+                    disabled={isTestingGoogleSheet}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all shadow-xs ml-auto"
+                    title="Send a test employee log (Name: Test User, ID: 999, Status: TEST_CHECK_IN) to our Google Sheet"
+                  >
+                    <FileSpreadsheet className={`w-4 h-4 ${isTestingGoogleSheet ? 'animate-spin' : ''}`} />
+                    <span>{isTestingGoogleSheet ? 'Sending Test Log...' : 'Test Sheet Sync'}</span>
+                  </button>
                 )}
               </div>
-            )}
 
-            {/* TAB CONTENT 2: GOOGLE APPS SCRIPT WEBHOOK */}
-            {sheetIntegrationMode === 'WEBAPP' && (
-              <div className="space-y-4 max-w-3xl animate-fade-in">
-                <div>
-                  <label
-                    htmlFor="input-google-sheet-url"
-                    className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5"
-                  >
-                    Google Sheet Web App URL
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="input-google-sheet-url"
-                      type="url"
-                      value={googleSheetUrlInput}
-                      onChange={(e) => {
-                        setGoogleSheetUrlInput(e.target.value);
-                        if (googleSheetFeedback) setGoogleSheetFeedback(null);
-                      }}
-                      placeholder="https://script.google.com/macros/s/AKfycb.../exec"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-[#CBD5E1] text-xs font-mono text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] transition-all shadow-2xs"
-                    />
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-                    Provide your published Google Apps Script Web App URL ending in <code className="px-1 py-0.5 bg-slate-100 rounded text-slate-700 font-mono text-[10px]">/exec</code>. 
-                    Attendance punches (Timestamp, Employee Name, Employee ID, Status) will be securely dispatched via background POST requests.
-                  </p>
-                </div>
-
-                {/* Action Buttons: Save, Disconnect/Remove, and Test */}
-                <div className="flex flex-wrap items-center gap-3 pt-2">
-                  <button
-                    id="btn-save-google-sheet-url"
-                    type="button"
-                    onClick={handleSaveGoogleSheetUrl}
-                    disabled={isSavingGoogleSheet || !googleSheetUrlInput.trim()}
-                    className="px-4 py-2 rounded-xl bg-[#2563EB] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all shadow-xs"
-                  >
-                    <Check className="w-4 h-4" />
-                    <span>{isSavingGoogleSheet ? 'Saving to Firebase...' : 'Save'}</span>
-                  </button>
-
-                  {(activeCompany?.googleSheetUrl || activeCompany?.settings?.googleSheetUrl || googleSheetUrlInput) && (
-                    <button
-                      id="btn-disconnect-google-sheet-url"
-                      type="button"
-                      onClick={handleDisconnectGoogleSheetUrl}
-                      disabled={isSavingGoogleSheet}
-                      className="px-4 py-2 rounded-xl bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all shadow-xs"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span>Disconnect / Remove</span>
-                    </button>
-                  )}
-
-                  {googleSheetUrlInput.trim() && (
-                    <button
-                      id="btn-test-google-sheet-url"
-                      type="button"
-                      onClick={handleTestGoogleSheetPing}
-                      disabled={isTestingGoogleSheet}
-                      className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all shadow-xs ml-auto"
-                    >
-                      <Activity className={`w-3.5 h-3.5 ${isTestingGoogleSheet ? 'animate-spin' : ''}`} />
-                      <span>{isTestingGoogleSheet ? 'Sending Ping...' : 'Test Connection'}</span>
-                    </button>
-                  )}
+              {/* Instant Verification Banner explaining the Test Log details */}
+              <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 text-xs text-emerald-900 flex items-start gap-2.5">
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div className="leading-relaxed">
+                  <span className="font-bold">Instant Sheet Verification: </span>
+                  Click <span className="font-bold text-emerald-800">&lsquo;Test Sheet Sync&rsquo;</span> to send a test employee log (<span className="font-mono font-semibold">Name: Test User</span>, <span className="font-mono font-semibold">ID: 999</span>, <span className="font-mono font-semibold">Status: TEST_CHECK_IN</span>) directly to your Google Sheet to verify that the Web App URL integration is live and working.
                 </div>
               </div>
-            )}
-
-            {/* Google Drive Spreadsheet Picker Modal */}
-            {showDrivePickerModal && (
-              <div className="fixed inset-0 z-50 bg-slate-500/20 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-[#1E293B]">
-                <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5 max-w-lg w-full shadow-2xl animate-scale-in flex flex-col max-h-[85vh]">
-                  <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
-                    <div className="flex items-center gap-2">
-                      <FolderOpen className="w-5 h-5 text-[#2563EB]" />
-                      <h4 className="font-bold text-sm text-[#1E293B]">Select Google Spreadsheet</h4>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowDrivePickerModal(false)}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <div className="py-3">
-                    <div className="relative">
-                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                      <input
-                        type="text"
-                        value={driveSearchFilter}
-                        onChange={(e) => setDriveSearchFilter(e.target.value)}
-                        placeholder="Search spreadsheets in Google Drive..."
-                        className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#2563EB]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto space-y-2 py-1">
-                    {isListingDriveSheets ? (
-                      <div className="py-10 text-center text-xs text-slate-500">
-                        <Activity className="w-5 h-5 animate-spin mx-auto text-[#2563EB] mb-2" />
-                        Loading spreadsheets from Google Drive...
-                      </div>
-                    ) : driveSpreadsheetsList.length === 0 ? (
-                      <div className="py-8 text-center text-xs text-slate-500">
-                        No spreadsheets found in your Google Drive.
-                      </div>
-                    ) : (
-                      driveSpreadsheetsList
-                        .filter((s) => !driveSearchFilter || s.name.toLowerCase().includes(driveSearchFilter.toLowerCase()))
-                        .map((sheet) => (
-                          <div
-                            key={sheet.id}
-                            className="p-3 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 flex items-center justify-between gap-3 transition-colors"
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
-                              <div className="min-w-0">
-                                <h6 className="text-xs font-bold text-slate-800 truncate">{sheet.name}</h6>
-                                {sheet.modifiedTime && (
-                                  <span className="text-[10px] text-slate-400">
-                                    Modified: {new Date(sheet.modifiedTime).toLocaleDateString()}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => handleSelectDriveSpreadsheet(sheet)}
-                              className="px-3 py-1.5 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-semibold shrink-0 cursor-pointer transition-all shadow-xs"
-                            >
-                              Link Sheet
-                            </button>
-                          </div>
-                        ))
-                    )}
-                  </div>
-
-                  <div className="pt-3 border-t border-[#E2E8F0] flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setShowDrivePickerModal(false)}
-                      className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 cursor-pointer"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            </div>
 
             {/* HOW TO SETUP GOOGLE SHEET INSTRUCTION CARD */}
             <div className="bg-[#F8FAFC] rounded-2xl border border-[#CBD5E1] overflow-hidden transition-all shadow-xs">
@@ -4748,9 +3931,7 @@ function formatHeaderRow(sheet, rowNum) {
               <button
                 type="button"
                 onClick={confirmModal.onConfirm}
-                className={`px-4 py-2 rounded-lg text-xs font-bold text-white transition-all shadow-xs cursor-pointer active:scale-95 ${
-                  confirmModal.confirmBtnClass || 'bg-rose-600 hover:bg-rose-700'
-                }`}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white transition-all shadow-xs cursor-pointer active:scale-95"
               >
                 {confirmModal.confirmText}
               </button>

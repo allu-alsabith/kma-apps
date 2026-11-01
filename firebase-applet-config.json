@@ -7,5 +7,6 @@
   "messagingSenderId": "533262081197",
   "measurementId": "",
   "oAuthClientId": "533262081197-qnoco0qhjbhoqhjndbss52gvpp51f80v.apps.googleusercontent.com",
-  "recaptchaSiteKey": ""
+  "recaptchaSiteKey": "",
+  "firestoreDatabaseId": "ai-studio-testremix2attend-770b42bd-2afa-4943-870f-11b29a02e21d"
 }

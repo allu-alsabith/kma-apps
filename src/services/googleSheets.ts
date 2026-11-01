@@ -1,12 +1,10 @@
 import { AttendanceRecord } from '../types';
-import { getCompanyGoogleSheetUrl, getCachedGoogleAccessToken, getCompanyGoogleSpreadsheetConfig } from './firebase';
-import { appendAttendanceRecordToSpreadsheet } from './googleSheetsApi';
+import { getCompanyGoogleSheetUrl } from './firebase';
 
 export interface GoogleSheetSyncResult {
   success: boolean;
   error?: string;
   urlUsed?: string;
-  directApiUsed?: boolean;
 }
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -95,6 +93,114 @@ export function format12HTime(timeInput?: string | Date | number, includeSeconds
 }
 
 /**
+ * Default Google Apps Script Web App URL from environment configuration if provided
+ */
+export const DEFAULT_GOOGLE_APPS_SCRIPT_URL: string =
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GOOGLE_APPS_SCRIPT_URL) ||
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GOOGLE_SHEET_URL) ||
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GOOGLE_SHEETS_URL) ||
+  '';
+
+/**
+ * In-memory and localStorage cache key for global Google Apps Script Web App URL
+ */
+const GLOBAL_SHEET_URL_KEY = 'attendo_google_sheet_url';
+let inMemoryGlobalSheetUrl: string = DEFAULT_GOOGLE_APPS_SCRIPT_URL;
+
+/**
+ * Persists the global Google Sheet Web App URL in both memory and localStorage
+ */
+export function setGlobalGoogleSheetUrl(url: string): void {
+  const clean = (url || '').trim();
+  inMemoryGlobalSheetUrl = clean;
+  if (typeof window !== 'undefined') {
+    try {
+      if (clean) {
+        localStorage.setItem(GLOBAL_SHEET_URL_KEY, clean);
+        localStorage.setItem('attendo_global_google_sheet_url', clean);
+      } else {
+        localStorage.removeItem(GLOBAL_SHEET_URL_KEY);
+        localStorage.removeItem('attendo_global_google_sheet_url');
+      }
+    } catch {}
+  }
+}
+
+/**
+ * Resolves the active Google Sheet Web App URL across all available channels:
+ * 1. Explicit argument / cached URL passed into the function
+ * 2. In-memory global URL
+ * 3. Client Environment Variables (VITE_GOOGLE_APPS_SCRIPT_URL, VITE_GOOGLE_SHEET_URL)
+ * 4. LocalStorage persistent settings (attendo_google_sheet_url)
+ * 5. Company setting in localStorage
+ * 6. Firebase Firestore company document (companies/{companyId}/settings/googleSheetUrl)
+ */
+export async function getEffectiveGoogleSheetUrl(
+  companyId?: string,
+  explicitUrl?: string
+): Promise<string | null> {
+  // 1. Explicit valid URL provided
+  if (explicitUrl && isValidGoogleSheetWebAppUrl(explicitUrl)) {
+    return explicitUrl.trim();
+  }
+
+  // 2. In-memory global URL
+  if (inMemoryGlobalSheetUrl && isValidGoogleSheetWebAppUrl(inMemoryGlobalSheetUrl)) {
+    return inMemoryGlobalSheetUrl.trim();
+  }
+
+  // 3. Environment variables
+  if (DEFAULT_GOOGLE_APPS_SCRIPT_URL && isValidGoogleSheetWebAppUrl(DEFAULT_GOOGLE_APPS_SCRIPT_URL)) {
+    return DEFAULT_GOOGLE_APPS_SCRIPT_URL.trim();
+  }
+
+  // 4. LocalStorage global settings
+  if (typeof window !== 'undefined') {
+    try {
+      const storedGlobal =
+        localStorage.getItem(GLOBAL_SHEET_URL_KEY) ||
+        localStorage.getItem('attendo_global_google_sheet_url');
+      if (storedGlobal && isValidGoogleSheetWebAppUrl(storedGlobal)) {
+        inMemoryGlobalSheetUrl = storedGlobal.trim();
+        return storedGlobal.trim();
+      }
+
+      if (companyId) {
+        const companySpecific = localStorage.getItem(`attendo_sheet_url_${companyId}`);
+        if (companySpecific && isValidGoogleSheetWebAppUrl(companySpecific)) {
+          return companySpecific.trim();
+        }
+      }
+
+      // Check stored company objects in localStorage
+      const rawCompanies = localStorage.getItem('attendo_companies');
+      if (rawCompanies) {
+        const parsed = JSON.parse(rawCompanies);
+        if (Array.isArray(parsed)) {
+          const match = companyId ? parsed.find((c: any) => c.id === companyId) : parsed[0];
+          const found = match?.googleSheetUrl || match?.settings?.googleSheetUrl;
+          if (found && isValidGoogleSheetWebAppUrl(found)) {
+            return found.trim();
+          }
+        }
+      }
+    } catch {}
+  }
+
+  // 5. Firebase Firestore company document
+  if (companyId) {
+    try {
+      const remoteUrl = await fetchCompanyGoogleSheetUrl(companyId);
+      if (remoteUrl && isValidGoogleSheetWebAppUrl(remoteUrl)) {
+        return remoteUrl.trim();
+      }
+    } catch {}
+  }
+
+  return null;
+}
+
+/**
  * Validates whether a provided URL matches a Google Apps Script Web App endpoint (/exec)
  */
 export function isValidGoogleSheetWebAppUrl(url: string): boolean {
@@ -120,175 +226,184 @@ export async function fetchCompanyGoogleSheetUrl(companyId: string): Promise<str
 }
 
 /**
- * Sends attendance punch details in the background directly to the company's Google Sheet Web App
- * Payload contains: Timestamp, Employee Name, Employee ID, Status (as required by user)
- * along with additional helpful metadata (type, department, device, location).
+ * Deduplication cache: Prevents sending identical punches multiple times within 12 seconds
+ */
+const recentlySyncedPunches = new Set<string>();
+
+/**
+ * Sends attendance punch details in the background directly to the Google Sheet Web App backend.
+ * Automatically posts staff member details (name, employee ID, timestamp, and status)
+ * along with additional helpful columns (type, department, scheduled time, actual time, delay).
  */
 export async function syncAttendanceToGoogleSheet(
   record: AttendanceRecord,
-  cachedSheetUrl?: string,
-  explicitSpreadsheetId?: string
+  cachedSheetUrl?: string
 ): Promise<GoogleSheetSyncResult> {
-  let directSyncSucceeded = false;
-  let webAppSyncSucceeded = false;
-  let lastError = '';
-
-  // 1. Direct Google Sheets REST API Sync (if authenticated with Google Workspace)
   try {
-    const accessToken = getCachedGoogleAccessToken();
-    let targetSpreadsheetId = explicitSpreadsheetId;
-    if (!targetSpreadsheetId && record.companyId) {
-      const cfg = await getCompanyGoogleSpreadsheetConfig(record.companyId);
-      targetSpreadsheetId = cfg?.googleSpreadsheetId;
-    }
+    // 1. Resolve the target Google Sheet Web App URL across multi-tier sources
+    const targetUrl = await getEffectiveGoogleSheetUrl(record.companyId, cachedSheetUrl);
 
-    if (accessToken && targetSpreadsheetId) {
-      const apiRes = await appendAttendanceRecordToSpreadsheet(accessToken, targetSpreadsheetId, record);
-      if (apiRes.success) {
-        directSyncSucceeded = true;
-      } else {
-        lastError = apiRes.error || 'Direct Google Sheet append failed';
-      }
-    }
-  } catch (err: any) {
-    console.warn('[GoogleSheets] Direct API append attempt warning:', err);
-  }
-
-  // 2. Apps Script Web App Webhook Sync (fallback or secondary channel)
-  try {
-    let targetUrl = cachedSheetUrl;
-    if (!targetUrl && record.companyId) {
-      targetUrl = (await fetchCompanyGoogleSheetUrl(record.companyId)) || undefined;
-    }
-
-    if (targetUrl && isValidGoogleSheetWebAppUrl(targetUrl)) {
-      // Prepare attendance details payload with standard enterprise format: PUNCH_IN, PUNCH_OUT, BREAK_START, BREAK_END, SECURITY_BLOCK
-      let explicitPunchType = 'PUNCH_IN';
-      const rawType = String(record.type);
-      if (rawType === 'IN' || rawType === 'PUNCH_IN') explicitPunchType = 'PUNCH_IN';
-      else if (rawType === 'OUT' || rawType === 'PUNCH_OUT') explicitPunchType = 'PUNCH_OUT';
-      else if (rawType === 'BREAK_START') explicitPunchType = 'BREAK_START';
-      else if (rawType === 'BREAK_END') explicitPunchType = 'BREAK_END';
-      else if (rawType === 'SECURITY_BLOCK') explicitPunchType = 'SECURITY_BLOCK';
-      else if (rawType) explicitPunchType = rawType;
-
-      // Resolve Status (Column 6) ensuring it is NEVER empty or blank for any punch type
-      const rawStatus = record.status ? String(record.status).trim() : '';
-      let statusVal = 'ON_TIME';
-
-      if (explicitPunchType === 'BREAK_START') {
-        statusVal = 'ON_BREAK';
-      } else if (explicitPunchType === 'BREAK_END') {
-        if (rawStatus === 'OVER_BREAK' || (record.delayMins !== undefined && record.delayMins > 60)) {
-          statusVal = 'OVER_BREAK';
-        } else {
-          statusVal = 'RESUMED_SHIFT';
-        }
-      } else if (explicitPunchType === 'SECURITY_BLOCK') {
-        if (
-          rawStatus === 'SPOOF_ATTEMPT' ||
-          record.notes?.toLowerCase().includes('spoof')
-        ) {
-          statusVal = 'SPOOF_ATTEMPT';
-        } else if (
-          rawStatus === 'CROSS_PUNCH_MISMATCH' ||
-          record.notes?.toLowerCase().includes('mismatch') ||
-          record.notes?.toLowerCase().includes('cross-punch')
-        ) {
-          statusVal = 'CROSS_PUNCH_MISMATCH';
-        } else {
-          statusVal = 'UNRECOGNIZED_FACE';
-        }
-      } else if (explicitPunchType === 'PUNCH_IN' || explicitPunchType === 'PUNCH_OUT') {
-        if (rawStatus && rawStatus !== 'NORMAL' && rawStatus !== 'COMPLETED') {
-          statusVal = rawStatus;
-        } else {
-          statusVal = 'ON_TIME';
-        }
-      } else {
-        statusVal = rawStatus || 'ON_TIME';
-      }
-
-      const scheduledTimeVal = record.scheduledTime ? format12HTime(record.scheduledTime, false) : '-';
-      const rawActual = record.actualTime || record.time || record.timestamp || new Date().toISOString();
-      const actualTimeVal = format12HTime(rawActual, true);
-      const delayVal = record.delayMins !== undefined
-        ? (record.delayMins > 0 ? `+${record.delayMins}m` : `${record.delayMins}m`)
-        : '-';
-
-      const rawIsoTimestamp = record.timestamp || new Date().toISOString();
-      const formattedLocalTimestamp = formatLocalDateTime(rawIsoTimestamp);
-
-      const payload = {
-        Timestamp: formattedLocalTimestamp,
-        'Employee Name': record.employeeName,
-        'Employee ID': record.employeeId,
-        Department: record.department || '',
-        'Punch Type': explicitPunchType,
-        Status: statusVal,
-        'Scheduled Time': scheduledTimeVal,
-        'Actual Time': actualTimeVal,
-        Delay: delayVal,
-
-        timestamp: formattedLocalTimestamp,
-        rawIsoTimestamp: rawIsoTimestamp,
-        employeeName: record.employeeName,
-        employeeId: record.employeeId,
-        department: record.department || '',
-        punchType: explicitPunchType,
-        type: record.type,
-        status: statusVal,
-        scheduledTime: scheduledTimeVal,
-        actualTime: actualTimeVal,
-        delayMins: record.delayMins,
-
-        date: record.date || (record.timestamp ? record.timestamp.slice(0, 10) : ''),
-        time: record.time,
-        device: record.device || '',
-        location: record.kioskLocation || '',
-        companyId: record.companyId || '',
-        notes: record.notes || '',
+    if (!targetUrl || !isValidGoogleSheetWebAppUrl(targetUrl)) {
+      // No URL configured or invalid format - skip quietly
+      return {
+        success: false,
+        error: 'No valid Google Apps Script Web App URL configured',
       };
-
-      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      const timeoutId = controller ? setTimeout(() => controller.abort(), 15000) : null;
-
-      try {
-        await fetch(targetUrl.trim(), {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: {
-            'Content-Type': 'text/plain;charset=utf-8',
-          },
-          body: JSON.stringify(payload),
-          signal: controller?.signal,
-        });
-        webAppSyncSucceeded = true;
-      } finally {
-        if (timeoutId) clearTimeout(timeoutId);
-      }
     }
-  } catch (err: any) {
-    console.error('[GoogleSheets] Failed to post attendance to Web App:', err);
-    if (!lastError) lastError = err?.message || 'Failed to dispatch Web App POST request';
-  }
 
-  if (directSyncSucceeded || webAppSyncSucceeded) {
-    return {
-      success: true,
-      directApiUsed: directSyncSucceeded,
-      urlUsed: webAppSyncSucceeded ? cachedSheetUrl : undefined,
+    // Deduplicate against duplicate dispatches
+    const dedupeKey = `${record.id || ''}_${record.employeeId}_${record.type}_${record.timestamp || ''}`;
+    if (recentlySyncedPunches.has(dedupeKey)) {
+      return { success: true, urlUsed: targetUrl };
+    }
+    recentlySyncedPunches.add(dedupeKey);
+    setTimeout(() => recentlySyncedPunches.delete(dedupeKey), 12000);
+
+    // 2. Prepare attendance details payload with primary requested fields + flexible mappings
+    // Normalize punch type action to standard enterprise format: PUNCH_IN, PUNCH_OUT, BREAK_START, BREAK_END, SECURITY_BLOCK
+    let explicitPunchType = 'PUNCH_IN';
+    const rawType = String(record.type);
+    if (rawType === 'IN' || rawType === 'PUNCH_IN') explicitPunchType = 'PUNCH_IN';
+    else if (rawType === 'OUT' || rawType === 'PUNCH_OUT') explicitPunchType = 'PUNCH_OUT';
+    else if (rawType === 'BREAK_START') explicitPunchType = 'BREAK_START';
+    else if (rawType === 'BREAK_END') explicitPunchType = 'BREAK_END';
+    else if (rawType === 'SECURITY_BLOCK') explicitPunchType = 'SECURITY_BLOCK';
+    else if (rawType) explicitPunchType = rawType;
+
+    // Resolve Status (Column 6) ensuring it is NEVER empty or blank for any punch type
+    const rawStatus = record.status ? String(record.status).trim() : '';
+    let statusVal = 'ON_TIME';
+
+    if (explicitPunchType === 'BREAK_START') {
+      // If Punch Type is 'BREAK_START', set Status to 'ON_BREAK' (instead of blank or generic 'NORMAL')
+      statusVal = 'ON_BREAK';
+    } else if (explicitPunchType === 'BREAK_END') {
+      // If Punch Type is 'BREAK_END', set Status to 'RESUMED_SHIFT' (or 'OVER_BREAK' if break duration exceeded limit)
+      if (rawStatus === 'OVER_BREAK' || (record.delayMins !== undefined && record.delayMins > 60)) {
+        statusVal = 'OVER_BREAK';
+      } else {
+        statusVal = 'RESUMED_SHIFT';
+      }
+    } else if (explicitPunchType === 'SECURITY_BLOCK') {
+      // If Punch Type is 'SECURITY_BLOCK', ensure Status is 'UNRECOGNIZED_FACE', 'SPOOF_ATTEMPT', or 'CROSS_PUNCH_MISMATCH'
+      if (
+        rawStatus === 'SPOOF_ATTEMPT' ||
+        record.notes?.toLowerCase().includes('spoof')
+      ) {
+        statusVal = 'SPOOF_ATTEMPT';
+      } else if (
+        rawStatus === 'CROSS_PUNCH_MISMATCH' ||
+        record.notes?.toLowerCase().includes('mismatch') ||
+        record.notes?.toLowerCase().includes('cross-punch')
+      ) {
+        statusVal = 'CROSS_PUNCH_MISMATCH';
+      } else {
+        statusVal = 'UNRECOGNIZED_FACE';
+      }
+    } else if (explicitPunchType === 'PUNCH_IN' || explicitPunchType === 'PUNCH_OUT') {
+      // Keep exact shift evaluation statuses ('ON_TIME', 'LATE (X mins)', 'EARLY_LEAVE', 'OVERTIME', etc.), falling back to 'ON_TIME' if empty
+      if (rawStatus && rawStatus !== 'NORMAL' && rawStatus !== 'COMPLETED') {
+        statusVal = rawStatus;
+      } else {
+        statusVal = 'ON_TIME';
+      }
+    } else {
+      statusVal = rawStatus || 'ON_TIME';
+    }
+
+    const scheduledTimeVal = record.scheduledTime ? format12HTime(record.scheduledTime, false) : '-';
+    const rawActual = record.actualTime || record.time || record.timestamp || new Date().toISOString();
+    const actualTimeVal = format12HTime(rawActual, true);
+    const delayVal = record.delayMins !== undefined
+      ? (record.delayMins > 0 ? `+${record.delayMins}m` : `${record.delayMins}m`)
+      : '-';
+
+    const rawIsoTimestamp = record.timestamp || new Date().toISOString();
+    const formattedLocalTimestamp = formatLocalDateTime(rawIsoTimestamp);
+
+    const payload = {
+      // Complete set of 8 columns requested for supermarket attendance:
+      Timestamp: formattedLocalTimestamp,
+      'Employee Name': record.employeeName,
+      'Employee ID': record.employeeId,
+      Department: record.department || '',
+      'Punch Type': explicitPunchType,
+      Status: statusVal,
+      'Scheduled Time': scheduledTimeVal,
+      'Actual Time': actualTimeVal,
+      Delay: delayVal,
+
+      // Direct core fields requested (name, employee ID, timestamp, status):
+      name: record.employeeName,
+      employeeName: record.employeeName,
+      employeeId: record.employeeId,
+      id: record.employeeId,
+      timestamp: formattedLocalTimestamp,
+      status: statusVal,
+
+      // Flexible camelCase and raw property mappings:
+      rawIsoTimestamp: rawIsoTimestamp,
+      department: record.department || '',
+      punchType: explicitPunchType,
+      type: record.type,
+      scheduledTime: scheduledTimeVal,
+      actualTime: actualTimeVal,
+      delayMins: record.delayMins,
+
+      // Contextual attendance info:
+      date: record.date || (record.timestamp ? record.timestamp.slice(0, 10) : ''),
+      time: record.time,
+      device: record.device || '',
+      location: record.kioskLocation || '',
+      companyId: record.companyId || '',
+      notes: record.notes || '',
     };
-  }
 
-  return {
-    success: false,
-    error: lastError || 'No active Google Sheet (REST API or Web App) configured for this company',
-  };
+    // 3. Send HTTP POST request in the background
+    // Construct dispatch URL with both query parameters (for scripts reading e.parameter)
+    // and JSON POST body (for scripts reading e.postData.contents)
+    let dispatchUrl = targetUrl.trim();
+    try {
+      const parsedUrl = new URL(dispatchUrl);
+      parsedUrl.searchParams.set('name', record.employeeName);
+      parsedUrl.searchParams.set('employeeName', record.employeeName);
+      parsedUrl.searchParams.set('employeeId', record.employeeId);
+      parsedUrl.searchParams.set('timestamp', formattedLocalTimestamp);
+      parsedUrl.searchParams.set('status', statusVal);
+      parsedUrl.searchParams.set('punchType', explicitPunchType);
+      parsedUrl.searchParams.set('actualTime', actualTimeVal);
+      dispatchUrl = parsedUrl.toString();
+    } catch {
+      // Keep original URL string if URL parsing fails
+    }
+
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 15000) : null;
+
+    try {
+      await fetch(dispatchUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
+        body: JSON.stringify(payload),
+        signal: controller?.signal,
+      });
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+
+    return { success: true, urlUsed: targetUrl };
+  } catch (err: any) {
+    console.error('[GoogleSheets] Failed to post attendance to Google Sheet:', err);
+    return { success: false, error: err?.message || 'Failed to dispatch POST request' };
+  }
 }
 
 /**
- * Pings Google Sheet Web App with a test payload to verify connectivity
+ * Pings Google Sheet Web App with a test employee log (Name: Test User, ID: 999, Status: TEST_CHECK_IN)
+ * to verify connectivity and column alignment instantly.
  */
 export async function testGoogleSheetConnection(
   url: string,
@@ -306,29 +421,53 @@ export async function testGoogleSheetConnection(
   const localTs = formatLocalDateTime(rawIso);
   const localActualTime = format12HTime(rawIso, true);
 
+  // Payload specifically using requested test employee log details:
+  // Name: Test User, ID: 999, Status: TEST_CHECK_IN
   const testPayload = {
     Timestamp: localTs,
     rawIsoTimestamp: rawIso,
-    'Employee Name': 'Test Connection (Attendo)',
-    'Employee ID': 'TEST-000',
-    Department: 'Administration',
+    'Employee Name': 'Test User',
+    name: 'Test User',
+    employeeName: 'Test User',
+    'Employee ID': '999',
+    employeeId: '999',
+    id: '999',
+    Department: 'Store Operations',
+    department: 'Store Operations',
     'Punch Type': 'PUNCH_IN',
-    Status: 'TEST_SUCCESS',
+    punchType: 'PUNCH_IN',
+    Status: 'TEST_CHECK_IN',
+    status: 'TEST_CHECK_IN',
     'Scheduled Time': '-',
+    scheduledTime: '-',
     'Actual Time': localActualTime,
-    timestamp: localTs,
-    employeeName: 'Test Connection (Attendo)',
-    employeeId: 'TEST-000',
     actualTime: localActualTime,
-    status: 'TEST_SUCCESS',
-    notes: `Test connection from ${companyName || 'Store Admin'}`,
+    Delay: '-',
+    timestamp: localTs,
+    device: 'ADMIN_PORTAL_TEST',
+    notes: `Test employee log dispatched from Admin Portal (${companyName || 'Store Admin'}) to verify Web App URL integration`,
   };
+
+  // Construct URL with query parameters for scripts reading e.parameter as well as JSON body
+  let dispatchUrl = url.trim();
+  try {
+    const parsedUrl = new URL(dispatchUrl);
+    parsedUrl.searchParams.set('name', 'Test User');
+    parsedUrl.searchParams.set('employeeName', 'Test User');
+    parsedUrl.searchParams.set('employeeId', '999');
+    parsedUrl.searchParams.set('id', '999');
+    parsedUrl.searchParams.set('timestamp', localTs);
+    parsedUrl.searchParams.set('status', 'TEST_CHECK_IN');
+    parsedUrl.searchParams.set('punchType', 'PUNCH_IN');
+    parsedUrl.searchParams.set('actualTime', localActualTime);
+    dispatchUrl = parsedUrl.toString();
+  } catch {}
 
   const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const timeoutId = controller ? setTimeout(() => controller.abort(), 15000) : null;
 
   try {
-    await fetch(url.trim(), {
+    await fetch(dispatchUrl, {
       method: 'POST',
       mode: 'no-cors',
       headers: {
@@ -340,7 +479,7 @@ export async function testGoogleSheetConnection(
     return {
       success: true,
       message:
-        'Test ping sent to Google Sheet Web App. Check your sheet to verify the row was added!',
+        'Test employee log (Name: Test User, ID: 999, Status: TEST_CHECK_IN) sent successfully to Google Sheet! Check your spreadsheet to verify the new row.',
     };
   } catch (err: any) {
     return {

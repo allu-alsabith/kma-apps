@@ -442,9 +442,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       }
     }
     const shiftEval = evaluateShiftPunch(employee, typeToPunch, new Date(), shifts, undefined, breakDurationMins);
-    const status = shiftEval.status;
-
-    onNewPunch({
+    const punchRecord = {
       companyId: employee.companyId || connectedCompany?.id,
       employeeId: employee.id,
       employeeName: employee.name,
@@ -459,6 +457,27 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       actualTime: shiftEval.actualTime,
       delayMins: shiftEval.delayMins,
       notes: `${typeToPunch} punch processed via Biometric FaceID. ${shiftEval.varianceNote || ''}`.trim(),
+    };
+
+    onNewPunch(punchRecord);
+
+    // Automatically send verified staff attendance details (name, employee ID, timestamp, and status) to Google Sheet backend
+    const targetSheetUrl =
+      connectedCompany?.googleSheetUrl ||
+      connectedCompany?.settings?.googleSheetUrl ||
+      activeCompany?.googleSheetUrl ||
+      activeCompany?.settings?.googleSheetUrl;
+
+    const completeRecord: AttendanceRecord = {
+      ...punchRecord,
+      id: `kiosk-punch-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      timestamp: new Date().toISOString(),
+      date: new Date().toISOString().slice(0, 10),
+      time: get12HTimeString(new Date(), true),
+    };
+
+    syncAttendanceToGoogleSheet(completeRecord, targetSheetUrl).catch((err) => {
+      console.warn('[KioskFace] Background Google Sheet sync error:', err);
     });
 
     const now = new Date();
@@ -517,7 +536,7 @@ export const KioskFace: React.FC<KioskFaceProps> = ({
       setSecurityNotice(null);
       setSelectedStaffIdForScan('');
     }, 3400);
-  }, [onNewPunch, connectedCompany, companySupermarketName, isSoundEnabled, appToggles, shifts]);
+  }, [onNewPunch, connectedCompany, companySupermarketName, isSoundEnabled, appToggles, shifts, attendanceLogs, activeCompany]);
 
   // Advanced Biometric Face Scan Verification & Security Inspection
   const handleTriggerFaceScan = async (targetedStaff?: Employee) => {

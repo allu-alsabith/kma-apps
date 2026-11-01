@@ -146,50 +146,36 @@ export function subscribeToAuth(callback: (user: User | null) => void): () => vo
   }
 }
 
-// Use custom database ID if provisioned, or default
+// Use custom database ID from applet config or environment metadata
 const configData = firebaseConfigData as Record<string, any>;
-const databaseId = configData.firestoreDatabaseId && typeof configData.firestoreDatabaseId === 'string' && configData.firestoreDatabaseId.trim() !== ''
-  ? configData.firestoreDatabaseId
-  : undefined;
+const databaseId = (configData.firestoreDatabaseId && typeof configData.firestoreDatabaseId === 'string' && configData.firestoreDatabaseId.trim() !== '')
+  ? configData.firestoreDatabaseId.trim()
+  : 'ai-studio-testremix2attend-770b42bd-2afa-4943-870f-11b29a02e21d';
 
 // In Firebase v10+, initializeFirestore(app, settings, databaseId?)
-// In browser iframe environments, handle storage/locks permissions gracefully
+// Use experimentalAutoDetectLongPolling for smooth connectivity across iframes and proxies
 let dbInstance;
 try {
   const cacheSettings = typeof window !== 'undefined'
     ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
     : memoryLocalCache();
 
-  if (databaseId) {
-    dbInstance = initializeFirestore(app, {
-      localCache: cacheSettings,
-      experimentalForceLongPolling: true,
-      experimentalAutoDetectLongPolling: true,
-    }, databaseId);
-  } else {
-    dbInstance = initializeFirestore(app, {
-      localCache: cacheSettings,
-      experimentalForceLongPolling: true,
-      experimentalAutoDetectLongPolling: true,
-    });
-  }
+  dbInstance = initializeFirestore(app, {
+    localCache: cacheSettings,
+    experimentalAutoDetectLongPolling: true,
+  }, databaseId);
 } catch {
   try {
-    if (databaseId) {
-      dbInstance = initializeFirestore(app, {
-        localCache: memoryLocalCache(),
-        experimentalForceLongPolling: true,
-        experimentalAutoDetectLongPolling: true,
-      }, databaseId);
-    } else {
-      dbInstance = initializeFirestore(app, {
-        localCache: memoryLocalCache(),
-        experimentalForceLongPolling: true,
-        experimentalAutoDetectLongPolling: true,
-      });
-    }
+    dbInstance = initializeFirestore(app, {
+      localCache: memoryLocalCache(),
+      experimentalAutoDetectLongPolling: true,
+    }, databaseId);
   } catch {
-    dbInstance = databaseId ? getFirestore(app, databaseId) : getFirestore(app);
+    try {
+      dbInstance = getFirestore(app, databaseId);
+    } catch {
+      dbInstance = getFirestore(app);
+    }
   }
 }
 
@@ -317,17 +303,24 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   console.warn('Firestore Operation Info: ', JSON.stringify(errInfo));
 }
 
-// Connection test for Firestore
+// Connection test for Firestore with safe timeout guard
 let isConnected = false;
 export async function testFirestoreConnection(): Promise<boolean> {
   if (isConnected) return true;
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    const probePromise = getDocFromServer(doc(db, 'test', 'connection'));
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('connection probe timeout')), 3500)
+    );
+    await Promise.race([probePromise, timeoutPromise]);
     isConnected = true;
     return true;
   } catch (error: unknown) {
     const err = error as { code?: string; message?: string };
-    if (err?.code === 'unavailable' || (err?.message && err.message.includes('offline'))) {
+    if (
+      err?.code === 'unavailable' ||
+      (err?.message && (err.message.includes('offline') || err.message.includes('timeout')))
+    ) {
       console.info("Firestore is currently operating in offline-first cached mode; will synchronize once online.");
       return false;
     }
@@ -337,7 +330,6 @@ export async function testFirestoreConnection(): Promise<boolean> {
       isConnected = true;
       return true;
     } catch {
-      console.info("Firestore status check completed:", err?.message || 'ready');
       return false;
     }
   }
