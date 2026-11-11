@@ -58,7 +58,7 @@ import { staffStore } from '../services/staffStore';
 import { AccountHelpModal } from './AccountHelpModal';
 import { NetworkSyncBadge } from './NetworkSyncBadge';
 import { signInWithGoogle, signOutUser, subscribeToAuth, saveCompanyGoogleSheetUrl, type User } from '../services/firebase';
-import { isValidGoogleSheetWebAppUrl, testGoogleSheetConnection, setGlobalGoogleSheetUrl } from '../services/googleSheets';
+import { isValidGoogleSheetWebAppUrl, testGoogleSheetConnection, setGlobalGoogleSheetUrl, GOOGLE_APPS_SCRIPT_BACKEND_CODE } from '../services/googleSheets';
 import { 
   formatTime12H, 
   get12HTimeString, 
@@ -152,189 +152,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [isSetupGuideExpanded, setIsSetupGuideExpanded] = useState<boolean>(true);
   const [hasCopiedScript, setHasCopiedScript] = useState<boolean>(false);
 
-  const googleAppsScriptTemplate = `function doPost(e) {
-  try {
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    var headers = ["Timestamp", "Employee Name", "Employee ID", "Department", "Punch Type", "Status", "Scheduled Time", "Actual Time"];
-    
-    // Smart Header & Sheet Self-Formatting
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow(headers);
-      formatHeaderRow(sheet, 1);
-    } else {
-      var firstCellVal = sheet.getRange(1, 1).getValue();
-      if (String(firstCellVal).trim() !== "Timestamp") {
-        sheet.insertRowBefore(1);
-        sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-        formatHeaderRow(sheet, 1);
-      }
-    }
-
-    var data = JSON.parse(e.postData.contents);
-    var rawTs = data["Timestamp"] || data.timestamp || new Date().toISOString();
-    var formattedTs = String(rawTs);
-
-    // Strict 12-hour AM/PM format for Column A (Timestamp) e.g., "15-Oct-2026, 05:33:46 PM"
-    if (formattedTs.indexOf("AM") === -1 && formattedTs.indexOf("PM") === -1) {
-      try {
-        var dateObj = new Date(rawTs);
-        if (!isNaN(dateObj.getTime())) {
-          formattedTs = Utilities.formatDate(dateObj, Session.getScriptTimeZone(), "dd-MMM-yyyy, hh:mm:ss a");
-        }
-      } catch(dateErr) {}
-    }
-
-    // Strict 12-hour AM/PM format for Column H (Actual Time) e.g., "05:14:41 PM"
-    var rawActual = data["Actual Time"] || data.actualTime || data.time || "";
-    var formattedActual = String(rawActual).trim();
-    if (formattedActual && formattedActual !== "-") {
-      if (formattedActual.indexOf("T") !== -1 || formattedActual.indexOf("Z") !== -1) {
-        try {
-          var actDateObj = new Date(formattedActual);
-          if (!isNaN(actDateObj.getTime())) {
-            formattedActual = Utilities.formatDate(actDateObj, Session.getScriptTimeZone(), "hh:mm:ss a");
-          }
-        } catch(actErr) {}
-      } else {
-        // Convert 24-hour "HH:mm:ss" or "HH:mm" to 12-hour "hh:mm:ss a"
-        var time24Match = formattedActual.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
-        if (time24Match) {
-          var h = parseInt(time24Match[1], 10);
-          var m = time24Match[2];
-          var s = time24Match[3] || "00";
-          var a = h >= 12 ? "PM" : "AM";
-          h = h % 12;
-          h = h ? h : 12;
-          var hStr = (h < 10 ? "0" : "") + h;
-          formattedActual = hStr + ":" + m + ":" + s + " " + a;
-        } else {
-          // Normalize 12-hour format to 2-digit hour e.g. "5:14:41 PM" -> "05:14:41 PM"
-          var match12 = formattedActual.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)$/i);
-          if (match12) {
-            var hh = parseInt(match12[1], 10);
-            var mm = match12[2];
-            var ss = match12[3] || "00";
-            var ampm = match12[4].toUpperCase();
-            var hhStr = (hh < 10 ? "0" : "") + hh;
-            formattedActual = hhStr + ":" + mm + ":" + ss + " " + ampm;
-          }
-        }
-      }
-    } else {
-      // If Actual Time is empty or '-', extract the 12-hour time portion from Column A
-      if (formattedTs && formattedTs.indexOf(",") !== -1) {
-        formattedActual = formattedTs.split(",")[1].trim();
-      } else {
-        formattedActual = "-";
-      }
-    }
-
-    sheet.appendRow([
-      formattedTs,
-      data["Employee Name"] || data.employeeName || "Unknown",
-      data["Employee ID"] || data.employeeId || "",
-      data["Department"] || data.department || "",
-      data["Punch Type"] || data.punchType || data.type || "PUNCH_IN",
-      data["Status"] || data.status || "ON_TIME",
-      data["Scheduled Time"] || data.scheduledTime || "-",
-      formattedActual
-    ]);
-
-    var newRow = sheet.getLastRow();
-
-    // 1. Explicitly reset the entire new row to eliminate color bleeding & font inheritance
-    var newRowRange = sheet.getRange(newRow, 1, 1, 8);
-    newRowRange.setBackground("#ffffff");
-    newRowRange.setFontColor("#0f172a");
-    newRowRange.setFontFamily("Roboto");
-    newRowRange.setFontSize(10);
-    newRowRange.setFontWeight("normal");
-    newRowRange.setVerticalAlignment("middle");
-
-    // Force 12-Hour AM/PM text formatting on Column A (Timestamp), Column G (Scheduled Time), and Column H (Actual Time)
-    // so Google Sheets never auto-coerces into 24-hour time or spreadsheet locale defaults
-    sheet.getRange(newRow, 1).setNumberFormat("@");
-    sheet.getRange(newRow, 7).setNumberFormat("@");
-    sheet.getRange(newRow, 8).setNumberFormat("@");
-
-    // Alignments: left for Columns 1, 2, 4; center for Columns 3, 5, 6, 7, 8
-    sheet.getRange(newRow, 1).setHorizontalAlignment("left");
-    sheet.getRange(newRow, 2).setHorizontalAlignment("left");
-    sheet.getRange(newRow, 4).setHorizontalAlignment("left");
-
-    sheet.getRange(newRow, 3).setHorizontalAlignment("center");
-    sheet.getRange(newRow, 5).setHorizontalAlignment("center");
-    sheet.getRange(newRow, 6).setHorizontalAlignment("center");
-    sheet.getRange(newRow, 7).setHorizontalAlignment("center");
-    sheet.getRange(newRow, 8).setHorizontalAlignment("center");
-
-    // 2. Explicitly style the Status cell (Column 6) with bold text and color pairs
-    var statusVal = String(data["Status"] || data.status || "ON_TIME").toUpperCase().trim();
-    var statusCell = sheet.getRange(newRow, 6);
-    statusCell.setFontWeight("bold");
-
-    if (statusVal === "ON_TIME" || statusVal === "RESUMED_SHIFT" || statusVal === "NORMAL") {
-      // Green (bg: '#dcfce7', fg: '#166534')
-      statusCell.setBackground("#dcfce7").setFontColor("#166534");
-    } else if (statusVal === "ON_BREAK") {
-      // Blue (bg: '#dbeafe', fg: '#1e40af')
-      statusCell.setBackground("#dbeafe").setFontColor("#1e40af");
-    } else if (statusVal === "EARLY_LEAVE" || statusVal === "OVERTIME" || statusVal.indexOf("EARLY") !== -1) {
-      // Amber (bg: '#fef3c7', fg: '#92400e')
-      statusCell.setBackground("#fef3c7").setFontColor("#92400e");
-    } else if (
-      statusVal.indexOf("LATE") !== -1 ||
-      statusVal === "OVER_BREAK" ||
-      statusVal === "UNRECOGNIZED_FACE" ||
-      statusVal === "SPOOF_ATTEMPT" ||
-      statusVal === "CROSS_PUNCH_MISMATCH" ||
-      statusVal === "SECURITY_BLOCK" ||
-      statusVal.indexOf("BLOCK") !== -1
-    ) {
-      // Red (bg: '#fee2e2', fg: '#991b1b')
-      statusCell.setBackground("#fee2e2").setFontColor("#991b1b");
-    } else {
-      // Default fallback
-      statusCell.setBackground("#dcfce7").setFontColor("#166534");
-    }
-
-    // 3. Auto-resize columns 1 to 8 so text is never clipped
-    try {
-      if (typeof sheet.autoResizeColumns === "function") {
-        sheet.autoResizeColumns(1, 8);
-      } else {
-        for (var col = 1; col <= 8; col++) {
-          sheet.autoResizeColumn(col);
-        }
-      }
-    } catch(resizeErr) {
-      for (var c = 1; c <= 8; c++) {
-        try { sheet.autoResizeColumn(c); } catch(e) {}
-      }
-    }
-
-    return ContentService.createTextOutput(JSON.stringify({ result: "success" }))
-      .setMimeType(ContentService.MimeType.JSON);
-  } catch(err) {
-    return ContentService.createTextOutput(JSON.stringify({ result: "error", error: err.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-function formatHeaderRow(sheet, rowNum) {
-  try {
-    var headerRange = sheet.getRange(rowNum, 1, 1, 8);
-    headerRange.setBackground("#1e293b"); // Dark slate background
-    headerRange.setFontColor("#ffffff");  // Bold white text
-    headerRange.setFontWeight("bold");
-    headerRange.setFontFamily("Roboto");
-    headerRange.setHorizontalAlignment("center");
-    sheet.setFrozenRows(1);
-    for (var col = 1; col <= 8; col++) {
-      sheet.autoResizeColumn(col);
-    }
-  } catch(e) {}
-}`;
+  const googleAppsScriptTemplate = GOOGLE_APPS_SCRIPT_BACKEND_CODE;
 
   const handleCopyScriptTemplate = () => {
     try {
@@ -3100,9 +2918,17 @@ function formatHeaderRow(sheet, rowNum) {
                       <pre><code>{googleAppsScriptTemplate}</code></pre>
                     </div>
 
-                    <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-                      <span>Columns created automatically: <strong>Timestamp, Employee Name, Employee ID, Department, Punch Type, Status, Scheduled Time, Actual Time</strong></span>
-                      <span className="text-slate-400 font-mono">POST webhook</span>
+                    <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-600 gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-slate-700">Features:</span>
+                        <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-mono">8 Auto Columns</span>
+                        <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-mono">12H AM/PM (@)</span>
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-mono">Color Statuses</span>
+                        <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-mono">doGet + doPost</span>
+                      </div>
+                      <span className="text-slate-500 text-[10px]">
+                        Status Colors: <strong className="text-emerald-700">On Time</strong>, <strong className="text-blue-700">Break</strong>, <strong className="text-amber-700">Early/OT</strong>, <strong className="text-rose-700">Late/Block</strong>, <strong className="text-teal-700">Test</strong>
+                      </span>
                     </div>
                   </div>
 

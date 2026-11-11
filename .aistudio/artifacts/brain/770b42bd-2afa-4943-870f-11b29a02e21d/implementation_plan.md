@@ -159,3 +159,22 @@ The payload delivered to the Google Sheet backend adheres to the following unifi
 5. **Step 5: End-to-End Validation**
    - Run type linting (`lint_applet`) and build compilation (`compile_applet`).
    - Validate live button interactions and feedback alerts in the application preview.
+
+---
+
+### 6. Production Google Apps Script Backend Specifications
+
+The production script deployed to Google Sheets (`Code.gs`) provides 100% plug-and-play webhook processing:
+
+- **Dual-Method Handlers**: Implements both `doGet(e)` and `doPost(e)` forwarding directly to `handleAttendanceWebhook(e)`.
+- **Smart Header Initialization**: Verifies if row 1 contains `"Timestamp"`; if not, inserts the standard 8-column header, sets a dark slate background (`#1E293B`) with white bold text, freezes the top row, and auto-resizes columns 1 to 8.
+- **12-Hour AM/PM Normalization**: Formats timestamps as `dd-MMM-yyyy, hh:mm:ss a` and actual punch times as `hh:mm:ss a` (e.g. `05:14:41 PM`). Applies text number format (`@`) on Columns A, G, and H to prevent spreadsheet locale coercion.
+- **Auto-Resize All 8 Columns**: Executes `autoResizeColumns(1, 8)` to ensure clean layout without truncated text.
+- **Status Cell Color-Coding (Column 6)**:
+  - `ON_TIME`, `RESUMED_SHIFT`, `NORMAL`: Green background (`#DCFCE7`), text (`#166534`).
+  - `ON_BREAK`: Blue background (`#DBEAFE`), text (`#1E40AF`).
+  - `EARLY_LEAVE`, `OVERTIME`: Amber background (`#FEF3C7`), text (`#92400E`).
+  - `LATE`, `OVER_BREAK`, security blocks (`UNRECOGNIZED_FACE`, `SPOOF_ATTEMPT`, `CROSS_PUNCH_MISMATCH`): Red background (`#FEE2E2`), text (`#991B1B`).
+  - `TEST_CHECK_IN`: Emerald confirmation background (`#D1FAE5`), text (`#065F46`).
+- **Response Format**: Returns a valid JSON output with `{ "result": "success", "message": "Attendance logged successfully", "row": <rowNumber> }` and `ContentService.MimeType.JSON`.
+

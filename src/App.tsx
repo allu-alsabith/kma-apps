@@ -885,7 +885,7 @@ function AppContent() {
           const updated: Employee = {
             ...emp,
             lastPunch: newRecord.time,
-            status: punchData.type === 'IN' ? 'PRESENT' : 'ABSENT',
+            status: punchData.type === 'IN' || punchData.type === 'BREAK_END' ? 'PRESENT' : 'ABSENT',
           };
           offlineSyncService.enqueue('SYNC_EMPLOYEE', updated);
           return updated;

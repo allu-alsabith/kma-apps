@@ -226,9 +226,12 @@ export async function fetchCompanyGoogleSheetUrl(companyId: string): Promise<str
 }
 
 /**
- * Deduplication cache: Prevents sending identical punches multiple times within 12 seconds
+ * Deduplication cache: Sliding timestamp window (12,000ms) keyed by companyId, employeeId, and punch type.
+ * Eliminates duplicate row insertions across dual callers (e.g. KioskFace local handler + App onNewPunch)
+ * while smoothly allowing subsequent legitimate punches.
  */
-const recentlySyncedPunches = new Set<string>();
+const recentlySyncedPunches = new Map<string, number>();
+const DEDUPE_WINDOW_MS = 12000;
 
 /**
  * Sends attendance punch details in the background directly to the Google Sheet Web App backend.
@@ -251,13 +254,28 @@ export async function syncAttendanceToGoogleSheet(
       };
     }
 
-    // Deduplicate against duplicate dispatches
-    const dedupeKey = `${record.id || ''}_${record.employeeId}_${record.type}_${record.timestamp || ''}`;
-    if (recentlySyncedPunches.has(dedupeKey)) {
+    // Deduplicate against duplicate dispatches within 12 seconds
+    const nowMs = Date.now();
+    // For stranger security blocks or test records, allow separate records or distinct interval window
+    const isSpecialEvent = record.employeeId === 'STRANGER' || record.employeeId === '999';
+    const dedupeKey = isSpecialEvent
+      ? `${record.companyId || ''}_${record.employeeId}_${record.type}_${Math.floor(nowMs / 5000)}`
+      : `${record.companyId || ''}_${record.employeeId}_${record.type}`;
+
+    const lastSyncTime = recentlySyncedPunches.get(dedupeKey);
+    if (lastSyncTime && nowMs - lastSyncTime < DEDUPE_WINDOW_MS) {
       return { success: true, urlUsed: targetUrl };
     }
-    recentlySyncedPunches.add(dedupeKey);
-    setTimeout(() => recentlySyncedPunches.delete(dedupeKey), 12000);
+    recentlySyncedPunches.set(dedupeKey, nowMs);
+
+    // Periodically prune stale keys from cache
+    if (recentlySyncedPunches.size > 200) {
+      for (const [key, ts] of recentlySyncedPunches.entries()) {
+        if (nowMs - ts > DEDUPE_WINDOW_MS) {
+          recentlySyncedPunches.delete(key);
+        }
+      }
+    }
 
     // 2. Prepare attendance details payload with primary requested fields + flexible mappings
     // Normalize punch type action to standard enterprise format: PUNCH_IN, PUNCH_OUT, BREAK_START, BREAK_END, SECURITY_BLOCK
@@ -490,3 +508,253 @@ export async function testGoogleSheetConnection(
     if (timeoutId) clearTimeout(timeoutId);
   }
 }
+
+/**
+ * Production-ready Google Apps Script backend template for automated attendance reporting.
+ * Handles both GET and POST requests, formats smart headers, normalizes 12-hour AM/PM times,
+ * applies color-coded status styling, and auto-resizes all 8 columns.
+ */
+export const GOOGLE_APPS_SCRIPT_BACKEND_CODE: string = `/**
+ * Attendo Kiosk & Admin Suite - Google Sheets Attendance Logging Backend
+ * 
+ * Deployment Guide:
+ * 1. Open your Google Spreadsheet (e.g. Attendo Staff Attendance).
+ * 2. In the top menu, click Extensions > Apps Script.
+ * 3. Delete any default code in Code.gs, paste this entire script, and click Save.
+ * 4. Click Deploy > New deployment.
+ * 5. Select type: "Web app" (click the gear icon if needed).
+ * 6. Set:
+ *    - Description: Attendo Attendance Webhook
+ *    - Execute as: Me (your Google account)
+ *    - Who has access: Anyone (allows kiosk terminal and admin app to post punches)
+ * 7. Click Deploy, authorize permissions, and copy the Web App URL (ends with /exec).
+ * 8. Paste into Attendo Admin Portal > Settings > Google Sheet Integration and click Save.
+ */
+
+function doGet(e) {
+  return handleAttendanceWebhook(e);
+}
+
+function doPost(e) {
+  return handleAttendanceWebhook(e);
+}
+
+function handleAttendanceWebhook(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var headers = [
+      "Timestamp",
+      "Employee Name",
+      "Employee ID",
+      "Department",
+      "Punch Type",
+      "Status",
+      "Scheduled Time",
+      "Actual Time"
+    ];
+
+    // Smart Header Initialization & Sheet Self-Formatting
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(headers);
+      formatHeaderRow(sheet, 1);
+    } else {
+      var firstCellVal = sheet.getRange(1, 1).getValue();
+      if (String(firstCellVal).trim() !== "Timestamp") {
+        sheet.insertRowBefore(1);
+        sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+        formatHeaderRow(sheet, 1);
+      }
+    }
+
+    // Seamless payload extraction supporting both JSON postData and URL query parameters
+    var data = {};
+    if (e && e.postData && e.postData.contents) {
+      try {
+        data = JSON.parse(e.postData.contents);
+      } catch (jsonErr) {
+        data = e.parameter || {};
+      }
+    } else if (e && e.parameter) {
+      data = e.parameter;
+    }
+
+    // 1. Strict 12-Hour AM/PM normalization for Column A (Timestamp) e.g. "11-Nov-2026, 05:33:46 PM"
+    var rawTs = data["Timestamp"] || data.timestamp || data.rawIsoTimestamp || new Date().toISOString();
+    var formattedTs = String(rawTs).trim();
+
+    if (formattedTs.indexOf("AM") === -1 && formattedTs.indexOf("PM") === -1) {
+      try {
+        var dateObj = new Date(rawTs);
+        if (!isNaN(dateObj.getTime())) {
+          formattedTs = Utilities.formatDate(dateObj, Session.getScriptTimeZone() || "GMT", "dd-MMM-yyyy, hh:mm:ss a");
+        }
+      } catch (dateErr) {}
+    }
+
+    // 2. Strict 12-Hour AM/PM normalization for Column H (Actual Time) e.g. "05:14:41 PM"
+    var rawActual = data["Actual Time"] || data.actualTime || data.time || "";
+    var formattedActual = String(rawActual).trim();
+
+    if (formattedActual && formattedActual !== "-") {
+      if (formattedActual.indexOf("T") !== -1 || formattedActual.indexOf("Z") !== -1) {
+        try {
+          var actDateObj = new Date(formattedActual);
+          if (!isNaN(actDateObj.getTime())) {
+            formattedActual = Utilities.formatDate(actDateObj, Session.getScriptTimeZone() || "GMT", "hh:mm:ss a");
+          }
+        } catch(actErr) {}
+      } else {
+        // Convert 24-hour "HH:mm:ss" or "HH:mm" to 12-hour "hh:mm:ss a"
+        var time24Match = formattedActual.match(/^(\\d{1,2}):(\\d{2})(?::(\\d{2}))?$/);
+        if (time24Match) {
+          var h = parseInt(time24Match[1], 10);
+          var m = time24Match[2];
+          var s = time24Match[3] || "00";
+          var a = h >= 12 ? "PM" : "AM";
+          h = h % 12;
+          h = h ? h : 12;
+          var hStr = (h < 10 ? "0" : "") + h;
+          formattedActual = hStr + ":" + m + ":" + s + " " + a;
+        } else {
+          // Normalize 12-hour format with single-digit hour e.g. "5:14:41 PM" -> "05:14:41 PM"
+          var match12 = formattedActual.match(/^(\\d{1,2}):(\\d{2})(?::(\\d{2}))?\\s*(AM|PM)$/i);
+          if (match12) {
+            var hh = parseInt(match12[1], 10);
+            var mm = match12[2];
+            var ss = match12[3] || "00";
+            var ampm = match12[4].toUpperCase();
+            var hhStr = (hh < 10 ? "0" : "") + hh;
+            formattedActual = hhStr + ":" + mm + ":" + ss + " " + ampm;
+          }
+        }
+      }
+    } else {
+      // If Actual Time is empty or '-', extract the 12-hour time portion from Column A if present
+      if (formattedTs && formattedTs.indexOf(",") !== -1) {
+        formattedActual = formattedTs.split(",")[1].trim();
+      } else {
+        formattedActual = "-";
+      }
+    }
+
+    // 3. Resolve Scheduled Time (Column G)
+    var scheduledVal = data["Scheduled Time"] || data.scheduledTime || "-";
+
+    // 4. Resolve Punch Type (Column E) and Status (Column F)
+    var punchTypeVal = data["Punch Type"] || data.punchType || data.type || "PUNCH_IN";
+    var statusVal = String(data["Status"] || data.status || "ON_TIME").toUpperCase().trim();
+
+    // 5. Append row to spreadsheet
+    sheet.appendRow([
+      formattedTs,
+      data["Employee Name"] || data.employeeName || data.name || "Unknown",
+      data["Employee ID"] || data.employeeId || data.id || "",
+      data["Department"] || data.department || "",
+      punchTypeVal,
+      statusVal,
+      scheduledVal,
+      formattedActual
+    ]);
+
+    var newRow = sheet.getLastRow();
+    var newRowRange = sheet.getRange(newRow, 1, 1, 8);
+
+    // 6. Format data row cleanly (eliminates dark header color bleeding)
+    newRowRange.setBackground("#ffffff");
+    newRowRange.setFontColor("#0f172a");
+    newRowRange.setFontFamily("Roboto");
+    newRowRange.setFontSize(10);
+    newRowRange.setFontWeight("normal");
+    newRowRange.setVerticalAlignment("middle");
+
+    // Force Plain Text ("@") on Column A (Timestamp), Column G (Scheduled Time), and Column H (Actual Time)
+    // so Google Sheets never auto-coerces into 24-hour time or spreadsheet locale defaults
+    sheet.getRange(newRow, 1).setNumberFormat("@");
+    sheet.getRange(newRow, 7).setNumberFormat("@");
+    sheet.getRange(newRow, 8).setNumberFormat("@");
+
+    // Alignments: left for Columns 1, 2, 4; center for Columns 3, 5, 6, 7, 8
+    sheet.getRange(newRow, 1).setHorizontalAlignment("left");
+    sheet.getRange(newRow, 2).setHorizontalAlignment("left");
+    sheet.getRange(newRow, 4).setHorizontalAlignment("left");
+
+    sheet.getRange(newRow, 3).setHorizontalAlignment("center");
+    sheet.getRange(newRow, 5).setHorizontalAlignment("center");
+    sheet.getRange(newRow, 6).setHorizontalAlignment("center");
+    sheet.getRange(newRow, 7).setHorizontalAlignment("center");
+    sheet.getRange(newRow, 8).setHorizontalAlignment("center");
+
+    // 7. Color-coded Status cell styling (Column 6):
+    var statusCell = sheet.getRange(newRow, 6);
+    statusCell.setFontWeight("bold");
+
+    if (statusVal === "TEST_CHECK_IN") {
+      // Emerald test confirmation (bg: '#d1fae5', fg: '#065f46')
+      statusCell.setBackground("#d1fae5").setFontColor("#065f46");
+    } else if (statusVal === "ON_TIME" || statusVal === "RESUMED_SHIFT" || statusVal === "NORMAL") {
+      // Green (bg: '#dcfce7', fg: '#166534')
+      statusCell.setBackground("#dcfce7").setFontColor("#166534");
+    } else if (statusVal === "ON_BREAK") {
+      // Blue (bg: '#dbeafe', fg: '#1e40af')
+      statusCell.setBackground("#dbeafe").setFontColor("#1e40af");
+    } else if (statusVal === "EARLY_LEAVE" || statusVal === "OVERTIME" || statusVal.indexOf("EARLY") !== -1) {
+      // Amber (bg: '#fef3c7', fg: '#92400e')
+      statusCell.setBackground("#fef3c7").setFontColor("#92400e");
+    } else if (
+      statusVal.indexOf("LATE") !== -1 ||
+      statusVal === "OVER_BREAK" ||
+      statusVal === "UNRECOGNIZED_FACE" ||
+      statusVal === "SPOOF_ATTEMPT" ||
+      statusVal === "CROSS_PUNCH_MISMATCH" ||
+      statusVal === "SECURITY_BLOCK" ||
+      statusVal.indexOf("BLOCK") !== -1
+    ) {
+      // Red (bg: '#fee2e2', fg: '#991b1b')
+      statusCell.setBackground("#fee2e2").setFontColor("#991b1b");
+    } else {
+      // Fallback Green
+      statusCell.setBackground("#dcfce7").setFontColor("#166534");
+    }
+
+    // 8. Auto-resize columns 1 to 8 so text is never clipped
+    try {
+      if (typeof sheet.autoResizeColumns === "function") {
+        sheet.autoResizeColumns(1, 8);
+      } else {
+        for (var col = 1; col <= 8; col++) {
+          sheet.autoResizeColumn(col);
+        }
+      }
+    } catch (resizeErr) {
+      for (var c = 1; c <= 8; c++) {
+        try { sheet.autoResizeColumn(c); } catch (e) {}
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      result: "success",
+      message: "Attendance logged successfully",
+      row: newRow
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      result: "error",
+      error: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function formatHeaderRow(sheet, rowNum) {
+  try {
+    var headerRange = sheet.getRange(rowNum, 1, 1, 8);
+    headerRange.setBackground("#1e293b"); // Professional dark slate background
+    headerRange.setFontColor("#ffffff");  // Bold white text
+    headerRange.setFontWeight("bold");
+    headerRange.setFontFamily("Roboto");
+    headerRange.setHorizontalAlignment("center");
+    sheet.setFrozenRows(1);
+    for (var col = 1; col <= 8; col++) {
+      sheet.autoResizeColumn(col);
+    }
+  } catch (e) {}
+}`;
